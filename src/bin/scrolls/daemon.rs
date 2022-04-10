@@ -1,8 +1,11 @@
 use std::time::Duration;
 
 use clap::ArgMatches;
-use scrolls::{bootstrap, collections, sources, storage};
+use scrolls::{bootstrap, collections, crosscut, sources, storage};
+use serde::Deserialize;
 
+#[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum SourceConfig {
     N2N(sources::n2n::Config),
 }
@@ -15,6 +18,8 @@ impl From<SourceConfig> for sources::Plugin {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum ReducerConfig {
     UtxoByAddress(collections::utxo_by_address::Config),
 }
@@ -26,6 +31,9 @@ impl From<ReducerConfig> for collections::Plugin {
         }
     }
 }
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum StorageConfig {
     Redis(storage::redis::Config),
 }
@@ -38,29 +46,50 @@ impl From<StorageConfig> for storage::Plugin {
     }
 }
 
-pub struct Config {
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", content = "value")]
+pub enum IntersectConfig {
+    Tip,
+    Origin,
+    Point(crosscut::PointArg),
+    Fallbacks(Vec<crosscut::PointArg>),
+}
+
+#[derive(Deserialize)]
+struct ConfigRoot {
     source: SourceConfig,
     reducers: Vec<ReducerConfig>,
     storage: StorageConfig,
+    intersect: IntersectConfig,
+}
+
+impl ConfigRoot {
+    pub fn new(explicit_file: Option<String>) -> Result<Self, config::ConfigError> {
+        let mut s = config::Config::builder();
+
+        // our base config will always be in /etc/scrolls
+        s = s.add_source(config::File::with_name("/etc/scrolls/daemon.toml").required(false));
+
+        // but we can override it by having a file in the working dir
+        s = s.add_source(config::File::with_name("scrolls.toml").required(false));
+
+        // if an explicit file was passed, then we load it as mandatory
+        if let Some(explicit) = explicit_file {
+            s = s.add_source(config::File::with_name(&explicit).required(true));
+        }
+
+        // finally, we use env vars to make some last-step overrides
+        s = s.add_source(config::Environment::with_prefix("SCROLLS").separator("_"));
+
+        s.build()?.try_deserialize()
+    }
 }
 
 pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
     env_logger::init();
 
-    let config = Config {
-        source: SourceConfig::N2N(sources::n2n::Config {
-            address: "relays-new.cardano-mainnet.iohk.io:3001".to_string(),
-            magic: pallas::network::miniprotocols::MAINNET_MAGIC,
-        }),
-        reducers: vec![ReducerConfig::UtxoByAddress(
-            collections::utxo_by_address::Config {
-                hrp: "addr".to_string(),
-            },
-        )],
-        storage: StorageConfig::Redis(storage::redis::Config {
-            connection_params: "redis://127.0.0.1:6379".to_string(),
-        }),
-    };
+    let config =
+        ConfigRoot::new(None).map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
 
     let pipeline = bootstrap::build(
         config.source.into(),

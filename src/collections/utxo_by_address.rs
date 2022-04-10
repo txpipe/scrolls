@@ -3,13 +3,14 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 use pallas::ledger::primitives::{alonzo, byron};
+use serde::Deserialize;
 
 use crate::{bootstrap, model};
 
 type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
-#[derive(Clone)]
+#[derive(Deserialize)]
 pub struct Config {
     pub hrp: String,
 }

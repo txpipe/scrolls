@@ -3,11 +3,13 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 use redis::Commands;
+use serde::Deserialize;
 
 use crate::{bootstrap, model};
 
 type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
 
+#[derive(Deserialize)]
 pub struct Config {
     pub connection_params: String,
 }

@@ -11,18 +11,22 @@ use gasket::{
     retries,
 };
 pub use messages::*;
-use pallas::network::miniprotocols::Point;
+use serde::Deserialize;
 
 use crate::{
     bootstrap::Pipeline,
+    crosscut,
     model::{ChainSyncCommand, ChainSyncCommandEx},
 };
 
 use self::transport::Transport;
 
+#[derive(Deserialize)]
 pub struct Config {
     pub address: String,
-    pub magic: u64,
+
+    #[serde(deserialize_with = "crate::crosscut::deserialize_magic_arg")]
+    pub magic: Option<crosscut::MagicArg>,
 }
 
 pub struct Plugin {
@@ -36,20 +40,10 @@ impl super::Pluggable for Plugin {
     }
 
     fn spawn(self, pipeline: &mut Pipeline) {
-        let byron_point = Point::Specific(
-            43159,
-            hex::decode("f5d398d6f71a9578521b05c43a668b06b6103f94fcf8d844d4c0aa906704b7a6")
-                .unwrap(),
-        );
-
-        let alonzo_point = Point::Specific(
-            57867490,
-            hex::decode("c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b")
-                .unwrap(),
-        );
+        let magic = self.config.magic.unwrap_or_default();
 
         let mut transport = gasket::retries::retry_operation(
-            || Transport::setup(&self.config.address, self.config.magic).or_work_err(),
+            || Transport::setup(&self.config.address, *magic).or_work_err(),
             &retries::Policy {
                 max_retries: 5,
                 backoff_factor: 2,
@@ -67,12 +61,7 @@ impl super::Pluggable for Plugin {
         pipeline.register_stage(
             "n2n-headers",
             gasket::runtime::spawn_stage(
-                self::chainsync::Worker::new(
-                    transport.muxer.use_channel(2),
-                    0,
-                    Some(vec![alonzo_point]),
-                    headers_out,
-                ),
+                self::chainsync::Worker::new(transport.muxer.use_channel(2), 0, None, headers_out),
                 gasket::runtime::Policy::default(),
             ),
         );

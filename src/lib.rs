@@ -5,6 +5,8 @@ pub mod model;
 pub mod sources;
 pub mod storage;
 
+use std::fmt::Display;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -14,4 +16,13 @@ pub enum Error {
 
     #[error("network transport error: {0}")]
     TransportError(String),
+
+    #[error("{0}")]
+    Message(String),
+}
+
+impl Error {
+    pub fn message(text: impl Into<String>) -> Error {
+        Error::Message(text.into())
+    }
 }
