@@ -10,7 +10,7 @@
 
 ## Intro
 
-_Scrolls_ is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, _Scrolls_ watches tip of the chain to keep the collectios up-to-date.
+_Scrolls_ is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, _Scrolls_ watches tip of the chain to keep the collections up-to-date.
 
 Examples of collections are: "utxo by address", "chain parameters by epoch", "pool metadata by pool id", "tx cbor by hash", etc.
 
@@ -65,7 +65,7 @@ TODO: Document filtering options per collection
   - [ ] Address by Ada Handle
   - [ ] Block CBOR by Hash
   - [ ] Tx CBOR by Hash
-  - [ ] TODO: add others
+  - [ ] Feature requests open
 - [ ] Data Sources
   - [x] Node-to-Node ChainSync + Blockfetch
   - [ ] Node-to-Client ChainSync
@@ -78,4 +78,5 @@ TODO: Document filtering options per collection
   - [ ] GCP BigQuery
   - [ ] Firestore
   - [ ] Azure CosmoDB
+  - [ ] Feature requests open
 

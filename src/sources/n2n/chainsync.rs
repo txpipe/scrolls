@@ -10,11 +10,13 @@ use gasket::{
     metrics::{Counter, Gauge},
 };
 
+use crate::model::ChainSyncCommand;
+
 use super::messages;
 
 struct ChainObserver {
     min_depth: usize,
-    output: gasket::messaging::OutputPort<messages::ChainSyncCommand>,
+    output: gasket::messaging::OutputPort<ChainSyncCommand>,
     chain_buffer: chainsync::RollbackBuffer,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
@@ -25,7 +27,7 @@ impl ChainObserver {
         min_depth: usize,
         block_count: Counter,
         chain_tip: Gauge,
-        output: gasket::messaging::OutputPort<messages::ChainSyncCommand>,
+        output: gasket::messaging::OutputPort<ChainSyncCommand>,
     ) -> Self {
         Self {
             min_depth,
@@ -59,7 +61,7 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
         for point in ready {
             log::debug!("requesting block fetch for point {:?}", point);
             self.output
-                .send(messages::ChainSyncCommand::roll_forward(point.clone()))?;
+                .send(ChainSyncCommand::roll_forward(point.clone()))?;
             self.block_count.inc(1);
 
             // evaluate if we should finalize the thread according to config
@@ -85,7 +87,7 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
             chainsync::RollbackEffect::OutOfScope => {
                 log::debug!("rollback out of buffer scope, sending event down the pipeline");
                 self.output
-                    .send(messages::ChainSyncCommand::roll_back(point.clone()))?;
+                    .send(ChainSyncCommand::roll_back(point.clone()))?;
             }
         }
 
@@ -93,31 +95,32 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
     }
 }
 
-#[derive(Clone)]
-pub struct Config {
-    pub min_depth: usize,
-    pub known_points: Option<Vec<Point>>,
-    //finalize_config: Option<FinalizeConfig>,
-}
-
-type OutputPort = gasket::messaging::OutputPort<messages::ChainSyncCommand>;
+type OutputPort = gasket::messaging::OutputPort<ChainSyncCommand>;
 type Runner = miniprotocols::Runner<chainsync::HeaderConsumer<ChainObserver>>;
 
 pub struct Worker {
     channel: Channel,
-    config: Config,
+    pub min_depth: usize,
+    pub known_points: Option<Vec<Point>>,
+    //finalize_config: Option<FinalizeConfig>,
     runner: Cell<Option<Runner>>,
-    pub output: OutputPort,
+    output: OutputPort,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
 }
 
 impl Worker {
-    pub fn new(channel: Channel, config: Config) -> Self {
+    pub fn new(
+        channel: Channel,
+        min_depth: usize,
+        known_points: Option<Vec<Point>>,
+        output: OutputPort,
+    ) -> Self {
         Self {
             channel,
-            config,
-            output: OutputPort::default(),
+            min_depth,
+            known_points,
+            output,
             runner: Cell::new(None),
             block_count: Default::default(),
             chain_tip: Default::default(),
@@ -135,9 +138,9 @@ impl gasket::runtime::Worker for Worker {
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
         let mut runner = Runner::new(chainsync::Consumer::initial(
-            self.config.known_points.clone(),
+            self.known_points.clone(),
             ChainObserver::new(
-                self.config.min_depth as usize,
+                self.min_depth as usize,
                 self.block_count.clone(),
                 self.chain_tip.clone(),
                 self.output.clone(),

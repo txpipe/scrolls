@@ -4,7 +4,7 @@ use pallas::{
     network::miniprotocols::{chainsync::HeaderContent, Point},
 };
 
-use crate::{model::MultiEraBlock, Error};
+use crate::Error;
 
 #[derive(Debug)]
 pub enum MultiEraHeader {
@@ -53,46 +53,6 @@ impl MultiEraHeader {
                 let hash = alonzo::crypto::hash_block_header(x);
                 Ok(Point::Specific(x.header_body.slot, hash.to_vec()))
             }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ChainSyncCommand {
-    RollForward(Point),
-    RollBack(Point),
-}
-
-impl ChainSyncCommand {
-    pub fn roll_forward(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollForward(point),
-        }
-    }
-
-    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollBack(point),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ChainSyncCommandEx {
-    RollForward(MultiEraBlock),
-    RollBack(Point),
-}
-
-impl ChainSyncCommandEx {
-    pub fn roll_forward(block: MultiEraBlock) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollForward(block),
-        }
-    }
-
-    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollBack(point),
         }
     }
 }

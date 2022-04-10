@@ -8,9 +8,7 @@ use pallas::{
 
 use gasket::{error::*, runtime::WorkOutcome};
 
-use crate::model::MultiEraBlock;
-
-use super::{messages, ChainSyncCommandEx};
+use crate::model::{ChainSyncCommand, ChainSyncCommandEx, MultiEraBlock};
 
 struct Observer<'a> {
     output: &'a mut OutputPort,
@@ -40,27 +38,22 @@ impl<'a> blockfetch::Observer for Observer<'a> {
     }
 }
 
-#[derive(Clone)]
-pub struct Config {}
-
-pub type InputPort = gasket::messaging::InputPort<messages::ChainSyncCommand>;
-pub type OutputPort = gasket::messaging::OutputPort<messages::ChainSyncCommandEx>;
+pub type InputPort = gasket::messaging::InputPort<ChainSyncCommand>;
+pub type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
 
 pub struct Worker {
-    config: Config,
     channel: Channel,
     block_count: gasket::metrics::Counter,
-    pub input: InputPort,
-    pub output: OutputPort,
+    input: InputPort,
+    output: OutputPort,
 }
 
 impl Worker {
-    pub fn new(channel: Channel, config: Config) -> Self {
+    pub fn new(channel: Channel, input: InputPort, output: OutputPort) -> Self {
         Self {
-            config,
             channel,
-            input: Default::default(),
-            output: Default::default(),
+            input,
+            output,
             block_count: Default::default(),
         }
     }
@@ -90,10 +83,10 @@ impl gasket::runtime::Worker for Worker {
         let input = self.input.recv()?;
 
         match input.payload {
-            super::ChainSyncCommand::RollForward(point) => {
+            ChainSyncCommand::RollForward(point) => {
                 self.fetch_block(point).or_work_err()?;
             }
-            super::ChainSyncCommand::RollBack(point) => {
+            ChainSyncCommand::RollBack(point) => {
                 self.output.send(ChainSyncCommandEx::roll_back(point))?;
             }
         };

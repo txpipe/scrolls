@@ -1,30 +1,26 @@
-use gasket::{error::AsWorkError, runtime::WorkOutcome};
+use gasket::{
+    error::AsWorkError,
+    runtime::{spawn_stage, WorkOutcome},
+};
 use pallas::ledger::primitives::{alonzo, byron};
 
-use crate::{
-    model::{self, MultiEraBlock},
-    sources::n2n::ChainSyncCommandEx,
-};
+use crate::{bootstrap, model};
 
+type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
+type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
+
+#[derive(Clone)]
 pub struct Config {
     pub hrp: String,
 }
 
 pub struct Worker {
     config: Config,
-    pub input: gasket::messaging::InputPort<ChainSyncCommandEx>,
-    pub output: gasket::messaging::OutputPort<model::CRDTCommand>,
+    input: InputPort,
+    output: OutputPort,
 }
 
 impl Worker {
-    pub fn new(config: Config) -> Self {
-        Self {
-            config,
-            input: Default::default(),
-            output: Default::default(),
-        }
-    }
-
     fn reduce_byron_tx(&mut self, tx: &byron::TxPayload) -> Result<(), gasket::error::Error> {
         let hash = tx.transaction.to_hash();
 
@@ -65,16 +61,16 @@ impl Worker {
             .collect()
     }
 
-    fn reduce_block(&mut self, block: MultiEraBlock) -> Result<(), gasket::error::Error> {
+    fn reduce_block(&mut self, block: model::MultiEraBlock) -> Result<(), gasket::error::Error> {
         match block {
-            MultiEraBlock::Byron(byron::Block::MainBlock(x)) => x
+            model::MultiEraBlock::Byron(byron::Block::MainBlock(x)) => x
                 .body
                 .tx_payload
                 .iter()
                 .map(|tx| self.reduce_byron_tx(tx))
                 .collect(),
-            MultiEraBlock::Byron(_) => Ok(()),
-            MultiEraBlock::AlonzoCompatible(x) => {
+            model::MultiEraBlock::Byron(_) => Ok(()),
+            model::MultiEraBlock::AlonzoCompatible(x) => {
                 x.1.transaction_bodies
                     .iter()
                     .map(|tx| self.reduce_alonzo_compatible_tx(tx))
@@ -93,12 +89,36 @@ impl gasket::runtime::Worker for Worker {
         let msg = self.input.recv()?;
 
         match msg.payload {
-            ChainSyncCommandEx::RollForward(block) => self.reduce_block(block)?,
-            ChainSyncCommandEx::RollBack(point) => {
+            model::ChainSyncCommandEx::RollForward(block) => self.reduce_block(block)?,
+            model::ChainSyncCommandEx::RollBack(point) => {
                 log::warn!("rollback requested for {:?}", point);
             }
         }
 
         Ok(WorkOutcome::Partial)
+    }
+}
+
+impl super::Pluggable for Worker {
+    fn borrow_input_port(&mut self) -> &'_ mut InputPort {
+        &mut self.input
+    }
+
+    fn borrow_output_port(&mut self) -> &'_ mut OutputPort {
+        &mut self.output
+    }
+
+    fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
+        pipeline.register_stage("utxo_by_address", spawn_stage(self, Default::default()));
+    }
+}
+
+impl From<Config> for Worker {
+    fn from(other: Config) -> Self {
+        Self {
+            config: other,
+            input: Default::default(),
+            output: Default::default(),
+        }
     }
 }

@@ -1,7 +1,12 @@
-use gasket::{error::AsWorkError, runtime::WorkOutcome};
+use gasket::{
+    error::AsWorkError,
+    runtime::{spawn_stage, WorkOutcome},
+};
 use redis::Commands;
 
-use crate::model;
+use crate::{bootstrap, model};
+
+type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
 
 pub struct Config {
     pub connection_params: String,
@@ -11,18 +16,7 @@ pub struct Worker {
     config: Config,
     client: Option<redis::Client>,
     connection: Option<redis::Connection>,
-    pub input: gasket::messaging::InputPort<model::CRDTCommand>,
-}
-
-impl Worker {
-    pub fn new(config: Config) -> Self {
-        Self {
-            config,
-            client: None,
-            connection: None,
-            input: Default::default(),
-        }
-    }
+    input: InputPort,
 }
 
 impl gasket::runtime::Worker for Worker {
@@ -65,5 +59,26 @@ impl gasket::runtime::Worker for Worker {
 
     fn teardown(&mut self) -> Result<(), gasket::error::Error> {
         Ok(())
+    }
+}
+
+impl super::Pluggable for Worker {
+    fn borrow_input_port(&mut self) -> &'_ mut InputPort {
+        &mut self.input
+    }
+
+    fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
+        pipeline.register_stage("redis", spawn_stage(self, Default::default()));
+    }
+}
+
+impl From<Config> for Worker {
+    fn from(other: Config) -> Self {
+        Worker {
+            config: other,
+            client: None,
+            connection: None,
+            input: Default::default(),
+        }
     }
 }

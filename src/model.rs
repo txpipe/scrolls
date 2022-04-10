@@ -1,4 +1,47 @@
-use pallas::ledger::primitives::{alonzo, byron};
+use pallas::{
+    ledger::primitives::{alonzo, byron},
+    network::miniprotocols::Point,
+};
+
+#[derive(Debug)]
+pub enum ChainSyncCommand {
+    RollForward(Point),
+    RollBack(Point),
+}
+
+impl ChainSyncCommand {
+    pub fn roll_forward(point: Point) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::RollForward(point),
+        }
+    }
+
+    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::RollBack(point),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ChainSyncCommandEx {
+    RollForward(MultiEraBlock),
+    RollBack(Point),
+}
+
+impl ChainSyncCommandEx {
+    pub fn roll_forward(block: MultiEraBlock) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::RollForward(block),
+        }
+    }
+
+    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::RollBack(point),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum MultiEraBlock {
