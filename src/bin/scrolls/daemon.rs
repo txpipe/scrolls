@@ -22,12 +22,14 @@ impl From<SourceConfig> for sources::Plugin {
 #[serde(tag = "type")]
 pub enum ReducerConfig {
     UtxoByAddress(collections::utxo_by_address::Config),
+    PointByTx(collections::point_by_tx::Config),
 }
 
 impl From<ReducerConfig> for collections::Plugin {
     fn from(other: ReducerConfig) -> Self {
         match other {
             ReducerConfig::UtxoByAddress(c) => collections::Plugin::UtxoByAddress(c.into()),
+            ReducerConfig::PointByTx(c) => collections::Plugin::PointByTx(c.into()),
         }
     }
 }

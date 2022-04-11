@@ -62,7 +62,7 @@ impl Worker {
             .collect()
     }
 
-    fn reduce_block(&mut self, block: model::MultiEraBlock) -> Result<(), gasket::error::Error> {
+    fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
         match block {
             model::MultiEraBlock::Byron(byron::Block::MainBlock(x)) => x
                 .body
@@ -90,7 +90,7 @@ impl gasket::runtime::Worker for Worker {
         let msg = self.input.recv()?;
 
         match msg.payload {
-            model::ChainSyncCommandEx::RollForward(block) => self.reduce_block(block)?,
+            model::ChainSyncCommandEx::RollForward(block) => self.reduce_block(&block)?,
             model::ChainSyncCommandEx::RollBack(point) => {
                 log::warn!("rollback requested for {:?}", point);
             }

@@ -1,11 +1,11 @@
-use gasket::messaging::OutputPort;
+use gasket::messaging::FanoutPort;
 
 use crate::{bootstrap, model};
 
 pub mod n2n;
 
 pub trait Pluggable {
-    fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::ChainSyncCommandEx>;
+    fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<model::ChainSyncCommandEx>;
     fn spawn(self, pipeline: &mut bootstrap::Pipeline);
 }
 
@@ -14,9 +14,7 @@ pub enum Plugin {
 }
 
 impl Plugin {
-    pub fn borrow_output_port(
-        &mut self,
-    ) -> &'_ mut gasket::messaging::OutputPort<model::ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<model::ChainSyncCommandEx> {
         match self {
             Plugin::N2N(p) => p.borrow_output_port(),
         }

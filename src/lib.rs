@@ -5,8 +5,6 @@ pub mod model;
 pub mod sources;
 pub mod storage;
 
-use std::fmt::Display;
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]

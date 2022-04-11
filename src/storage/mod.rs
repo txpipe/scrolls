@@ -1,11 +1,11 @@
 pub mod redis;
 
-use gasket::messaging::InputPort;
+use gasket::messaging::FunnelPort;
 
 use crate::{bootstrap, model};
 
 pub trait Pluggable {
-    fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::CRDTCommand>;
+    fn borrow_input_port(&mut self) -> &'_ mut FunnelPort<model::CRDTCommand>;
     fn spawn(self, pipeline: &mut bootstrap::Pipeline);
 }
 
@@ -14,7 +14,7 @@ pub enum Plugin {
 }
 
 impl Plugin {
-    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::CRDTCommand> {
+    pub fn borrow_input_port(&mut self) -> &'_ mut FunnelPort<model::CRDTCommand> {
         match self {
             Plugin::Redis(x) => x.borrow_input_port(),
         }

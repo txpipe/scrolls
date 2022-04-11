@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::{bootstrap, model};
 
-type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
+type FunnelPort = gasket::messaging::FunnelPort<model::CRDTCommand>;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -18,7 +18,7 @@ pub struct Worker {
     config: Config,
     client: Option<redis::Client>,
     connection: Option<redis::Connection>,
-    input: InputPort,
+    input: FunnelPort,
 }
 
 impl gasket::runtime::Worker for Worker {
@@ -30,6 +30,13 @@ impl gasket::runtime::Worker for Worker {
         let msg = self.input.recv()?;
 
         match msg.payload {
+            model::CRDTCommand::GrowOnlySetAdd(key, value) => {
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .sadd(key, value)
+                    .or_work_err()?;
+            }
             model::CRDTCommand::TwoPhaseSetAdd(key, value) => {
                 self.connection
                     .as_mut()
@@ -65,7 +72,7 @@ impl gasket::runtime::Worker for Worker {
 }
 
 impl super::Pluggable for Worker {
-    fn borrow_input_port(&mut self) -> &'_ mut InputPort {
+    fn borrow_input_port(&mut self) -> &'_ mut FunnelPort {
         &mut self.input
     }
 

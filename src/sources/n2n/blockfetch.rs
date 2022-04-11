@@ -11,7 +11,7 @@ use gasket::{error::*, runtime::WorkOutcome};
 use crate::model::{ChainSyncCommand, ChainSyncCommandEx, MultiEraBlock};
 
 struct Observer<'a> {
-    output: &'a mut OutputPort,
+    output: &'a mut FanoutPort,
 }
 
 impl<'a> blockfetch::Observer for Observer<'a> {
@@ -39,17 +39,17 @@ impl<'a> blockfetch::Observer for Observer<'a> {
 }
 
 pub type InputPort = gasket::messaging::InputPort<ChainSyncCommand>;
-pub type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
+pub type FanoutPort = gasket::messaging::FanoutPort<ChainSyncCommandEx>;
 
 pub struct Worker {
     channel: Channel,
     block_count: gasket::metrics::Counter,
     input: InputPort,
-    output: OutputPort,
+    output: FanoutPort,
 }
 
 impl Worker {
-    pub fn new(channel: Channel, input: InputPort, output: OutputPort) -> Self {
+    pub fn new(channel: Channel, input: InputPort, output: FanoutPort) -> Self {
         Self {
             channel,
             input,
@@ -67,6 +67,8 @@ impl Worker {
 
         let agent = blockfetch::BatchClient::initial((point.clone(), point), observer);
         run_agent(agent, &mut self.channel)?;
+
+        self.block_count.inc(1);
 
         Ok(())
     }

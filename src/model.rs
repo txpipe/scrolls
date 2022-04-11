@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use pallas::{
     ledger::primitives::{alonzo, byron},
     network::miniprotocols::Point,
@@ -23,16 +25,16 @@ impl ChainSyncCommand {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ChainSyncCommandEx {
-    RollForward(MultiEraBlock),
+    RollForward(Arc<MultiEraBlock>),
     RollBack(Point),
 }
 
 impl ChainSyncCommandEx {
     pub fn roll_forward(block: MultiEraBlock) -> gasket::messaging::Message<Self> {
         gasket::messaging::Message {
-            payload: Self::RollForward(block),
+            payload: Self::RollForward(Arc::new(block)),
         }
     }
 
@@ -56,4 +58,5 @@ pub type Member = String;
 pub enum CRDTCommand {
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
+    GrowOnlySetAdd(Set, Member),
 }

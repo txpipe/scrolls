@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use gasket::{
     error::AsWorkError,
-    messaging::{InputPort, OutputPort},
+    messaging::{FanoutPort, InputPort, OutputPort},
     retries,
 };
 pub use messages::*;
@@ -31,11 +31,11 @@ pub struct Config {
 
 pub struct Plugin {
     config: Config,
-    output: OutputPort<ChainSyncCommandEx>,
+    output: FanoutPort<ChainSyncCommandEx>,
 }
 
 impl super::Pluggable for Plugin {
-    fn borrow_output_port(&mut self) -> &'_ mut gasket::messaging::OutputPort<ChainSyncCommandEx> {
+    fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<ChainSyncCommandEx> {
         &mut self.output
     }
 
