@@ -24,13 +24,11 @@ use self::transport::Transport;
 #[derive(Deserialize)]
 pub struct Config {
     pub address: String,
-
-    #[serde(deserialize_with = "crate::crosscut::deserialize_magic_arg")]
-    pub magic: Option<crosscut::MagicArg>,
 }
 
 pub struct Plugin {
     config: Config,
+    chain: crosscut::ChainWellKnownInfo,
     output: FanoutPort<ChainSyncCommandEx>,
 }
 
@@ -40,10 +38,8 @@ impl super::Pluggable for Plugin {
     }
 
     fn spawn(self, pipeline: &mut Pipeline) {
-        let magic = self.config.magic.unwrap_or_default();
-
         let mut transport = gasket::retries::retry_operation(
-            || Transport::setup(&self.config.address, *magic).or_work_err(),
+            || Transport::setup(&self.config.address, self.chain.magic).or_work_err(),
             &retries::Policy {
                 max_retries: 5,
                 backoff_factor: 2,
@@ -80,11 +76,18 @@ impl super::Pluggable for Plugin {
     }
 }
 
-impl From<Config> for Plugin {
-    fn from(other: Config) -> Self {
-        Plugin {
-            config: other,
+impl super::IntoPlugin for Config {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> super::Plugin {
+        let plugin = Plugin {
+            config: self,
+            chain: chain.clone(),
             output: Default::default(),
-        }
+        };
+
+        super::Plugin::N2N(plugin)
     }
 }

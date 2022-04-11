@@ -4,16 +4,28 @@ use clap::ArgMatches;
 use scrolls::{bootstrap, collections, crosscut, sources, storage};
 use serde::Deserialize;
 
+trait FromConfig<T> {
+    fn from_config(
+        config: T,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Self;
+}
+
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum SourceConfig {
     N2N(sources::n2n::Config),
 }
 
-impl From<SourceConfig> for sources::Plugin {
-    fn from(other: SourceConfig) -> Self {
+impl FromConfig<SourceConfig> for sources::Plugin {
+    fn from_config(
+        other: SourceConfig,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Self {
         match other {
-            SourceConfig::N2N(c) => sources::Plugin::N2N(c.into()),
+            SourceConfig::N2N(c) => sources::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
@@ -25,11 +37,15 @@ pub enum ReducerConfig {
     PointByTx(collections::point_by_tx::Config),
 }
 
-impl From<ReducerConfig> for collections::Plugin {
-    fn from(other: ReducerConfig) -> Self {
+impl FromConfig<ReducerConfig> for collections::Plugin {
+    fn from_config(
+        other: ReducerConfig,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Self {
         match other {
-            ReducerConfig::UtxoByAddress(c) => collections::Plugin::UtxoByAddress(c.into()),
-            ReducerConfig::PointByTx(c) => collections::Plugin::PointByTx(c.into()),
+            ReducerConfig::UtxoByAddress(c) => collections::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::PointByTx(c) => collections::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
@@ -40,21 +56,39 @@ pub enum StorageConfig {
     Redis(storage::redis::Config),
 }
 
-impl From<StorageConfig> for storage::Plugin {
-    fn from(other: StorageConfig) -> Self {
+impl FromConfig<StorageConfig> for storage::Plugin {
+    fn from_config(
+        other: StorageConfig,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Self {
         match other {
-            StorageConfig::Redis(c) => storage::Plugin::Redis(c.into()),
+            StorageConfig::Redis(c) => storage::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(tag = "type", content = "value")]
-pub enum IntersectConfig {
-    Tip,
-    Origin,
-    Point(crosscut::PointArg),
-    Fallbacks(Vec<crosscut::PointArg>),
+#[derive(Deserialize)]
+pub enum ChainConfig {
+    Mainnet,
+    Testnet,
+    Custom(crosscut::ChainWellKnownInfo),
+}
+
+impl Default for ChainConfig {
+    fn default() -> Self {
+        Self::Mainnet
+    }
+}
+
+impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
+    fn from(other: ChainConfig) -> Self {
+        match other {
+            ChainConfig::Mainnet => crosscut::ChainWellKnownInfo::mainnet(),
+            ChainConfig::Testnet => crosscut::ChainWellKnownInfo::testnet(),
+            ChainConfig::Custom(x) => x,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -62,7 +96,8 @@ struct ConfigRoot {
     source: SourceConfig,
     reducers: Vec<ReducerConfig>,
     storage: StorageConfig,
-    intersect: IntersectConfig,
+    intersect: crosscut::IntersectConfig,
+    chain: Option<ChainConfig>,
 }
 
 impl ConfigRoot {
@@ -93,10 +128,16 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
     let config =
         ConfigRoot::new(None).map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
 
+    let chain = config.chain.unwrap_or_default().into();
+
     let pipeline = bootstrap::build(
-        config.source.into(),
-        config.reducers.into_iter().map(|x| x.into()).collect(),
-        config.storage.into(),
+        sources::Plugin::from_config(config.source, &chain, &config.intersect),
+        config
+            .reducers
+            .into_iter()
+            .map(|x| collections::Plugin::from_config(x, &chain, &config.intersect))
+            .collect(),
+        storage::Plugin::from_config(config.storage, &chain, &config.intersect),
     );
 
     loop {

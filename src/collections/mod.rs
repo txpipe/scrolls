@@ -1,6 +1,6 @@
 use gasket::messaging::{InputPort, OutputPort};
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model};
 
 pub mod point_by_tx;
 pub mod utxo_by_address;
@@ -37,4 +37,12 @@ impl Plugin {
             Plugin::PointByTx(x) => x.spawn(pipeline),
         }
     }
+}
+
+pub trait IntoPlugin {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Plugin;
 }

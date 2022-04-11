@@ -1,6 +1,6 @@
 use gasket::messaging::FanoutPort;
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model};
 
 pub mod n2n;
 
@@ -25,4 +25,12 @@ impl Plugin {
             Plugin::N2N(p) => p.spawn(pipeline),
         }
     }
+}
+
+pub trait IntoPlugin {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Plugin;
 }

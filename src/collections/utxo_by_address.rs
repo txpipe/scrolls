@@ -5,18 +5,17 @@ use gasket::{
 use pallas::ledger::primitives::{alonzo, byron};
 use serde::Deserialize;
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model};
 
 type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
 #[derive(Deserialize)]
-pub struct Config {
-    pub hrp: String,
-}
+pub struct Config {}
 
 pub struct Worker {
     config: Config,
+    address_hrp: String,
     input: InputPort,
     output: OutputPort,
 }
@@ -53,7 +52,7 @@ impl Worker {
             .flat_map(|o| o.iter())
             .enumerate()
             .map(move |(idx, output)| {
-                let key = output.to_bech32_address(&self.config.hrp).or_work_err()?;
+                let key = output.to_bech32_address(&self.address_hrp).or_work_err()?;
                 let member = format!("{}:{}", hash, idx);
                 let crdt = model::CRDTCommand::TwoPhaseSetAdd(key, member);
 
@@ -114,12 +113,19 @@ impl super::Pluggable for Worker {
     }
 }
 
-impl From<Config> for Worker {
-    fn from(other: Config) -> Self {
-        Self {
-            config: other,
+impl super::IntoPlugin for Config {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> super::Plugin {
+        let worker = Worker {
+            config: self,
+            address_hrp: chain.address_hrp.clone(),
             input: Default::default(),
             output: Default::default(),
-        }
+        };
+
+        super::Plugin::UtxoByAddress(worker)
     }
 }

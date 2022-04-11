@@ -5,7 +5,7 @@ use gasket::{
 use redis::Commands;
 use serde::Deserialize;
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model};
 
 type FunnelPort = gasket::messaging::FunnelPort<model::CRDTCommand>;
 
@@ -81,13 +81,19 @@ impl super::Pluggable for Worker {
     }
 }
 
-impl From<Config> for Worker {
-    fn from(other: Config) -> Self {
-        Worker {
-            config: other,
+impl super::IntoPlugin for Config {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> super::Plugin {
+        let worker = Worker {
+            config: self,
             client: None,
             connection: None,
             input: Default::default(),
-        }
+        };
+
+        super::Plugin::Redis(worker)
     }
 }

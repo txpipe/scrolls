@@ -3,7 +3,7 @@ use pallas::crypto::hash::Hash;
 use pallas::ledger::primitives::byron;
 use serde::Deserialize;
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model};
 
 type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
@@ -98,12 +98,18 @@ impl super::Pluggable for Worker {
     }
 }
 
-impl From<Config> for Worker {
-    fn from(other: Config) -> Self {
-        Self {
-            config: other,
+impl super::IntoPlugin for Config {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> super::Plugin {
+        let worker = Worker {
+            config: self,
             input: Default::default(),
             output: Default::default(),
-        }
+        };
+
+        super::Plugin::PointByTx(worker)
     }
 }
