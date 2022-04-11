@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use clap::ArgMatches;
-use scrolls::{bootstrap, collections, crosscut, sources, storage};
+use scrolls::{bootstrap, crosscut, reducers, sources, storage};
 use serde::Deserialize;
 
 trait FromConfig<T> {
@@ -33,19 +33,19 @@ impl FromConfig<SourceConfig> for sources::Plugin {
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum ReducerConfig {
-    UtxoByAddress(collections::utxo_by_address::Config),
-    PointByTx(collections::point_by_tx::Config),
+    UtxoByAddress(reducers::utxo_by_address::Config),
+    PointByTx(reducers::point_by_tx::Config),
 }
 
-impl FromConfig<ReducerConfig> for collections::Plugin {
+impl FromConfig<ReducerConfig> for reducers::Plugin {
     fn from_config(
         other: ReducerConfig,
         chain: &crosscut::ChainWellKnownInfo,
         intersect: &crosscut::IntersectConfig,
     ) -> Self {
         match other {
-            ReducerConfig::UtxoByAddress(c) => collections::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::PointByTx(c) => collections::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::UtxoByAddress(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::PointByTx(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
@@ -135,7 +135,7 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
         config
             .reducers
             .into_iter()
-            .map(|x| collections::Plugin::from_config(x, &chain, &config.intersect))
+            .map(|x| reducers::Plugin::from_config(x, &chain, &config.intersect))
             .collect(),
         storage::Plugin::from_config(config.storage, &chain, &config.intersect),
     );

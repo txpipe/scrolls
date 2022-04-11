@@ -1,4 +1,4 @@
-use crate::{collections, sources, storage};
+use crate::{reducers, sources, storage};
 
 use gasket::{messaging::connect_ports, runtime::Tether};
 
@@ -22,7 +22,7 @@ impl Pipeline {
 
 pub fn build(
     mut source: sources::Plugin,
-    mut reducers: Vec<collections::Plugin>,
+    mut reducers: Vec<reducers::Plugin>,
     mut storage: storage::Plugin,
 ) -> Pipeline {
     let mut pipeline = Pipeline::new();
