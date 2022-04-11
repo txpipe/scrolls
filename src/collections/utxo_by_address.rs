@@ -2,6 +2,7 @@ use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
 };
+use pallas::crypto::hash::Hash;
 use pallas::ledger::primitives::{alonzo, byron};
 use serde::Deserialize;
 
@@ -11,29 +12,49 @@ type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
 #[derive(Deserialize)]
-pub struct Config {}
+pub struct Config {
+    pub key_prefix: Option<String>,
+}
 
 pub struct Worker {
     config: Config,
     address_hrp: String,
     input: InputPort,
     output: OutputPort,
+    ops_count: gasket::metrics::Counter,
 }
 
 impl Worker {
+    fn send_set_add(
+        &mut self,
+        address: &str,
+        tx_hash: Hash<32>,
+        tx_idx: usize,
+    ) -> Result<(), gasket::error::Error> {
+        let key = match &self.config.key_prefix {
+            Some(prefix) => format!("{}.{}", prefix, address),
+            None => address.to_string(),
+        };
+
+        let member = format!("{}:{}", tx_hash, tx_idx);
+        let crdt = model::CRDTCommand::TwoPhaseSetAdd(key, member);
+
+        self.output.send(gasket::messaging::Message::from(crdt))?;
+        self.ops_count.inc(1);
+
+        Ok(())
+    }
+
     fn reduce_byron_tx(&mut self, tx: &byron::TxPayload) -> Result<(), gasket::error::Error> {
-        let hash = tx.transaction.to_hash();
+        let tx_hash = tx.transaction.to_hash();
 
         tx.transaction
             .outputs
             .iter()
             .enumerate()
-            .map(move |(idx, tx)| {
-                let key = tx.address.to_addr_string().or_work_err()?;
-                let member = format!("{}:{}", hash, idx);
-                let crdt = model::CRDTCommand::TwoPhaseSetAdd(key, member);
-
-                self.output.send(gasket::messaging::Message::from(crdt))
+            .map(move |(tx_idx, tx)| {
+                let address = tx.address.to_addr_string().or_work_err()?;
+                self.send_set_add(&address, tx_hash, tx_idx)
             })
             .collect()
     }
@@ -42,7 +63,7 @@ impl Worker {
         &mut self,
         tx: &alonzo::TransactionBody,
     ) -> Result<(), gasket::error::Error> {
-        let hash = tx.to_hash();
+        let tx_hash = tx.to_hash();
 
         tx.iter()
             .filter_map(|b| match b {
@@ -51,12 +72,9 @@ impl Worker {
             })
             .flat_map(|o| o.iter())
             .enumerate()
-            .map(move |(idx, output)| {
-                let key = output.to_bech32_address(&self.address_hrp).or_work_err()?;
-                let member = format!("{}:{}", hash, idx);
-                let crdt = model::CRDTCommand::TwoPhaseSetAdd(key, member);
-
-                self.output.send(gasket::messaging::Message::from(crdt))
+            .map(move |(tx_idx, output)| {
+                let address = output.to_bech32_address(&self.address_hrp).or_work_err()?;
+                self.send_set_add(&address, tx_hash, tx_idx)
             })
             .collect()
     }
@@ -82,7 +100,9 @@ impl Worker {
 
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new().build()
+        gasket::metrics::Builder::new()
+            .with_counter("ops_count", &self.ops_count)
+            .build()
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
@@ -124,6 +144,7 @@ impl super::IntoPlugin for Config {
             address_hrp: chain.address_hrp.clone(),
             input: Default::default(),
             output: Default::default(),
+            ops_count: Default::default(),
         };
 
         super::Plugin::UtxoByAddress(worker)

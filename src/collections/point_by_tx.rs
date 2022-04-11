@@ -17,6 +17,7 @@ pub struct Worker {
     config: Config,
     input: InputPort,
     output: OutputPort,
+    ops_count: gasket::metrics::Counter,
 }
 
 impl Worker {
@@ -34,7 +35,10 @@ impl Worker {
         let member = format!("{},{}", block_slot, block_hash);
         let crdt = model::CRDTCommand::GrowOnlySetAdd(key, member);
 
-        self.output.send(gasket::messaging::Message::from(crdt))
+        self.output.send(gasket::messaging::Message::from(crdt))?;
+        self.ops_count.inc(1);
+
+        Ok(())
     }
 
     fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
@@ -67,7 +71,9 @@ impl Worker {
 
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new().build()
+        gasket::metrics::Builder::new()
+            .with_counter("ops_count", &self.ops_count)
+            .build()
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
@@ -108,6 +114,7 @@ impl super::IntoPlugin for Config {
             config: self,
             input: Default::default(),
             output: Default::default(),
+            ops_count: Default::default(),
         };
 
         super::Plugin::PointByTx(worker)
