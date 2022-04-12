@@ -88,7 +88,7 @@ pub enum IntersectConfig {
 
 /// Well-known information about the blockhain network
 ///
-/// Some of the logic in Oura depends on particular characteristic of the
+/// Some of the logic in Scrolls depends on particular characteristic of the
 /// network that it's consuming from. For example: time calculation and bech32
 /// encoding. This struct groups all of these blockchain network specific
 /// values.
