@@ -80,3 +80,71 @@ TODO: Document filtering options per collection
   - [ ] Azure CosmoDB
   - [ ] Feature requests open
 
+## Configuration
+
+This is an example configuration file:
+
+```toml
+# get data from a relay node
+[source]
+type = "N2N"
+address = "relays-new.cardano-mainnet.iohk.io:3001"
+
+# enable the "UTXO by Address" collection
+[[reducers]]
+type = "UtxoByAddress"
+# you can optionally prefix the keys in the collection
+key_prefix = "c0"
+
+# enable the "Point by Tx" collection
+[[reducers]]
+type = "PointByTx"
+key_prefix = "a1"
+
+# store the collections in a local Redis
+[storage]
+type = "Redis"
+connection_params = "redis://127.0.0.1:6379"
+
+# start reading from an arbitrary point in the chain
+[intersect]
+type = "Point"
+value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
+
+# let Scrolls know that we're working with mainnet
+[chain]
+type = "Mainnet"
+```
+
+## Testdrive
+
+In the `testdrive` folder you'll find a minimal example that uses docker-compose to spin up a local Redis instance and a Scrolls daemon. You'll need Docker and docker-compose installed in you local machine. Run the following commands to start it:
+
+```sh
+cd testdrive
+docker-compose up
+```
+
+You should see the logs of both _Redis_ and _Scrolls_ crawling the chain from a remote relay node. If you're familiar with Redis CLI, you can run the following commands to see the data being cached:
+
+TODO
+
+## FAQ
+
+> Don't we have tools for this already?
+
+Yes, we do. We have excelent tools like Kupo, db-sync, dcSpark's oura-db-sync. Even the Cardano node itself might work as a source for some of the collections. Every tool is architected with a set of well-understood trade-offs. We believe _Scrolls_ makes sense as an addition to the list because assumes a particular set of trade-offs:
+
+- network storage over local storage: _Scrolls_ makes sense if you have multiple distributed clients working in a private network that want to connect to the same data instance.
+- read latency over data normalization: _Scrolls_ works well when you need to answer simple questions, like a lookup table. It won't work if you need to create joins or complex relational queries.
+- data cache over data source: _Scrolls_ aims at being a "cache" of data, not the actual source of data. It has emphasis on easy and fast reconstruction of the collections. It promotes workflows where the data is wiped and rebuilt from scratch whenever the use-case requires (such as adding / removing filters).
+- Rust over Haskell: this is not a statement about the languages, both are great languages, each one with it's own set of trade-offs. Since most of the Cardano ecosystem is written in Haskell, we opt for Rust as a way to broaden the reach to a different community of Rust developers (such as the authors of this tool). _Scrolls_ is extensible, it can be used as a library in Rust projects to create custom cache collections.
+- bring your own db: storage mechanism in _Scrolls_ are pluggable, our goal is to provide a tool that plays nice with existing infrastructure. The trade-off is that you end up having more moving parts.
+
+> How do I read the data using Python?
+
+TODO
+
+> How do I read the data using NodeJS?
+
+TODO
