@@ -10,17 +10,17 @@
 
 ## Intro
 
-_Scrolls_ is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, _Scrolls_ watches tip of the chain to keep the collections up-to-date.
+_Scrolls_ is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, _Scrolls_ watches the tip of the chain to keep the collections up-to-date.
 
 Examples of collections are: "utxo by address", "chain parameters by epoch", "pool metadata by pool id", "tx cbor by hash", etc.
 
 > In other words, _Scrolls_ is just a map-reduce algorithm that aggregates the history of the chain into use-case-specific, key-value dictionaries.
 
-:warning: this tool is under heavy development. Library API, configuration schema and storage structure may vary drastrically. Use at your own peril.
+:warning: this tool is under heavy development. Library API, configuration schema and storage structure may vary drastically. Use at your own peril.
 
 ## Storage
 
-Storage backends are "pluggable", any key-value storage mechanism is a potential candidate. Our backend of preference is Redis (and TBH, the only one implemented so far). It provides very high "read" throughput, it can be shared across the network by multiple clients and can be used in cluster-mode for horizontal scaling.
+Storage backends are "pluggable", any key-value storage mechanism is a potential candidate. Our backend of preference is Redis (and TBH, the only one implemented so far). It provides a very high "read" throughput, it can be shared across the network by multiple clients and can be used in cluster-mode for horizontal scaling.
 
 We also understand that a memory db like Redis may be prohibitive for some use-cases where storage optimization is more important than read-latency. The goal is to provide other backend options within the realm of NoSQL databases better suited for the later scenarios.
 
@@ -28,13 +28,13 @@ We also understand that a memory db like Redis may be prohibitive for some use-c
 
 The persistence data model does heavy use of [CRDTs](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) (Conflict-free replicated data types) and idempotent calls, which provide benefits for write concurrency and rollback procedures.
 
-For example, CRDTs allows us to re-build the indexes by spawning several history readers that crawl on-chain data concurrently from different start positions. This provides a sensible benefit on collection-building time. We call this approach "swarm mode".
+For example, CRDTs allow us to re-build the indexes by spawning several history readers that crawl on-chain data concurrently from different start positions. This provides a sensible benefit on collection-building time. We call this approach "swarm mode".
 
 TODO: explain future plan to leverage CRDTs for rollback checkpoints.
 
-## Accesing the Data
+## Accessing the Data
 
-_Scrolls_ doesn't provide any custom client for accesing the data, it relies on the fact that the canonical clients of the selected backends are ubiquotos, battle-tested and relatively easy to use. By knowing the structure of the stored keys/values, a developer should be able to query the data directly from Redis.
+_Scrolls_ doesn't provide any custom client for accesing the data, it relies on the fact that the canonical clients of the selected backends are ubiquitous, battle-tested and relatively easy to use. By knowing the structure of the stored keys/values, a developer should be able to query the data directly from Redis.
 
 TODO: reference specs for each key/value
 
@@ -51,7 +51,7 @@ TODO: Document filtering options per collection
 Scrolls is a pipeline that takes block data as input and outputs DB update commands. The stages involved in the pipeline are the following:
 
 - Source Stages: are in charge of pulling data block data. It might be directly from a Cardano node (local or remote) or from some other source. The requirement is to have the raw CBOR as part of the payload.
-- Reducer Stages: are in chare of applying the map-reduce algorithm. They turn block data into CRDTs commands that can be later merged with existing data. The map-reduce logic will depend on the type of collection being built. Each reducer stage handles a single collection. Reducers can be enabled / disabled via configuration.
+- Reducer Stages: are in charge of applying the map-reduce algorithm. They turn block data into CRDTs commands that can be later merged with existing data. The map-reduce logic will depend on the type of collection being built. Each reducer stage handles a single collection. Reducers can be enabled / disabled via configuration.
 - Storage Stages: receive the generic CRDT commands and turns them into DB-specific instructions that are then executed by the corresponding engine.
 
 ![diagram](./assets/diagram.svg)
@@ -93,7 +93,7 @@ Scrolls is a pipeline that takes block data as input and outputs DB update comma
 
 ## Testdrive
 
-In the `testdrive` folder you'll find a minimal example that uses docker-compose to spin up a local Redis instance and a Scrolls daemon. You'll need Docker and docker-compose installed in you local machine. Run the following commands to start it:
+In the `testdrive` folder you'll find a minimal example that uses docker-compose to spin up a local Redis instance and a Scrolls daemon. You'll need Docker and docker-compose installed in your local machine. Run the following commands to start it:
 
 ```sh
 cd testdrive
@@ -157,7 +157,7 @@ type = "Mainnet"
 
 ## Compiling from Source
 
-To compile from source, you'll need to have the Rust toolchain avaiable in your development box. Execute the following command to clone and build the project:
+To compile from source, you'll need to have the Rust toolchain available in your development box. Execute the following command to clone and build the project:
 
 ```sh
 git clone https://github.com/txpipe/scrolls.git
@@ -169,19 +169,19 @@ cargo build
 
 ### Don't we have tools for this already?
 
-Yes, we do. We have excelent tools like Kupo, db-sync, dcSpark's oura-db-sync. Even the Cardano node itself might work as a source for some of the collections. Every tool is architected with a set of well-understood trade-offs. We believe _Scrolls_ makes sense as an addition to the list because assumes a particular set of trade-offs:
+Yes, we do. We have excellent tools like Kupo, db-sync, dcSpark's oura-db-sync. Even the Cardano node itself might work as a source for some of the collections. Every tool is architected with a set of well-understood trade-offs. We believe _Scrolls_ makes sense as an addition to the list because assumes a particular set of trade-offs:
 
 - network storage over local storage: _Scrolls_ makes sense if you have multiple distributed clients working in a private network that want to connect to the same data instance.
 - read latency over data normalization: _Scrolls_ works well when you need to answer simple questions, like a lookup table. It won't work if you need to create joins or complex relational queries.
-- data cache over data source: _Scrolls_ aims at being a "cache" of data, not the actual source of data. It has emphasis on easy and fast reconstruction of the collections. It promotes workflows where the data is wiped and rebuilt from scratch whenever the use-case requires (such as adding / removing filters).
-- Rust over Haskell: this is not a statement about the languages, both are great languages, each one with it's own set of trade-offs. Since most of the Cardano ecosystem is written in Haskell, we opt for Rust as a way to broaden the reach to a different community of Rust developers (such as the authors of this tool). _Scrolls_ is extensible, it can be used as a library in Rust projects to create custom cache collections.
+- data cache over data source: _Scrolls_ aims at being a "cache" of data, not the actual source of data. It has an emphasis on easy and fast reconstruction of the collections. It promotes workflows where the data is wiped and rebuilt from scratch whenever the use-case requires (such as adding / removing filters).
+- Rust over Haskell: this is not a statement about the languages, both are great languages, each one with its own set of trade-offs. Since most of the Cardano ecosystem is written in Haskell, we opt for Rust as a way to broaden the reach to a different community of Rust developers (such as the authors of this tool). _Scrolls_ is extensible, it can be used as a library in Rust projects to create custom cache collections.
 - bring your own db: storage mechanism in _Scrolls_ are pluggable, our goal is to provide a tool that plays nice with existing infrastructure. The trade-off is that you end up having more moving parts.
 
 ### How does this tool compare to _Oura_?
 
-There's some overlap between _Oura_ and _Scrolls_. Both tools read on-chain data and output some data result. The main difference is that Oura is meant to **_react_** to events, to watch the chain and actuate upon certain patterns. In constrast, _Scrolls_ is meant to provide a snapshot of the current state of the chain by aggregating the whole history.
+There's some overlap between _Oura_ and _Scrolls_. Both tools read on-chain data and output some data results. The main difference is that Oura is meant to **_react_** to events, to watch the chain and actuate upon certain patterns. In contrast, _Scrolls_ is meant to provide a snapshot of the current state of the chain by aggregating the whole history.
 
-They were built to work well together. For example, lets say that you're building an app that uses Oura to process transaction data, you could then integrate _Scrolls_ as a way to lookup the source address of the transaction's input.
+They were built to work well together. For example, let's say that you're building an app that uses Oura to process transaction data, you could then integrate _Scrolls_ as a way to lookup the source address of the transaction's input.
 
 ### How do I read the data using Python?
 
@@ -194,7 +194,7 @@ Assuming you're using Redis as a storage backend (only one available ATM), we re
 {b'2548228522837ea580bc55a3e6a09479deca499b5e7f3c08602a1f3191a178e7:20', b'04086c503512833c7a0c11fc85f7d0f0422db9d14b31275b3d4327c40c6fd73b:25'}
 ```
 
- The Redis operation being used is `smembers` which return the list of members of a set stored under a particular key. In this case, we query by the value `c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz`, where `c1` is the key prefix specified in the config for our particular collection and `addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz` is the address we're intereted in querying. The response from redis is the list of UTXOs (in the format `{tx-hash}:{output-index})) that are associated with that particular address.
+ The Redis operation being used is `smembers` which return the list of members of a set stored under a particular key. In this case, we query by the value `c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz`, where `c1` is the key prefix specified in the config for our particular collection and `addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz` is the address we're intereted in querying. The response from redis is the list of UTXOs (in the format `{tx-hash}:{output-index}`) that are associated with that particular address.
 
 ### How do I read the data using NodeJS?
 
