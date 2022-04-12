@@ -15,12 +15,23 @@ pub enum Error {
     #[error("network transport error: {0}")]
     TransportError(String),
 
+    #[error("ouroboros error: {0}")]
+    OuroborosError(String),
+
     #[error("{0}")]
     Message(String),
 }
 
 impl Error {
+    pub fn config(text: impl Into<String>) -> Error {
+        Error::ConfigError(text.into())
+    }
+
     pub fn message(text: impl Into<String>) -> Error {
         Error::Message(text.into())
+    }
+
+    pub fn ouroboros(error: Box<dyn std::error::Error>) -> Error {
+        Error::OuroborosError(format!("{}", error))
     }
 }

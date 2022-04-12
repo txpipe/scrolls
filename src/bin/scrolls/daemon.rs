@@ -69,6 +69,7 @@ impl FromConfig<StorageConfig> for storage::Plugin {
 }
 
 #[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum ChainConfig {
     Mainnet,
     Testnet,
@@ -122,7 +123,7 @@ impl ConfigRoot {
     }
 }
 
-pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
+pub fn run(_args: &ArgMatches) -> Result<(), scrolls::Error> {
     env_logger::init();
 
     let config =

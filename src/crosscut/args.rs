@@ -1,8 +1,6 @@
-use core::fmt;
-use std::{ops::Deref, str::FromStr};
-
 use pallas::network::miniprotocols::{Point, MAINNET_MAGIC, TESTNET_MAGIC};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
+use std::{ops::Deref, str::FromStr};
 
 use crate::Error;
 
@@ -79,46 +77,7 @@ impl Default for MagicArg {
     }
 }
 
-pub(crate) fn deserialize_magic_arg<'de, D>(deserializer: D) -> Result<Option<MagicArg>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct MagicArgVisitor;
-
-    impl<'de> Visitor<'de> for MagicArgVisitor {
-        type Value = Option<MagicArg>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("string or map")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<Option<MagicArg>, E>
-        where
-            E: serde::de::Error,
-        {
-            let value = FromStr::from_str(value).map_err(serde::de::Error::custom)?;
-            Ok(Some(value))
-        }
-
-        fn visit_u64<E>(self, value: u64) -> Result<Option<MagicArg>, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(Some(MagicArg(value)))
-        }
-
-        fn visit_none<E>(self) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(None)
-        }
-    }
-
-    deserializer.deserialize_any(MagicArgVisitor)
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", content = "value")]
 pub enum IntersectConfig {
     Tip,

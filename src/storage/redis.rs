@@ -84,8 +84,8 @@ impl super::Pluggable for Worker {
 impl super::IntoPlugin for Config {
     fn plugin(
         self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
+        _chain: &crosscut::ChainWellKnownInfo,
+        _intersect: &crosscut::IntersectConfig,
     ) -> super::Plugin {
         let worker = Worker {
             config: self,
