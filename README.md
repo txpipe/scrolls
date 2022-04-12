@@ -26,9 +26,9 @@ We also understand that a memory db like Redis may be prohibitive for some use-c
 
 ## About CRDTs
 
-The persistence data model does heavy use of CRDTs (Conflict-free replicated data types) and idempotent calls, which provide benefits for write concurrency and rollback procedures.
+The persistence data model does heavy use of [CRDTs](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) (Conflict-free replicated data types) and idempotent calls, which provide benefits for write concurrency and rollback procedures.
 
-For example, CRDTs allows us to re-build the indexes by spawning several history readers that crawl on-chain data concurrently from different start positions. This provides a sensible benefit on bootstrap procedures.
+For example, CRDTs allows us to re-build the indexes by spawning several history readers that crawl on-chain data concurrently from different start positions. This provides a sensible benefit on collection-building time. We call this approach "swarm mode".
 
 TODO: explain future plan to leverage CRDTs for rollback checkpoints.
 
@@ -45,6 +45,16 @@ Not all data is important in every scenario. Every collection in _Scrolls_ is di
 Within the scope of a particular collection, further filtering can be specified depending on the nature of the data being aggregated. For example, the "UTXOs by Address" collection can be filtered to only process UTXO from a set of predetermined addresses.
 
 TODO: Document filtering options per collection
+
+## How it Works
+
+Scrolls is a pipeline that takes block data as input and outputs DB update commands. The stages involved in the pipeline are the following:
+
+- Source Stages: are in charge of pulling data block data. It might be directly from a Cardano node (local or remote) or from some other source. The requirement is to have the raw CBOR as part of the payload.
+- Reducer Stages: are in chare of applying the map-reduce algorithm. They turn block data into CRDTs commands that can be later merged with existing data. The map-reduce logic will depend on the type of collection being built. Each reducer stage handles a single collection. Reducers can be enabled / disabled via configuration.
+- Storage Stages: receive the generic CRDT commands and turns them into DB-specific instructions that are then executed by the corresponding engine.
+
+![diagram](./assets/diagram.svg)
 
 ## Feature Status
 
@@ -74,11 +84,40 @@ TODO: Document filtering options per collection
 - [ ] Storage Backend
   - [x] Redis
   - [ ] MongoDB
+  - [ ] Cassandra
   - [ ] AWS DynamoDB
   - [ ] GCP BigQuery
   - [ ] Firestore
   - [ ] Azure CosmoDB
   - [ ] Feature requests open
+
+## Testdrive
+
+In the `testdrive` folder you'll find a minimal example that uses docker-compose to spin up a local Redis instance and a Scrolls daemon. You'll need Docker and docker-compose installed in you local machine. Run the following commands to start it:
+
+```sh
+cd testdrive
+docker-compose up
+```
+
+You should see the logs of both _Redis_ and _Scrolls_ crawling the chain from a remote relay node. If you're familiar with Redis CLI, you can run the following commands to see the data being cached:
+
+TODO
+
+Once you're done with the testdive, you can clean your environment by running:
+
+```sh
+docker-compose down
+```
+
+## Installing
+
+We currently provide the following ways to install _Scrolls_:
+
+- Using one of the pre-compiled binaries shared via [Github Releases](https://github.com/txpipe/scrolls/releases)
+- Using the Docker image shared via [Github Packages](https://github.com/txpipe/scrolls/pkgs/container/scrolls)
+- By compiling from source code using the instructions provided in this README.
+
 
 ## Configuration
 
@@ -94,12 +133,12 @@ address = "relays-new.cardano-mainnet.iohk.io:3001"
 [[reducers]]
 type = "UtxoByAddress"
 # you can optionally prefix the keys in the collection
-key_prefix = "c0"
+key_prefix = "c1"
 
 # enable the "Point by Tx" collection
 [[reducers]]
 type = "PointByTx"
-key_prefix = "a1"
+key_prefix = "c2"
 
 # store the collections in a local Redis
 [storage]
@@ -116,22 +155,19 @@ value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f
 type = "Mainnet"
 ```
 
-## Testdrive
+## Compiling from Source
 
-In the `testdrive` folder you'll find a minimal example that uses docker-compose to spin up a local Redis instance and a Scrolls daemon. You'll need Docker and docker-compose installed in you local machine. Run the following commands to start it:
+To compile from source, you'll need to have the Rust toolchain avaiable in your development box. Execute the following command to clone and build the project:
 
 ```sh
-cd testdrive
-docker-compose up
+git clone https://github.com/txpipe/scrolls.git
+cd scrolls
+cargo build
 ```
-
-You should see the logs of both _Redis_ and _Scrolls_ crawling the chain from a remote relay node. If you're familiar with Redis CLI, you can run the following commands to see the data being cached:
-
-TODO
 
 ## FAQ
 
-> Don't we have tools for this already?
+### Don't we have tools for this already?
 
 Yes, we do. We have excelent tools like Kupo, db-sync, dcSpark's oura-db-sync. Even the Cardano node itself might work as a source for some of the collections. Every tool is architected with a set of well-understood trade-offs. We believe _Scrolls_ makes sense as an addition to the list because assumes a particular set of trade-offs:
 
@@ -141,10 +177,16 @@ Yes, we do. We have excelent tools like Kupo, db-sync, dcSpark's oura-db-sync. E
 - Rust over Haskell: this is not a statement about the languages, both are great languages, each one with it's own set of trade-offs. Since most of the Cardano ecosystem is written in Haskell, we opt for Rust as a way to broaden the reach to a different community of Rust developers (such as the authors of this tool). _Scrolls_ is extensible, it can be used as a library in Rust projects to create custom cache collections.
 - bring your own db: storage mechanism in _Scrolls_ are pluggable, our goal is to provide a tool that plays nice with existing infrastructure. The trade-off is that you end up having more moving parts.
 
-> How do I read the data using Python?
+### How does this tool compare to _Oura_?
+
+There's some overlap between _Oura_ and _Scrolls_. Both tools read on-chain data and output some data result. The main difference is that Oura is meant to **_react_** to events, to watch the chain and actuate upon certain patterns. In constrast, _Scrolls_ is meant to provide a snapshot of the current state of the chain by aggregating the whole history.
+
+They were built to work well together. For example, lets say that you're building an app that uses Oura to process transaction data, you could then integrate _Scrolls_ as a way to lookup the source address of the transaction's input.
+
+### How do I read the data using Python?
 
 TODO
 
-> How do I read the data using NodeJS?
+### How do I read the data using NodeJS?
 
 TODO
