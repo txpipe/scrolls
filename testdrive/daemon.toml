@@ -4,11 +4,11 @@ address = "relays-new.cardano-mainnet.iohk.io:3001"
 
 [[reducers]]
 type = "UtxoByAddress"
-key_prefix = "a0"
+key_prefix = "c1"
 
 [[reducers]]
 type = "PointByTx"
-key_prefix = "a1"
+key_prefix = "c2"
 
 [storage]
 type = "Redis"
