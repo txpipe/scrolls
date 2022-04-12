@@ -4,7 +4,7 @@
     <hr />
         <h3 align="center" style="border-bottom: none">Read-optimized cache of Cardano on-chain entities</h3>
         <img alt="GitHub" src="https://img.shields.io/github/license/txpipe/scrolls" />
-        <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/txpipe/scrolls/Validate" />
+        <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/txpipe/scrolls/Release" />
     <hr/>
 </div>
 
