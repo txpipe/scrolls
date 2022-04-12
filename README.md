@@ -57,7 +57,7 @@ TODO: Document filtering options per collection
   - [ ] Pool Metadata by Pool Id
   - [ ] Chain Parameters by Epoch
   - [ ] UTXOs by Asset
-  - [ ] Block Hash by Tx Hash
+  - [x] Block Hash by Tx Hash
   - [ ] Block Hashes by Epoch
   - [ ] Block Header by Block Hash
   - [ ] Tx Hashes by Block Hash
