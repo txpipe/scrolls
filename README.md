@@ -16,7 +16,7 @@ Examples of collections are: "utxo by address", "chain parameters by epoch", "po
 
 > In other words, _Scrolls_ is just a map-reduce algorithm that aggregates the history of the chain into use-case-specific, key-value dictionaries.
 
-:warning: this tool is under heavy development. Library API, configuration schema and storage structure may vary drastically. Use at your own peril.
+:warning: this tool is under heavy development. Library API, configuration schema and storage structure may vary drastically. Several important features are still missing. Use at your own peril.
 
 ## Storage
 
