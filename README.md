@@ -212,7 +212,7 @@ Assuming you're using Redis as a storage backend (only one available ATM), we re
 
 TODO
 
-### What is "swarm model"?
+### What is "swarm mode"?
 
 Swarm mode is a way to speed up the process of rebuidling collection from scratch by splitting the tasks into concurrent instances of the _Scrolls_ daemon by partitioning the history of the chain into smaller fragments.
 
