@@ -1,0 +1,28 @@
+name: Testdrive
+on: push
+
+env:
+  HOMEBREW_NO_ENV_HINTS: yes
+
+jobs:
+  testdrive-config-tests:
+    name: Run testdrive tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+    
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    steps:
+      - name: Checkout Repo [ ${{ matrix.os }} ]
+        uses: actions/checkout@v2.4.0
+
+      - name: Install Docker [ ${{ matrix.os }} ]
+        if: matrix.os == 'macOS-latest'
+        run:  brew install docker-compose
+      
+      - name: Check docker-compose version [ ${{ matrix.os }} ]
+        run:  docker-compose --version
+
+      - name: Test config file [ ${{ matrix.os }} ]
+        run:  cd testdrive && docker-compose config
