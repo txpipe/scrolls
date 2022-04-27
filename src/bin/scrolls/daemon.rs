@@ -123,11 +123,22 @@ impl ConfigRoot {
     }
 }
 
-pub fn run(_args: &ArgMatches) -> Result<(), scrolls::Error> {
+pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
     env_logger::init();
 
-    let config =
-        ConfigRoot::new(None).map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
+    let explicit_config = match args.is_present("config") {
+        true => {
+            let config_file_path = args
+                .value_of_t("config")
+                .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
+
+            Some(config_file_path)
+        }
+        false => None,
+    };
+
+    let config = ConfigRoot::new(explicit_config)
+        .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
 
     let chain = config.chain.unwrap_or_default().into();
 
