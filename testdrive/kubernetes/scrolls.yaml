@@ -1,0 +1,96 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: txpipe-namespace
+
+---
+# ConfigMap
+apiVersion: v1
+data:
+    daemon.toml: |
+      [source]
+      type = "N2N"
+      address = "relays-new.cardano-mainnet.iohk.io:3001"
+
+      [[reducers]]
+      type = "UtxoByAddress"
+      key_prefix = "c1"
+
+      [[reducers]]
+      type = "PointByTx"
+      key_prefix = "c2"
+
+      [storage]
+      type = "Redis"
+      connection_params = "redis://txpipe-service-scrolls:6379"
+
+      [intersect]
+      type = "Point"
+      value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
+
+      [chain]
+      type = "Mainnet"
+kind: ConfigMap
+metadata:
+  name: txpipe-configmap-volume-scrolls
+  namespace: txpipe-namespace
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: txpipe-deployment-scrolls
+  namespace: txpipe-namespace
+  labels:
+    app: txpipe-deployment-scrolls
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: txpipe-deployment-scrolls
+  template:
+    metadata:
+      labels:
+        app: txpipe-deployment-scrolls
+    spec:
+      containers:
+      - name: txpipe-redis
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: txpipe-volume-redis
+          mountPath: /data
+      - name: txpipe-scrolls
+        image: ghcr.io/txpipe/scrolls:latest
+        args: ["daemon"]
+        volumeMounts:
+        - name: txpipe-volume-scrolls
+          mountPath: /etc/scrolls/daemon.toml
+          subPath: daemon.toml
+
+      volumes:
+      - name: txpipe-volume-scrolls
+        configMap:
+          name: txpipe-configmap-volume-scrolls
+      - name: txpipe-volume-redis
+        emptyDir: {}
+---
+# External Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: txpipe-service-scrolls
+  namespace: txpipe-namespace
+spec:
+  selector:
+    app: txpipe-deployment-scrolls
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379
+    nodePort: 30379
