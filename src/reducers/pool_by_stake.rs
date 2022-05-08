@@ -1,12 +1,6 @@
-use gasket::{
-    error::AsWorkError,
-    runtime::{spawn_stage, WorkOutcome},
-};
-use pallas::ledger::primitives::{alonzo, byron};
-use pallas::{
-    crypto::hash::Hash,
-    ledger::primitives::alonzo::{PoolKeyhash, StakeCredential},
-};
+use gasket::runtime::{spawn_stage, WorkOutcome};
+use pallas::ledger::primitives::alonzo;
+use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
@@ -58,8 +52,6 @@ impl Worker {
         slot: u64,
         tx: &alonzo::TransactionBody,
     ) -> Result<(), gasket::error::Error> {
-        let tx_hash = tx.to_hash();
-
         tx.iter()
             .filter_map(|b| match b {
                 alonzo::TransactionBodyComponent::Certificates(c) => Some(c),
@@ -77,12 +69,12 @@ impl Worker {
     fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
         match block {
             model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(block) => {
-                x.1.transaction_bodies
-                    .iter()
-                    .map(|tx| self.reduce_alonzo_compatible_tx(block.1.header.header_body.slot, tx))
-                    .collect()
-            }
+            model::MultiEraBlock::AlonzoCompatible(block) => block
+                .1
+                .transaction_bodies
+                .iter()
+                .map(|tx| self.reduce_alonzo_compatible_tx(block.1.header.header_body.slot, tx))
+                .collect(),
         }
     }
 }
@@ -125,7 +117,7 @@ impl super::Pluggable for Worker {
 impl super::IntoPlugin for Config {
     fn plugin(
         self,
-        chain: &crosscut::ChainWellKnownInfo,
+        _chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,
     ) -> super::Plugin {
         let worker = Worker {

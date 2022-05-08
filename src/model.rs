@@ -54,6 +54,7 @@ pub enum MultiEraBlock {
 pub type Set = String;
 pub type Member = String;
 pub type Key = String;
+pub type Value = String;
 pub type Timestamp = u64;
 
 #[derive(Debug)]
