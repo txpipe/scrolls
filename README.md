@@ -63,7 +63,7 @@ Scrolls is a pipeline that takes block data as input and outputs DB update comma
   - [ ] Address by UTXO
   - [ ] Tx CBOR by UTXO
   - [ ] Tx CBOR by Address
-  - [ ] Pool Id by Stake Address
+  - [x] Pool Id by Stake Address
   - [ ] Pool Metadata by Pool Id
   - [ ] Chain Parameters by Epoch
   - [ ] UTXOs by Asset
