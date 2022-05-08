@@ -3,6 +3,7 @@ use gasket::messaging::{InputPort, OutputPort};
 use crate::{bootstrap, crosscut, model};
 
 pub mod point_by_tx;
+pub mod pool_by_stake;
 pub mod utxo_by_address;
 
 pub trait Pluggable {
@@ -14,6 +15,7 @@ pub trait Pluggable {
 pub enum Plugin {
     UtxoByAddress(utxo_by_address::Worker),
     PointByTx(point_by_tx::Worker),
+    PoolByStake(pool_by_stake::Worker),
 }
 
 impl Plugin {
@@ -21,6 +23,7 @@ impl Plugin {
         match self {
             Plugin::UtxoByAddress(x) => x.borrow_input_port(),
             Plugin::PointByTx(x) => x.borrow_input_port(),
+            Plugin::PoolByStake(x) => x.borrow_input_port(),
         }
     }
 
@@ -28,6 +31,7 @@ impl Plugin {
         match self {
             Plugin::UtxoByAddress(x) => x.borrow_output_port(),
             Plugin::PointByTx(x) => x.borrow_output_port(),
+            Plugin::PoolByStake(x) => x.borrow_output_port(),
         }
     }
 
@@ -35,6 +39,7 @@ impl Plugin {
         match self {
             Plugin::UtxoByAddress(x) => x.spawn(pipeline),
             Plugin::PointByTx(x) => x.spawn(pipeline),
+            Plugin::PoolByStake(x) => x.spawn(pipeline),
         }
     }
 }

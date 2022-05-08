@@ -53,10 +53,13 @@ pub enum MultiEraBlock {
 
 pub type Set = String;
 pub type Member = String;
+pub type Key = String;
+pub type Timestamp = u64;
 
 #[derive(Debug)]
 pub enum CRDTCommand {
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
+    LastWriteWins(Key, Value, Timestamp),
 }
