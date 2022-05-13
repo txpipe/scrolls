@@ -51,6 +51,13 @@ impl gasket::runtime::Worker for Worker {
                     .sadd(format!("{}.ts", key), value)
                     .or_work_err()?;
             }
+            model::CRDTCommand::LastWriteWins(key, value, timestamp) => {
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zadd(key, value, timestamp)
+                    .or_work_err()?;
+            }
         };
 
         Ok(WorkOutcome::Partial)

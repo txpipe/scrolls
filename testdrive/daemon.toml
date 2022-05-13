@@ -10,6 +10,10 @@ key_prefix = "c1"
 type = "PointByTx"
 key_prefix = "c2"
 
+[[reducers]]
+type = "PoolByStake"
+key_prefix = "c3"
+
 [storage]
 type = "Redis"
 connection_params = "redis://redis:6379"

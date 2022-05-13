@@ -35,6 +35,7 @@ impl FromConfig<SourceConfig> for sources::Plugin {
 pub enum ReducerConfig {
     UtxoByAddress(reducers::utxo_by_address::Config),
     PointByTx(reducers::point_by_tx::Config),
+    PoolByStake(reducers::pool_by_stake::Config),
 }
 
 impl FromConfig<ReducerConfig> for reducers::Plugin {
@@ -46,6 +47,7 @@ impl FromConfig<ReducerConfig> for reducers::Plugin {
         match other {
             ReducerConfig::UtxoByAddress(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::PointByTx(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::PoolByStake(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
