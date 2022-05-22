@@ -36,6 +36,7 @@ pub enum ReducerConfig {
     UtxoByAddress(reducers::utxo_by_address::Config),
     PointByTx(reducers::point_by_tx::Config),
     PoolByStake(reducers::pool_by_stake::Config),
+    TotalTransactionsCount(reducers::total_transactions_count::Config),
 }
 
 impl FromConfig<ReducerConfig> for reducers::Plugin {
@@ -48,6 +49,7 @@ impl FromConfig<ReducerConfig> for reducers::Plugin {
             ReducerConfig::UtxoByAddress(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::PointByTx(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::PoolByStake(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::TotalTransactionsCount(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }

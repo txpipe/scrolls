@@ -5,6 +5,7 @@ use crate::{bootstrap, crosscut, model};
 pub mod point_by_tx;
 pub mod pool_by_stake;
 pub mod utxo_by_address;
+pub mod total_transactions_count;
 
 pub trait Pluggable {
     fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::ChainSyncCommandEx>;
@@ -16,6 +17,7 @@ pub enum Plugin {
     UtxoByAddress(utxo_by_address::Worker),
     PointByTx(point_by_tx::Worker),
     PoolByStake(pool_by_stake::Worker),
+    TotalTransactionsCount(total_transactions_count::Worker),
 }
 
 impl Plugin {
@@ -24,6 +26,7 @@ impl Plugin {
             Plugin::UtxoByAddress(x) => x.borrow_input_port(),
             Plugin::PointByTx(x) => x.borrow_input_port(),
             Plugin::PoolByStake(x) => x.borrow_input_port(),
+            Plugin::TotalTransactionsCount(x) => x.borrow_input_port(),
         }
     }
 
@@ -32,6 +35,7 @@ impl Plugin {
             Plugin::UtxoByAddress(x) => x.borrow_output_port(),
             Plugin::PointByTx(x) => x.borrow_output_port(),
             Plugin::PoolByStake(x) => x.borrow_output_port(),
+            Plugin::TotalTransactionsCount(x) => x.borrow_output_port(),
         }
     }
 
@@ -40,8 +44,10 @@ impl Plugin {
             Plugin::UtxoByAddress(x) => x.spawn(pipeline),
             Plugin::PointByTx(x) => x.spawn(pipeline),
             Plugin::PoolByStake(x) => x.spawn(pipeline),
+            Plugin::TotalTransactionsCount(x) => x.spawn(pipeline),
         }
     }
+
 }
 
 pub trait IntoPlugin {

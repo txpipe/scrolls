@@ -58,6 +58,13 @@ impl gasket::runtime::Worker for Worker {
                     .zadd(key, value, timestamp)
                     .or_work_err()?;
             }
+            model::CRDTCommand::PNCounter(key, value) => {
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .incr(key, value)
+                    .or_work_err()?;
+            }
         };
 
         Ok(WorkOutcome::Partial)

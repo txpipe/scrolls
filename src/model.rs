@@ -63,4 +63,5 @@ pub enum CRDTCommand {
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
     LastWriteWins(Key, Value, Timestamp),
+    PNCounter(Key, Value),
 }
