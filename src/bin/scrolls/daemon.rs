@@ -37,6 +37,7 @@ pub enum ReducerConfig {
     PointByTx(reducers::point_by_tx::Config),
     PoolByStake(reducers::pool_by_stake::Config),
     TotalTransactionsCount(reducers::total_transactions_count::Config),
+    TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
 }
 
 impl FromConfig<ReducerConfig> for reducers::Plugin {
@@ -50,6 +51,7 @@ impl FromConfig<ReducerConfig> for reducers::Plugin {
             ReducerConfig::PointByTx(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::PoolByStake(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::TotalTransactionsCount(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::TransactionsCountByEpoch(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
