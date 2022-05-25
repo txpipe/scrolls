@@ -43,14 +43,14 @@ impl Worker {
         &mut self,
         tx: &alonzo::TransactionBody,
     ) -> Result<(), gasket::error::Error> {
-        tx.iter()
+        let is_smart_contract_transaction = tx.iter()
             .filter_map(|b| match b {
                 alonzo::TransactionBodyComponent::Outputs(o) => Some(o),
                 _ => None,
             })
             .flat_map(|o| o.iter())
             .enumerate()
-            .map(move |(_tx_idx, output)| {
+            .any(move |(_tx_idx, output)| {
                 fn get_bit_at(input: u8, n: u8) -> bool {
                     if n < 32 {
                         input & (1 << n) != 0
@@ -64,12 +64,14 @@ impl Worker {
                 // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/alonzo/test-suite/cddl-files/alonzo.cddl#L135
                 let is_smart_contract_address = get_bit_at(first_byte_of_address, 4);
 
-                if is_smart_contract_address {
-                    return self.increment_for_contract_address();
-                }
+                return is_smart_contract_address;
+            });
 
-                return Ok(());
-            }).collect()
+            if is_smart_contract_transaction {
+                return self.increment_for_contract_address();
+            }
+
+            return Ok(());
         }
 
     fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
