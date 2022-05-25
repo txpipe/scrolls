@@ -33,8 +33,6 @@ impl Worker {
         let epoch_no = EpochCalculator::get_shelley_epoch_no_for_absolute_slot(
             self.shelley_known_slot,
             self.shelley_epoch_length,
-            self.byron_epoch_length,
-            self.byron_slot_length,
             slot
         );
 

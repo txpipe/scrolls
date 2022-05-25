@@ -23,8 +23,6 @@ pub struct Worker {
     output: OutputPort,
     shelley_known_slot: u64,
     shelley_epoch_length: u64,
-    byron_epoch_length: u64,
-    byron_slot_length: u64, 
     ops_count: gasket::metrics::Counter,
 }
 
@@ -40,14 +38,12 @@ impl Worker {
         let epoch_no = EpochCalculator::get_shelley_epoch_no_for_absolute_slot(
             self.shelley_known_slot,
             self.shelley_epoch_length,
-            self.byron_epoch_length,
-            self.byron_slot_length,
             slot
         );
 
         for contract_address in contract_addresses {
             let key = match &self.config.key_prefix {
-                Some(prefix) => format!("{}.{}.{}", prefix, contract_address, epoch_no),
+                Some(prefix) => format!("{}.{}.{}", prefix, contract_address.to_string(), epoch_no),
                 None => format!("{}.{}", contract_address.to_string(), epoch_no),
             };
     
@@ -167,8 +163,6 @@ impl super::IntoPlugin for Config {
             config: self,
             shelley_known_slot: chain.shelley_known_slot.clone() as u64,
             shelley_epoch_length: chain.shelley_epoch_length.clone() as u64,
-            byron_epoch_length: chain.byron_epoch_length.clone() as u64,
-            byron_slot_length: chain.byron_slot_length.clone() as u64,
             address_hrp: chain.address_hrp.clone(),
             input: Default::default(),
             output: Default::default(),
