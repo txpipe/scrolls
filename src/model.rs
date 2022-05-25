@@ -1,9 +1,11 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use pallas::{
     ledger::primitives::{alonzo, byron},
     network::miniprotocols::Point,
 };
+
+use crate::Error;
 
 #[derive(Debug)]
 pub enum ChainSyncCommand {
@@ -49,6 +51,29 @@ impl ChainSyncCommandEx {
 pub enum MultiEraBlock {
     AlonzoCompatible(alonzo::BlockWrapper),
     Byron(byron::Block),
+}
+
+impl MultiEraBlock {
+    pub fn point(&self) -> Result<Point, Error> {
+        match self {
+            MultiEraBlock::Byron(x) => match x.deref() {
+                byron::Block::EbBlock(x) => {
+                    let hash = x.header.to_hash();
+                    let slot = x.header.to_abs_slot();
+                    Ok(Point::Specific(slot, hash.to_vec()))
+                }
+                byron::Block::MainBlock(x) => {
+                    let hash = x.header.to_hash();
+                    let slot = x.header.consensus_data.0.to_abs_slot();
+                    Ok(Point::Specific(slot, hash.to_vec()))
+                }
+            },
+            MultiEraBlock::AlonzoCompatible(x) => {
+                let hash = alonzo::crypto::hash_block_header(&x.1.header);
+                Ok(Point::Specific(x.1.header.header_body.slot, hash.to_vec()))
+            }
+        }
+    }
 }
 
 pub type Set = String;

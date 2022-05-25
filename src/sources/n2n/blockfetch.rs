@@ -1,14 +1,13 @@
-use pallas::{
-    ledger::primitives::{alonzo, byron, probing, Era, Fragment},
-    network::{
-        miniprotocols::{blockfetch, run_agent, Error, Point},
-        multiplexer::Channel,
-    },
+use pallas::network::{
+    miniprotocols::{blockfetch, run_agent, Error, Point},
+    multiplexer::Channel,
 };
 
 use gasket::{error::*, runtime::WorkOutcome};
 
-use crate::model::{ChainSyncCommand, ChainSyncCommandEx, MultiEraBlock};
+use crate::model::{ChainSyncCommand, ChainSyncCommandEx};
+
+use crate::sources::utils;
 
 struct Observer<'a> {
     output: &'a mut FanoutPort,
@@ -16,22 +15,7 @@ struct Observer<'a> {
 
 impl<'a> blockfetch::Observer for Observer<'a> {
     fn on_block_received(&mut self, body: Vec<u8>) -> Result<(), Error> {
-        let block = match probing::probe_block_cbor_era(&body) {
-            probing::Outcome::Matched(era) => match era {
-                Era::Byron => MultiEraBlock::Byron(byron::Block::decode_fragment(&body)?),
-                _ => MultiEraBlock::AlonzoCompatible(alonzo::BlockWrapper::decode_fragment(&body)?),
-            },
-            // TODO: we're assuming that the genesis block is Byron-compatible. Is this a safe
-            // assumption?
-            probing::Outcome::GenesisBlock => {
-                MultiEraBlock::Byron(byron::Block::decode_fragment(&body)?)
-            }
-            probing::Outcome::Inconclusive => {
-                let msg = format!("can't infer primitive block from cbor, inconclusive probing. CBOR hex for debugging: {}", hex::encode(body));
-                return Err(msg.into());
-            }
-        };
-
+        let block = utils::parse_block_content(&body)?;
         self.output.send(ChainSyncCommandEx::roll_forward(block))?;
 
         Ok(())
