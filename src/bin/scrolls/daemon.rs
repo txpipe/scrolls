@@ -16,6 +16,9 @@ trait FromConfig<T> {
 #[serde(tag = "type")]
 pub enum SourceConfig {
     N2N(sources::n2n::Config),
+
+    #[cfg(target_family = "unix")]
+    N2C(sources::n2c::Config),
 }
 
 impl FromConfig<SourceConfig> for sources::Plugin {
@@ -26,6 +29,7 @@ impl FromConfig<SourceConfig> for sources::Plugin {
     ) -> Self {
         match other {
             SourceConfig::N2N(c) => sources::IntoPlugin::plugin(c, chain, intersect),
+            SourceConfig::N2C(c) => sources::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
