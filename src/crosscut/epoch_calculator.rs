@@ -13,8 +13,9 @@ impl EpochCalculator {
         let shelley_epoch_length = shelley_epoch_length as u64;
 
         let shelley_epoch_no = (slot - shelley_known_slot) / shelley_epoch_length;
+        let last_byron_epoch_no = 208;
 
-        return 208 + shelley_epoch_no;
+        return last_byron_epoch_no + shelley_epoch_no;
     }
 
     pub fn get_byron_epoch_no_for_absolute_slot(
