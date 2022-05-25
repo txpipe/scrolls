@@ -82,6 +82,10 @@ impl Worker {
                 return None::<String>;
             }).collect();
 
+            if addresses.len() == 0 {
+                return Result::Ok(());
+            }
+
             let currated_addresses: Vec<String> = addresses
                 .into_iter()
                 .filter(|x| x.is_some())

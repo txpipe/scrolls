@@ -92,11 +92,16 @@ impl Worker {
                 return None::<String>;
             }).collect();
 
+            if addresses.len() == 0 {
+                return Result::Ok(());
+            }
+
             let currated_addresses: Vec<String> = addresses
                 .into_iter()
                 .filter(|x| x.is_some())
                 .map(|x| x.unwrap())
                 .collect();
+
 
             let deduped_addresses: HashSet<String> = HashSet::from_iter(currated_addresses);
 
