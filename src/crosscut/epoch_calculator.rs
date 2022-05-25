@@ -9,11 +9,12 @@ impl EpochCalculator {
         shelley_epoch_length: u64,
         slot: u64
     ) -> u64 {
+        let last_byron_epoch_no = 208;
+
         let shelley_known_slot = shelley_known_slot as u64;
         let shelley_epoch_length = shelley_epoch_length as u64;
 
         let shelley_epoch_no = (slot - shelley_known_slot) / shelley_epoch_length;
-        let last_byron_epoch_no = 208;
 
         return last_byron_epoch_no + shelley_epoch_no;
     }
