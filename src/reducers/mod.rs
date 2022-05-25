@@ -8,6 +8,7 @@ pub mod utxo_by_address;
 pub mod total_transactions_count;
 pub mod transactions_count_by_epoch;
 pub mod transactions_count_by_contract_address;
+pub mod transactions_count_by_contract_address_by_epoch;
 
 pub trait Pluggable {
     fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::ChainSyncCommandEx>;
@@ -22,6 +23,7 @@ pub enum Plugin {
     TotalTransactionsCount(total_transactions_count::Worker),
     TransactionsCountByEpoch(transactions_count_by_epoch::Worker),
     TransactionsCountByContractAddress(transactions_count_by_contract_address::Worker),
+    TransactionsCountByContractAddressByEpoch(transactions_count_by_contract_address_by_epoch::Worker),
 }
 
 impl Plugin {
@@ -33,6 +35,7 @@ impl Plugin {
             Plugin::TotalTransactionsCount(x) => x.borrow_input_port(),
             Plugin::TransactionsCountByEpoch(x) => x.borrow_input_port(),
             Plugin::TransactionsCountByContractAddress(x) => x.borrow_input_port(),
+            Plugin::TransactionsCountByContractAddressByEpoch(x) => x.borrow_input_port(),
         }
     }
 
@@ -44,6 +47,7 @@ impl Plugin {
             Plugin::TotalTransactionsCount(x) => x.borrow_output_port(),
             Plugin::TransactionsCountByEpoch(x) => x.borrow_output_port(),
             Plugin::TransactionsCountByContractAddress(x) => x.borrow_output_port(),
+            Plugin::TransactionsCountByContractAddressByEpoch(x) => x.borrow_output_port(),
         }
     }
 
@@ -55,6 +59,7 @@ impl Plugin {
             Plugin::TotalTransactionsCount(x) => x.spawn(pipeline),
             Plugin::TransactionsCountByEpoch(x) => x.spawn(pipeline),
             Plugin::TransactionsCountByContractAddress(x) => x.spawn(pipeline),
+            Plugin::TransactionsCountByContractAddressByEpoch(x) => x.spawn(pipeline),
         }
     }
 

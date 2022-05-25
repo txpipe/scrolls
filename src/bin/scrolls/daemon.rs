@@ -39,6 +39,7 @@ pub enum ReducerConfig {
     TotalTransactionsCount(reducers::total_transactions_count::Config),
     TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
     TransactionsCountByContractAddress(reducers::transactions_count_by_contract_address::Config),
+    TransactionsCountByContractAddressByEpoch(reducers::transactions_count_by_contract_address_by_epoch::Config),
 }
 
 impl FromConfig<ReducerConfig> for reducers::Plugin {
@@ -54,6 +55,7 @@ impl FromConfig<ReducerConfig> for reducers::Plugin {
             ReducerConfig::TotalTransactionsCount(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::TransactionsCountByEpoch(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
             ReducerConfig::TransactionsCountByContractAddress(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
+            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
         }
     }
 }
