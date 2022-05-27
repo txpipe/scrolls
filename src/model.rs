@@ -88,4 +88,6 @@ pub enum CRDTCommand {
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
     LastWriteWins(Key, Value, Timestamp),
+    // TODO make sure Value is a generic not stringly typed
+    PNCounter(Key, Value),
 }
