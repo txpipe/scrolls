@@ -2,11 +2,12 @@ pub mod redis;
 
 use gasket::messaging::FunnelPort;
 
-use crate::{bootstrap, crosscut, model};
+use crate::{bootstrap, crosscut, model, Error};
 
 pub trait Pluggable {
     fn borrow_input_port(&mut self) -> &'_ mut FunnelPort<model::CRDTCommand>;
     fn spawn(self, pipeline: &mut bootstrap::Pipeline);
+    fn read_cursor(&self) -> Result<crosscut::Cursor, Error>;
 }
 
 pub enum Plugin {
@@ -20,17 +21,15 @@ impl Plugin {
         }
     }
 
+    pub fn read_cursor(&self) -> Result<crosscut::Cursor, Error> {
+        match self {
+            Plugin::Redis(x) => x.read_cursor(),
+        }
+    }
+
     pub fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
         match self {
             Plugin::Redis(x) => x.spawn(pipeline),
         }
     }
-}
-
-pub trait IntoPlugin {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-    ) -> Plugin;
 }

@@ -6,23 +6,19 @@ use pallas::{
     },
 };
 
-use crate::{
-    crosscut::{self, ChainWellKnownInfo, IntersectConfig},
-    model::MultiEraBlock,
-    Error,
-};
+use crate::{crosscut, model, Error};
 
-pub fn parse_block_content(body: &[u8]) -> Result<MultiEraBlock, Error> {
+pub fn parse_block_content(body: &[u8]) -> Result<model::MultiEraBlock, Error> {
     match probing::probe_block_cbor_era(&body) {
         probing::Outcome::Matched(era) => match era {
             Era::Byron => {
                 let primitive = byron::Block::decode_fragment(&body)?;
-                let block = MultiEraBlock::Byron(primitive);
+                let block = model::MultiEraBlock::Byron(primitive);
                 Ok(block)
             }
             _ => {
                 let primitive = alonzo::BlockWrapper::decode_fragment(&body)?;
-                let block = MultiEraBlock::AlonzoCompatible(primitive);
+                let block = model::MultiEraBlock::AlonzoCompatible(primitive);
                 Ok(block)
             }
         },
@@ -30,7 +26,7 @@ pub fn parse_block_content(body: &[u8]) -> Result<MultiEraBlock, Error> {
         // assumption?
         probing::Outcome::GenesisBlock => {
             let primitive = byron::Block::decode_fragment(&body)?;
-            let block = MultiEraBlock::Byron(primitive);
+            let block = model::MultiEraBlock::Byron(primitive);
             Ok(block)
         }
         probing::Outcome::Inconclusive => {
@@ -41,7 +37,7 @@ pub fn parse_block_content(body: &[u8]) -> Result<MultiEraBlock, Error> {
 }
 
 pub fn find_end_of_chain(
-    chain: &ChainWellKnownInfo,
+    chain: &crosscut::ChainWellKnownInfo,
     channel: &mut Channel,
 ) -> Result<Point, crate::Error> {
     let point = Point::Specific(
@@ -60,10 +56,17 @@ pub fn find_end_of_chain(
 }
 
 pub fn define_known_points(
-    chain: &ChainWellKnownInfo,
-    intersect: &IntersectConfig,
+    chain: &crosscut::ChainWellKnownInfo,
+    intersect: &crosscut::IntersectConfig,
+    cursor: &crosscut::Cursor,
     channel: &mut Channel,
 ) -> Result<Option<Vec<Point>>, crate::Error> {
+    // if we have a cursor available, it should override any other configuration
+    // opiton
+    if let Some(point) = cursor {
+        return Ok(Some(vec![point.clone().try_into()?]));
+    }
+
     match &intersect {
         crosscut::IntersectConfig::Origin => Ok(None),
         crosscut::IntersectConfig::Tip => {

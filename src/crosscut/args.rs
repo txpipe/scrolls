@@ -46,6 +46,8 @@ impl ToString for PointArg {
     }
 }
 
+pub type Cursor = Option<PointArg>;
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct MagicArg(pub u64);
 

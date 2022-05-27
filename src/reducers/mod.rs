@@ -1,6 +1,6 @@
 use gasket::messaging::{InputPort, OutputPort};
 
-use crate::{bootstrap, crosscut, model};
+use crate::{bootstrap, model};
 
 pub mod point_by_tx;
 pub mod pool_by_stake;
@@ -42,12 +42,4 @@ impl Plugin {
             Plugin::PoolByStake(x) => x.spawn(pipeline),
         }
     }
-}
-
-pub trait IntoPlugin {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-    ) -> Plugin;
 }

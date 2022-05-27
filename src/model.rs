@@ -5,7 +5,7 @@ use pallas::{
     network::miniprotocols::Point,
 };
 
-use crate::Error;
+use crate::{crosscut, Error};
 
 #[derive(Debug)]
 pub enum ChainSyncCommand {
@@ -83,9 +83,12 @@ pub type Value = String;
 pub type Timestamp = u64;
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum CRDTCommand {
+    BlockStarting(crosscut::PointArg),
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
     LastWriteWins(Key, Value, Timestamp),
+    BlockFinished(crosscut::PointArg),
 }

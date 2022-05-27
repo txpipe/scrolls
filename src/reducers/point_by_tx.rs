@@ -104,8 +104,8 @@ impl super::Pluggable for Worker {
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         _chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,

@@ -5,6 +5,8 @@ pub mod reducers;
 pub mod sources;
 pub mod storage;
 
+use std::fmt::Display;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -20,6 +22,9 @@ pub enum Error {
 
     #[error("ledger error: {0}")]
     LedgerError(String),
+
+    #[error("ledger error: {0}")]
+    StorageError(String),
 
     #[error("{0}")]
     Message(String),
@@ -39,6 +44,10 @@ impl Error {
 
     pub fn ouroboros(error: Box<dyn std::error::Error>) -> Error {
         Error::OuroborosError(format!("{}", error))
+    }
+
+    pub fn storage(error: impl Display) -> Error {
+        Error::StorageError(format!("{}", error))
     }
 
     pub fn custom(error: Box<dyn std::error::Error>) -> Error {
