@@ -1,10 +1,12 @@
-use gasket::{
-    runtime::{spawn_stage, WorkOutcome},
-};
-use pallas::{ledger::primitives::alonzo};
+use gasket::runtime::{spawn_stage, WorkOutcome};
+use pallas::ledger::primitives::alonzo;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut::{self, EpochCalculator}, model};
+use crate::{
+    bootstrap,
+    crosscut::{self, EpochCalculator},
+    model,
+};
 
 use std::collections::HashSet;
 
@@ -27,18 +29,15 @@ pub struct Worker {
 }
 
 impl Worker {
-
-
     fn increment_for_addresses(
         &mut self,
         contract_addresses: &std::collections::HashSet<String>,
         slot: u64,
     ) -> Result<(), gasket::error::Error> {
-
         let epoch_no = EpochCalculator::get_shelley_epoch_no_for_absolute_slot(
             self.shelley_known_slot,
             self.shelley_epoch_length,
-            slot
+            slot,
         );
 
         for contract_address in contract_addresses {
@@ -46,7 +45,7 @@ impl Worker {
                 Some(prefix) => format!("{}.{}.{}", prefix, contract_address.to_string(), epoch_no),
                 None => format!("{}.{}", contract_address.to_string(), epoch_no),
             };
-    
+
             let crdt = model::CRDTCommand::PNCounter(key, "1".to_string());
             self.output.send(gasket::messaging::Message::from(crdt))?;
             self.ops_count.inc(1);
@@ -62,7 +61,8 @@ impl Worker {
     ) -> Result<(), gasket::error::Error> {
         let hrp_addr = &self.address_hrp.clone();
 
-        let addresses: Vec<Option<String>> = tx.iter()
+        let addresses: Vec<Option<String>> = tx
+            .iter()
             .filter_map(|b| match b {
                 alonzo::TransactionBodyComponent::Outputs(o) => Some(o),
                 _ => None,
@@ -79,7 +79,7 @@ impl Worker {
                         false
                     }
                 }
-            
+
                 // first byte of address is header
                 let first_byte_of_address = output.address.as_slice()[0];
                 // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/alonzo/test-suite/cddl-files/alonzo.cddl#L135
@@ -90,23 +90,23 @@ impl Worker {
                 }
 
                 return None::<String>;
-            }).collect();
+            })
+            .collect();
 
-            if addresses.len() == 0 {
-                return Result::Ok(());
-            }
-
-            let currated_addresses: Vec<String> = addresses
-                .into_iter()
-                .filter(|x| x.is_some())
-                .map(|x| x.unwrap())
-                .collect();
-
-
-            let deduped_addresses: HashSet<String> = HashSet::from_iter(currated_addresses);
-
-            return self.increment_for_addresses(&deduped_addresses, slot);
+        if addresses.len() == 0 {
+            return Result::Ok(());
         }
+
+        let currated_addresses: Vec<String> = addresses
+            .into_iter()
+            .filter(|x| x.is_some())
+            .map(|x| x.unwrap())
+            .collect();
+
+        let deduped_addresses: HashSet<String> = HashSet::from_iter(currated_addresses);
+
+        return self.increment_for_addresses(&deduped_addresses, slot);
+    }
 
     fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
         match block {
@@ -154,12 +154,15 @@ impl super::Pluggable for Worker {
     }
 
     fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage("transactions_count_by_contract_address_by_epoch", spawn_stage(self, Default::default()));
+        pipeline.register_stage(
+            "transactions_count_by_contract_address_by_epoch",
+            spawn_stage(self, Default::default()),
+        );
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,

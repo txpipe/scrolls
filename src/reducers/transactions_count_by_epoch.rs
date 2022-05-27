@@ -1,8 +1,12 @@
 use gasket::runtime::{spawn_stage, WorkOutcome};
 use serde::Deserialize;
 
+use crate::{
+    bootstrap,
+    crosscut::{self, EpochCalculator},
+    model,
+};
 use pallas::ledger::primitives::byron;
-use crate::{bootstrap, crosscut::{self, EpochCalculator}, model};
 
 type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
@@ -19,45 +23,32 @@ pub struct Worker {
     shelley_known_slot: u64,
     shelley_epoch_length: u64,
     byron_epoch_length: u64,
-    byron_slot_length: u64, 
+    byron_slot_length: u64,
     ops_count: gasket::metrics::Counter,
 }
 
 impl Worker {
-
-    fn reduce_alonzo_compatible_tx(
-        &mut self,
-        slot: u64
-    ) -> Result<(), gasket::error::Error> {
-
+    fn reduce_alonzo_compatible_tx(&mut self, slot: u64) -> Result<(), gasket::error::Error> {
         let epoch_no = EpochCalculator::get_shelley_epoch_no_for_absolute_slot(
             self.shelley_known_slot,
             self.shelley_epoch_length,
-            slot
+            slot,
         );
 
         return self.increment_key(epoch_no);
     }
 
-    fn reduce_byron_compatible_tx(
-        &mut self,
-        slot: u64
-    ) -> Result<(), gasket::error::Error> {
-
+    fn reduce_byron_compatible_tx(&mut self, slot: u64) -> Result<(), gasket::error::Error> {
         let epoch_no = EpochCalculator::get_byron_epoch_no_for_absolute_slot(
             self.byron_epoch_length,
             self.byron_slot_length,
-            slot
+            slot,
         );
 
         return self.increment_key(epoch_no);
     }
 
-    fn increment_key(
-        &mut self,
-        epoch_no: u64
-    ) -> Result<(), gasket::error::Error> {
-
+    fn increment_key(&mut self, epoch_no: u64) -> Result<(), gasket::error::Error> {
         let prefix = match &self.config.key_prefix {
             Some(prefix) => prefix,
             None => "transactions_by_epoch",
@@ -82,13 +73,13 @@ impl Worker {
                 .map(|_tx| self.reduce_byron_compatible_tx(x.header.consensus_data.0.to_abs_slot()))
                 .collect(),
 
-                model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(x) => x
-                .1
-                .transaction_bodies
-                .iter()
-                .map(|_tx| self.reduce_alonzo_compatible_tx(x.1.header.header_body.slot))
-                .collect(),
+            model::MultiEraBlock::Byron(_) => Ok(()),
+            model::MultiEraBlock::AlonzoCompatible(x) => {
+                x.1.transaction_bodies
+                    .iter()
+                    .map(|_tx| self.reduce_alonzo_compatible_tx(x.1.header.header_body.slot))
+                    .collect()
+            }
         }
     }
 }
@@ -124,17 +115,19 @@ impl super::Pluggable for Worker {
     }
 
     fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage("transactions_count_by_epoch", spawn_stage(self, Default::default()));
+        pipeline.register_stage(
+            "transactions_count_by_epoch",
+            spawn_stage(self, Default::default()),
+        );
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,
     ) -> super::Plugin {
-
         let worker = Worker {
             config: self,
             shelley_known_slot: chain.shelley_known_slot.clone() as u64,

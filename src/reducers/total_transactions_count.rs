@@ -4,7 +4,6 @@ use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
 
-
 type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
@@ -21,12 +20,10 @@ pub struct Worker {
 }
 
 impl Worker {
-    fn increment_key(
-        &mut self
-    ) -> Result<(), gasket::error::Error> {
+    fn increment_key(&mut self) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
             Some(prefix) => prefix.to_string(),
-            None => "total_transactions_count".to_string()
+            None => "total_transactions_count".to_string(),
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, 1.to_string());
@@ -46,7 +43,7 @@ impl Worker {
                 .map(|_tx| self.increment_key())
                 .collect(),
 
-                model::MultiEraBlock::Byron(_) => Ok(()),
+            model::MultiEraBlock::Byron(_) => Ok(()),
             model::MultiEraBlock::AlonzoCompatible(block) => block
                 .1
                 .transaction_bodies
@@ -88,12 +85,15 @@ impl super::Pluggable for Worker {
     }
 
     fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage("total_transactions_count", spawn_stage(self, Default::default()));
+        pipeline.register_stage(
+            "total_transactions_count",
+            spawn_stage(self, Default::default()),
+        );
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         _chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,

@@ -1,7 +1,5 @@
-use gasket::{
-    runtime::{spawn_stage, WorkOutcome},
-};
-use pallas::{ledger::primitives::alonzo};
+use gasket::runtime::{spawn_stage, WorkOutcome};
+use pallas::ledger::primitives::alonzo;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
@@ -22,16 +20,12 @@ pub struct Worker {
 }
 
 impl Worker {
-
-
-    fn increment_for_contract_address(
-        &mut self,
-    ) -> Result<(), gasket::error::Error> {
+    fn increment_for_contract_address(&mut self) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
             Some(prefix) => prefix.to_string(),
-            None => "total_transactions_count_by_contract_addresses".to_string()
+            None => "total_transactions_count_by_contract_addresses".to_string(),
         };
-    
+
         let crdt = model::CRDTCommand::PNCounter(key, "1".to_string());
         self.output.send(gasket::messaging::Message::from(crdt))?;
         self.ops_count.inc(1);
@@ -43,7 +37,8 @@ impl Worker {
         &mut self,
         tx: &alonzo::TransactionBody,
     ) -> Result<(), gasket::error::Error> {
-        let is_smart_contract_transaction = tx.iter()
+        let is_smart_contract_transaction = tx
+            .iter()
             .filter_map(|b| match b {
                 alonzo::TransactionBodyComponent::Outputs(o) => Some(o),
                 _ => None,
@@ -58,7 +53,7 @@ impl Worker {
                         false
                     }
                 }
-            
+
                 // first byte of address is header
                 let first_byte_of_address = output.address.as_slice()[0];
                 // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/alonzo/test-suite/cddl-files/alonzo.cddl#L135
@@ -67,12 +62,12 @@ impl Worker {
                 return is_smart_contract_address;
             });
 
-            if is_smart_contract_transaction {
-                return self.increment_for_contract_address();
-            }
-
-            return Ok(());
+        if is_smart_contract_transaction {
+            return self.increment_for_contract_address();
         }
+
+        return Ok(());
+    }
 
     fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
         match block {
@@ -118,12 +113,15 @@ impl super::Pluggable for Worker {
     }
 
     fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage("total_transactions_count_by_contract_addresses", spawn_stage(self, Default::default()));
+        pipeline.register_stage(
+            "total_transactions_count_by_contract_addresses",
+            spawn_stage(self, Default::default()),
+        );
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         _chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,
