@@ -33,6 +33,16 @@ pub enum ReducerConfig {
     UtxoByAddress(reducers::utxo_by_address::Config),
     PointByTx(reducers::point_by_tx::Config),
     PoolByStake(reducers::pool_by_stake::Config),
+    TotalTransactionsCount(reducers::total_transactions_count::Config),
+
+    TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
+    TransactionsCountByContractAddress(reducers::transactions_count_by_contract_address::Config),
+    TransactionsCountByContractAddressByEpoch(
+        reducers::transactions_count_by_contract_address_by_epoch::Config,
+    ),
+    TotalTransactionsCountByContractAddresses(
+        reducers::total_transactions_count_by_contract_addresses::Config,
+    ),
 }
 
 impl ReducerConfig {
@@ -45,6 +55,15 @@ impl ReducerConfig {
             ReducerConfig::UtxoByAddress(c) => c.plugin(chain, intersect),
             ReducerConfig::PointByTx(c) => c.plugin(chain, intersect),
             ReducerConfig::PoolByStake(c) => c.plugin(chain, intersect),
+            ReducerConfig::TotalTransactionsCount(c) => c.plugin(chain, intersect),
+            ReducerConfig::TransactionsCountByEpoch(c) => c.plugin(chain, intersect),
+            ReducerConfig::TransactionsCountByContractAddress(c) => c.plugin(chain, intersect),
+            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => {
+                c.plugin(chain, intersect)
+            }
+            ReducerConfig::TotalTransactionsCountByContractAddresses(c) => {
+                c.plugin(chain, intersect)
+            }
         }
     }
 }
