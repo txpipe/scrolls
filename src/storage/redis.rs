@@ -1,7 +1,10 @@
+use std::str::FromStr;
+
 use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
 };
+
 use redis::Commands;
 use serde::Deserialize;
 
@@ -16,9 +19,15 @@ pub struct Config {
 
 pub struct Worker {
     config: Config,
-    client: Option<redis::Client>,
     connection: Option<redis::Connection>,
     input: FunnelPort,
+}
+
+impl Worker {
+    fn redis_connect(&self) -> Result<redis::Connection, redis::RedisError> {
+        let client = redis::Client::open(self.config.connection_params.clone())?;
+        client.get_connection()
+    }
 }
 
 impl gasket::runtime::Worker for Worker {
@@ -30,6 +39,9 @@ impl gasket::runtime::Worker for Worker {
         let msg = self.input.recv()?;
 
         match msg.payload {
+            model::CRDTCommand::BlockStarting(_) => {
+                // TODO: start transaction
+            }
             model::CRDTCommand::GrowOnlySetAdd(key, value) => {
                 self.connection
                     .as_mut()
@@ -65,16 +77,25 @@ impl gasket::runtime::Worker for Worker {
                     .incr(key, value)
                     .or_work_err()?;
             }
+            model::CRDTCommand::BlockFinished(point) => {
+                let cursor_str = crosscut::PointArg::from(point).to_string();
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .set("_cursor", &cursor_str)
+                    .or_work_err()?;
+
+                log::info!("new cursor saved to redis {}", &cursor_str)
+            }
         };
 
         Ok(WorkOutcome::Partial)
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        let client = redis::Client::open(self.config.connection_params.clone()).or_work_err()?;
-        let connection = client.get_connection().or_work_err()?;
+        let connection = self.redis_connect().or_work_err()?;
 
-        self.client = Some(client);
         self.connection = Some(connection);
 
         Ok(())
@@ -90,20 +111,32 @@ impl super::Pluggable for Worker {
         &mut self.input
     }
 
+    fn read_cursor(&self) -> Result<crosscut::Cursor, crate::Error> {
+        let mut connection = self.redis_connect().map_err(crate::Error::storage)?;
+
+        let raw: Option<String> = connection.get("_cursor").map_err(crate::Error::storage)?;
+
+        let point = match raw {
+            Some(x) => Some(crosscut::PointArg::from_str(&x)?),
+            None => None,
+        };
+
+        Ok(point)
+    }
+
     fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
         pipeline.register_stage("redis", spawn_stage(self, Default::default()));
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         _chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,
     ) -> super::Plugin {
         let worker = Worker {
             config: self,
-            client: None,
             connection: None,
             input: Default::default(),
         };

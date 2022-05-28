@@ -4,14 +4,6 @@ use clap::ArgMatches;
 use scrolls::{bootstrap, crosscut, reducers, sources, storage};
 use serde::Deserialize;
 
-trait FromConfig<T> {
-    fn from_config(
-        config: T,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-    ) -> Self;
-}
-
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum SourceConfig {
@@ -21,15 +13,16 @@ pub enum SourceConfig {
     N2C(sources::n2c::Config),
 }
 
-impl FromConfig<SourceConfig> for sources::Plugin {
-    fn from_config(
-        other: SourceConfig,
+impl SourceConfig {
+    fn plugin(
+        self,
         chain: &crosscut::ChainWellKnownInfo,
         intersect: &crosscut::IntersectConfig,
-    ) -> Self {
-        match other {
-            SourceConfig::N2N(c) => sources::IntoPlugin::plugin(c, chain, intersect),
-            SourceConfig::N2C(c) => sources::IntoPlugin::plugin(c, chain, intersect),
+        cursor: &crosscut::Cursor,
+    ) -> sources::Plugin {
+        match self {
+            SourceConfig::N2N(c) => c.plugin(chain, intersect, cursor),
+            SourceConfig::N2C(c) => c.plugin(chain, intersect, cursor),
         }
     }
 }
@@ -44,25 +37,25 @@ pub enum ReducerConfig {
 
     TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
     TransactionsCountByContractAddress(reducers::transactions_count_by_contract_address::Config),
-    TransactionsCountByContractAddressByEpoch(reducers::transactions_count_by_contract_address_by_epoch::Config),
-    TotalTransactionsCountByContractAddresses(reducers::total_transactions_count_by_contract_addresses::Config),
+    TransactionsCountByContractAddressByEpoch(
+        reducers::transactions_count_by_contract_address_by_epoch::Config,
+    ),
+    TotalTransactionsCountByContractAddresses(
+        reducers::total_transactions_count_by_contract_addresses::Config,
+    ),
 }
 
-impl FromConfig<ReducerConfig> for reducers::Plugin {
-    fn from_config(
-        other: ReducerConfig,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-    ) -> Self {
-        match other {
-            ReducerConfig::UtxoByAddress(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::PointByTx(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::PoolByStake(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::TotalTransactionsCount(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::TransactionsCountByEpoch(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::TransactionsCountByContractAddress(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
-            ReducerConfig::TotalTransactionsCountByContractAddresses(c) => reducers::IntoPlugin::plugin(c, chain, intersect),
+impl ReducerConfig {
+    fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> reducers::Plugin {
+        match self {
+            ReducerConfig::UtxoByAddress(c) => c.plugin(chain),
+            ReducerConfig::PointByTx(c) => c.plugin(),
+            ReducerConfig::PoolByStake(c) => c.plugin(),
+            ReducerConfig::TotalTransactionsCount(c) => c.plugin(),
+            ReducerConfig::TransactionsCountByEpoch(c) => c.plugin(chain),
+            ReducerConfig::TransactionsCountByContractAddress(c) => c.plugin(chain),
+            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => c.plugin(chain),
+            ReducerConfig::TotalTransactionsCountByContractAddresses(c) => c.plugin(),
         }
     }
 }
@@ -73,14 +66,14 @@ pub enum StorageConfig {
     Redis(storage::redis::Config),
 }
 
-impl FromConfig<StorageConfig> for storage::Plugin {
-    fn from_config(
-        other: StorageConfig,
+impl StorageConfig {
+    fn plugin(
+        self,
         chain: &crosscut::ChainWellKnownInfo,
         intersect: &crosscut::IntersectConfig,
-    ) -> Self {
-        match other {
-            StorageConfig::Redis(c) => storage::IntoPlugin::plugin(c, chain, intersect),
+    ) -> storage::Plugin {
+        match self {
+            StorageConfig::Redis(c) => c.plugin(chain, intersect),
         }
     }
 }
@@ -159,15 +152,29 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let chain = config.chain.unwrap_or_default().into();
 
-    let pipeline = bootstrap::build(
-        sources::Plugin::from_config(config.source, &chain, &config.intersect),
-        config
-            .reducers
-            .into_iter()
-            .map(|x| reducers::Plugin::from_config(x, &chain, &config.intersect))
-            .collect(),
-        storage::Plugin::from_config(config.storage, &chain, &config.intersect),
-    );
+    // We need to setup the storage first so that we can retrieve the potential
+    // cursor
+    let storage = config.storage.plugin(&chain, &config.intersect);
+
+    let cursor = storage.read_cursor()?;
+
+    match &cursor {
+        Some(x) => log::info!("found existing cursor in storage plugin: {:?}", x),
+        None => log::debug!("no cursor found in storage plugin"),
+    };
+
+    // We can now setup the source plugin specifying a potential cursor
+    let source = config.source.plugin(&chain, &config.intersect, &cursor);
+
+    let reducer_plugins = config
+        .reducers
+        .into_iter()
+        .map(|x| x.plugin(&chain))
+        .collect();
+
+    let reducer = reducers::Worker::new(reducer_plugins);
+
+    let pipeline = bootstrap::build(source, reducer, storage);
 
     loop {
         for (name, tether) in pipeline.tethers.iter() {

@@ -1,31 +1,25 @@
-use gasket::runtime::{spawn_stage, WorkOutcome};
 use pallas::crypto::hash::Hash;
 use pallas::ledger::primitives::byron;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model};
-
-type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
-type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
+use crate::model;
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
 }
 
-pub struct Worker {
+pub struct Reducer {
     config: Config,
-    input: InputPort,
-    output: OutputPort,
-    ops_count: gasket::metrics::Counter,
 }
 
-impl Worker {
+impl Reducer {
     fn send_set_add(
         &mut self,
         tx_hash: Hash<32>,
         block_slot: u64,
         block_hash: Hash<32>,
+        output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, tx_hash),
@@ -35,13 +29,16 @@ impl Worker {
         let member = format!("{},{}", block_slot, block_hash);
         let crdt = model::CRDTCommand::GrowOnlySetAdd(key, member);
 
-        self.output.send(gasket::messaging::Message::from(crdt))?;
-        self.ops_count.inc(1);
+        output.send(gasket::messaging::Message::from(crdt))?;
 
         Ok(())
     }
 
-    fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
+    pub fn reduce_block(
+        &mut self,
+        block: &model::MultiEraBlock,
+        output: &mut super::OutputPort,
+    ) -> Result<(), gasket::error::Error> {
         match block {
             model::MultiEraBlock::Byron(byron::Block::MainBlock(x)) => {
                 let hash = x.header.to_hash();
@@ -51,7 +48,7 @@ impl Worker {
                     .tx_payload
                     .iter()
                     .map(|tx| tx.transaction.to_hash())
-                    .map(|tx| self.send_set_add(tx, slot, hash))
+                    .map(|tx| self.send_set_add(tx, slot, hash, output))
                     .collect()
             }
             model::MultiEraBlock::Byron(_) => Ok(()),
@@ -62,61 +59,16 @@ impl Worker {
                 x.1.transaction_bodies
                     .iter()
                     .map(|tx| tx.to_hash())
-                    .map(|tx| self.send_set_add(tx, slot, hash))
+                    .map(|tx| self.send_set_add(tx, slot, hash, output))
                     .collect()
             }
         }
     }
 }
 
-impl gasket::runtime::Worker for Worker {
-    fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new()
-            .with_counter("ops_count", &self.ops_count)
-            .build()
-    }
-
-    fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv()?;
-
-        match msg.payload {
-            model::ChainSyncCommandEx::RollForward(block) => self.reduce_block(&block)?,
-            model::ChainSyncCommandEx::RollBack(point) => {
-                log::warn!("rollback requested for {:?}", point);
-            }
-        }
-
-        Ok(WorkOutcome::Partial)
-    }
-}
-
-impl super::Pluggable for Worker {
-    fn borrow_input_port(&mut self) -> &'_ mut InputPort {
-        &mut self.input
-    }
-
-    fn borrow_output_port(&mut self) -> &'_ mut OutputPort {
-        &mut self.output
-    }
-
-    fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage("point_by_tx", spawn_stage(self, Default::default()));
-    }
-}
-
-impl super::IntoPlugin for Config {
-    fn plugin(
-        self,
-        _chain: &crosscut::ChainWellKnownInfo,
-        _intersect: &crosscut::IntersectConfig,
-    ) -> super::Plugin {
-        let worker = Worker {
-            config: self,
-            input: Default::default(),
-            output: Default::default(),
-            ops_count: Default::default(),
-        };
-
+impl Config {
+    pub fn plugin(self) -> super::Plugin {
+        let worker = Reducer { config: self };
         super::Plugin::PointByTx(worker)
     }
 }

@@ -33,6 +33,7 @@ pub struct Plugin {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
+    cursor: crosscut::Cursor,
     output: FanoutPort<ChainSyncCommandEx>,
 }
 
@@ -65,7 +66,7 @@ impl super::Pluggable for Plugin {
         let bf_channel = transport.muxer.use_channel(3);
 
         let known_points =
-            utils::define_known_points(&self.chain, &self.intersect, &mut cs_channel)
+            utils::define_known_points(&self.chain, &self.intersect, &self.cursor, &mut cs_channel)
                 .expect("chainsync known-points should be defined");
 
         let mut headers_out = OutputPort::<ChainSyncCommand>::default();
@@ -90,16 +91,18 @@ impl super::Pluggable for Plugin {
     }
 }
 
-impl super::IntoPlugin for Config {
-    fn plugin(
+impl Config {
+    pub fn plugin(
         self,
         chain: &crosscut::ChainWellKnownInfo,
         intersect: &crosscut::IntersectConfig,
+        cursor: &crosscut::Cursor,
     ) -> super::Plugin {
         let plugin = Plugin {
             config: self,
             intersect: intersect.clone(),
             chain: chain.clone(),
+            cursor: cursor.clone(),
             output: Default::default(),
         };
 
