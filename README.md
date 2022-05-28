@@ -181,7 +181,7 @@ cargo build
 
 ### Don't we have tools for this already?
 
-Yes, we do. We have excellent tools such as: [Kupo](https://github.com/CardanoSolutions/kupo), dcSpark's [oura-postgres-sync](https://github.com/dcSpark/oura-postgres-sink) or [Db-Sync](https://github.com/input-output-hk/cardano-db-sync). Even the Cardano node itself might work as a source for some of the collections. Every tool is architected with a set of well-understood trade-offs. We believe _Scrolls_ makes sense as an addition to the list because assumes a particular set of trade-offs:
+Yes, we do. We have excellent tools such as: [Kupo](https://github.com/CardanoSolutions/kupo), dcSpark's [Carp](https://github.com/dcSpark/carp) or [Db-Sync](https://github.com/input-output-hk/cardano-db-sync). Even the Cardano node itself might work as a source for some of the collections. Every tool is architected with a set of well-understood trade-offs. We believe _Scrolls_ makes sense as an addition to the list because assumes a particular set of trade-offs:
 
 - network storage over local storage: _Scrolls_ makes sense if you have multiple distributed clients working in a private network that want to connect to the same data instance.
 - read latency over data normalization: _Scrolls_ works well when you need to answer simple questions, like a lookup table. It won't work if you need to create joins or complex relational queries.
