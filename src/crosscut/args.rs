@@ -1,21 +1,38 @@
 use pallas::network::miniprotocols::{Point, MAINNET_MAGIC, TESTNET_MAGIC};
 use serde::{Deserialize, Serialize};
-use std::{ops::Deref, str::FromStr};
+use std::{fmt::Display, ops::Deref, str::FromStr};
 
 use crate::Error;
 
 /// A serialization-friendly chain Point struct using a hex-encoded hash
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PointArg(pub u64, pub String);
+pub enum PointArg {
+    Origin,
+    Specific(u64, String),
+}
 
 impl TryInto<Point> for PointArg {
     type Error = crate::Error;
 
     fn try_into(self) -> Result<Point, Self::Error> {
-        let hash = hex::decode(&self.1)
-            .map_err(|_| Self::Error::message("can't decode point hash hex value"))?;
+        match self {
+            PointArg::Origin => Ok(Point::Origin),
+            PointArg::Specific(slot, hash_hex) => {
+                let hash = hex::decode(&hash_hex)
+                    .map_err(|_| Self::Error::message("can't decode point hash hex value"))?;
 
-        Ok(Point::Specific(self.0, hash))
+                Ok(Point::Specific(slot, hash))
+            }
+        }
+    }
+}
+
+impl From<Point> for PointArg {
+    fn from(other: Point) -> Self {
+        match other {
+            Point::Origin => PointArg::Origin,
+            Point::Specific(slot, hash) => PointArg::Specific(slot, hex::encode(hash)),
+        }
     }
 }
 
@@ -23,26 +40,31 @@ impl FromStr for PointArg {
     type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.contains(',') {
-            let mut parts: Vec<_> = s.split(',').collect();
-            let slot = parts
-                .remove(0)
-                .parse()
-                .map_err(|_| Self::Err::message("can't parse slot number"))?;
+        match s {
+            x if s.contains(',') => {
+                let mut parts: Vec<_> = x.split(',').collect();
+                let slot = parts
+                    .remove(0)
+                    .parse()
+                    .map_err(|_| Self::Err::message("can't parse slot number"))?;
 
-            let hash = parts.remove(0).to_owned();
-            Ok(PointArg(slot, hash))
-        } else {
-            Err(Self::Err::message(
+                let hash = parts.remove(0).to_owned();
+                Ok(PointArg::Specific(slot, hash))
+            }
+            "origin" => Ok(PointArg::Origin),
+            _ => Err(Self::Err::message(
                 "Can't parse chain point value, expecting `slot,hex-hash` format",
-            ))
+            )),
         }
     }
 }
 
 impl ToString for PointArg {
     fn to_string(&self) -> String {
-        format!("{},{}", self.0, self.1)
+        match self {
+            PointArg::Origin => "origin".to_string(),
+            PointArg::Specific(slot, hash) => format!("{},{}", slot, hash),
+        }
     }
 }
 

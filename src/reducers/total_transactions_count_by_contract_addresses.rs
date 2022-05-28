@@ -1,34 +1,29 @@
-use gasket::runtime::{spawn_stage, WorkOutcome};
 use pallas::ledger::primitives::alonzo;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model};
-
-type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
-type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
+use crate::model;
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
 }
 
-pub struct Worker {
+pub struct Reducer {
     config: Config,
-    input: InputPort,
-    output: OutputPort,
-    ops_count: gasket::metrics::Counter,
 }
 
-impl Worker {
-    fn increment_for_contract_address(&mut self) -> Result<(), gasket::error::Error> {
+impl Reducer {
+    fn increment_for_contract_address(
+        &mut self,
+        output: &mut super::OutputPort,
+    ) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
             Some(prefix) => prefix.to_string(),
             None => "total_transactions_count_by_contract_addresses".to_string(),
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, "1".to_string());
-        self.output.send(gasket::messaging::Message::from(crdt))?;
-        self.ops_count.inc(1);
+        output.send(gasket::messaging::Message::from(crdt))?;
 
         Ok(())
     }
@@ -36,6 +31,7 @@ impl Worker {
     fn reduce_alonzo_compatible_tx(
         &mut self,
         tx: &alonzo::TransactionBody,
+        output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let is_smart_contract_transaction = tx
             .iter()
@@ -63,76 +59,32 @@ impl Worker {
             });
 
         if is_smart_contract_transaction {
-            return self.increment_for_contract_address();
+            return self.increment_for_contract_address(output);
         }
 
         return Ok(());
     }
 
-    fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
+    pub fn reduce_block(
+        &mut self,
+        block: &model::MultiEraBlock,
+        output: &mut super::OutputPort,
+    ) -> Result<(), gasket::error::Error> {
         match block {
             model::MultiEraBlock::Byron(_) => Ok(()),
             model::MultiEraBlock::AlonzoCompatible(x) => {
                 x.1.transaction_bodies
                     .iter()
-                    .map(|tx| self.reduce_alonzo_compatible_tx(tx))
+                    .map(|tx| self.reduce_alonzo_compatible_tx(tx, output))
                     .collect()
             }
         }
     }
 }
 
-impl gasket::runtime::Worker for Worker {
-    fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new()
-            .with_counter("ops_count", &self.ops_count)
-            .build()
-    }
-
-    fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv()?;
-
-        match msg.payload {
-            model::ChainSyncCommandEx::RollForward(block) => self.reduce_block(&block)?,
-            model::ChainSyncCommandEx::RollBack(point) => {
-                log::warn!("rollback requested for {:?}", point);
-            }
-        }
-
-        Ok(WorkOutcome::Partial)
-    }
-}
-
-impl super::Pluggable for Worker {
-    fn borrow_input_port(&mut self) -> &'_ mut InputPort {
-        &mut self.input
-    }
-
-    fn borrow_output_port(&mut self) -> &'_ mut OutputPort {
-        &mut self.output
-    }
-
-    fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage(
-            "total_transactions_count_by_contract_addresses",
-            spawn_stage(self, Default::default()),
-        );
-    }
-}
-
 impl Config {
-    pub fn plugin(
-        self,
-        _chain: &crosscut::ChainWellKnownInfo,
-        _intersect: &crosscut::IntersectConfig,
-    ) -> super::Plugin {
-        let worker = Worker {
-            config: self,
-            input: Default::default(),
-            output: Default::default(),
-            ops_count: Default::default(),
-        };
-
-        super::Plugin::TotalTransactionsCountByContractAddresses(worker)
+    pub fn plugin(self) -> super::Plugin {
+        let reducer = Reducer { config: self };
+        super::Plugin::TotalTransactionsCountByContractAddresses(reducer)
     }
 }

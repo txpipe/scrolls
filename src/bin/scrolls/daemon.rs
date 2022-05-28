@@ -46,24 +46,16 @@ pub enum ReducerConfig {
 }
 
 impl ReducerConfig {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-    ) -> reducers::Plugin {
+    fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> reducers::Plugin {
         match self {
-            ReducerConfig::UtxoByAddress(c) => c.plugin(chain, intersect),
-            ReducerConfig::PointByTx(c) => c.plugin(chain, intersect),
-            ReducerConfig::PoolByStake(c) => c.plugin(chain, intersect),
-            ReducerConfig::TotalTransactionsCount(c) => c.plugin(chain, intersect),
-            ReducerConfig::TransactionsCountByEpoch(c) => c.plugin(chain, intersect),
-            ReducerConfig::TransactionsCountByContractAddress(c) => c.plugin(chain, intersect),
-            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => {
-                c.plugin(chain, intersect)
-            }
-            ReducerConfig::TotalTransactionsCountByContractAddresses(c) => {
-                c.plugin(chain, intersect)
-            }
+            ReducerConfig::UtxoByAddress(c) => c.plugin(chain),
+            ReducerConfig::PointByTx(c) => c.plugin(),
+            ReducerConfig::PoolByStake(c) => c.plugin(),
+            ReducerConfig::TotalTransactionsCount(c) => c.plugin(),
+            ReducerConfig::TransactionsCountByEpoch(c) => c.plugin(chain),
+            ReducerConfig::TransactionsCountByContractAddress(c) => c.plugin(chain),
+            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => c.plugin(chain),
+            ReducerConfig::TotalTransactionsCountByContractAddresses(c) => c.plugin(),
         }
     }
 }
@@ -166,18 +158,23 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let cursor = storage.read_cursor()?;
 
+    match &cursor {
+        Some(x) => log::info!("found existing cursor in storage plugin: {:?}", x),
+        None => log::debug!("no cursor found in storage plugin"),
+    };
+
     // We can now setup the source plugin specifying a potential cursor
     let source = config.source.plugin(&chain, &config.intersect, &cursor);
 
-    let pipeline = bootstrap::build(
-        source,
-        config
-            .reducers
-            .into_iter()
-            .map(|x| x.plugin(&chain, &config.intersect))
-            .collect(),
-        storage,
-    );
+    let reducer_plugins = config
+        .reducers
+        .into_iter()
+        .map(|x| x.plugin(&chain))
+        .collect();
+
+    let reducer = reducers::Worker::new(reducer_plugins);
+
+    let pipeline = bootstrap::build(source, reducer, storage);
 
     loop {
         for (name, tether) in pipeline.tethers.iter() {

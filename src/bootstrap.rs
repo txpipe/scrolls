@@ -22,27 +22,25 @@ impl Pipeline {
 
 pub fn build(
     mut source: sources::Plugin,
-    mut reducers: Vec<reducers::Plugin>,
+    mut reducer: reducers::Worker,
     mut storage: storage::Plugin,
 ) -> Pipeline {
     let mut pipeline = Pipeline::new();
 
-    for reducer in reducers.iter_mut() {
-        connect_ports(
-            source.borrow_output_port(),
-            reducer.borrow_input_port(),
-            100,
-        );
+    connect_ports(
+        source.borrow_output_port(),
+        reducer.borrow_input_port(),
+        100,
+    );
 
-        connect_ports(
-            reducer.borrow_output_port(),
-            storage.borrow_input_port(),
-            100,
-        );
-    }
+    connect_ports(
+        reducer.borrow_output_port(),
+        storage.borrow_input_port(),
+        100,
+    );
 
     source.spawn(&mut pipeline);
-    reducers.into_iter().for_each(|r| r.spawn(&mut pipeline));
+    reducer.spawn(&mut pipeline);
     storage.spawn(&mut pipeline);
 
     pipeline

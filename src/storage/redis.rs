@@ -4,6 +4,7 @@ use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
 };
+
 use redis::Commands;
 use serde::Deserialize;
 
@@ -76,12 +77,17 @@ impl gasket::runtime::Worker for Worker {
                     .incr(key, value)
                     .or_work_err()?;
             }
-            model::CRDTCommand::BlockFinished(point) => self
-                .connection
-                .as_mut()
-                .unwrap()
-                .set("_cursor", point.to_string())
-                .or_work_err()?,
+            model::CRDTCommand::BlockFinished(point) => {
+                let cursor_str = crosscut::PointArg::from(point).to_string();
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .set("_cursor", &cursor_str)
+                    .or_work_err()?;
+
+                log::info!("new cursor saved to redis {}", &cursor_str)
+            }
         };
 
         Ok(WorkOutcome::Partial)
