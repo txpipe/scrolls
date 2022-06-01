@@ -1,6 +1,6 @@
 use pallas::network::miniprotocols::{Point, MAINNET_MAGIC, TESTNET_MAGIC};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, ops::Deref, str::FromStr};
+use std::{ops::Deref, str::FromStr};
 
 use crate::Error;
 
@@ -106,8 +106,37 @@ impl Default for MagicArg {
 pub enum IntersectConfig {
     Tip,
     Origin,
-    Point(PointArg),
-    Fallbacks(Vec<PointArg>),
+    Point(u64, String),
+    Fallbacks(Vec<(u64, String)>),
+}
+
+impl IntersectConfig {
+    pub fn get_point(&self) -> Option<Point> {
+        match self {
+            IntersectConfig::Point(slot, hash) => {
+                let hash = hex::decode(hash).expect("valid hex hash");
+                Some(Point::Specific(*slot, hash))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn get_fallbacks(&self) -> Option<Vec<Point>> {
+        match self {
+            IntersectConfig::Fallbacks(all) => {
+                let mapped = all
+                    .iter()
+                    .map(|(slot, hash)| {
+                        let hash = hex::decode(hash).expect("valid hex hash");
+                        Point::Specific(*slot, hash)
+                    })
+                    .collect();
+
+                Some(mapped)
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Well-known information about the blockhain network

@@ -73,13 +73,13 @@ pub fn define_known_points(
             let tip = find_end_of_chain(chain, channel)?;
             Ok(Some(vec![tip]))
         }
-        crosscut::IntersectConfig::Point(x) => {
-            let point = x.clone().try_into()?;
+        crosscut::IntersectConfig::Point(_, _) => {
+            let point = intersect.get_point().expect("point value");
             Ok(Some(vec![point]))
         }
-        crosscut::IntersectConfig::Fallbacks(x) => {
-            let points: Result<Vec<_>, _> = x.iter().cloned().map(|x| x.try_into()).collect();
-            Ok(Some(points?))
+        crosscut::IntersectConfig::Fallbacks(_) => {
+            let points = intersect.get_fallbacks().expect("fallback values");
+            Ok(Some(points))
         }
     }
 }
