@@ -24,16 +24,13 @@ impl Reducer {
         tx_idx: usize,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        if self.config.filter.is_some() {
-            match self.config.filter.as_ref().unwrap().binary_search(&address.to_string()) {
-                Ok(_) => {
-                    log::info!("Address '{}' added with UTXO data", address);
-                }
-                Err(_) => {
-                    return Ok(());
-                }
+        if let Some(addresses) = &self.config.filter {
+            if let Err(_) = addresses.binary_search(&address.to_string())
+            {
+                return Ok(());
             }
         }
+
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, address),
             None => address.to_string(),
