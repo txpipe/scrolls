@@ -8,6 +8,7 @@ use crate::{crosscut, model};
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
+    pub filter: Option<Vec<String>>
 }
 
 pub struct Reducer {
@@ -23,6 +24,16 @@ impl Reducer {
         tx_idx: usize,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if self.config.filter.is_some() {
+            match self.config.filter.as_ref().unwrap().binary_search(&address.to_string()) {
+                Ok(_) => {
+                    log::info!("Address '{}' added with UTXO data", address);
+                }
+                Err(_) => {
+                    return Ok(());
+                }
+            }
+        }
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, address),
             None => address.to_string(),

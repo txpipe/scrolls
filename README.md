@@ -146,6 +146,8 @@ address = "relays-new.cardano-mainnet.iohk.io:3001"
 type = "UtxoByAddress"
 # you can optionally prefix the keys in the collection
 key_prefix = "c1"
+# you can optionally only process UTXO from a set of predetermined addresses
+filter = ["addr1qy8jecz3nal788f8t2zy6vj2l9ply3trpnkn2xuvv5rgu4m7y853av2nt8wc33agu3kuakvg0kaee0tfqhgelh2eeyyqgxmxw3"]
 
 # enable the "Point by Tx" collection
 [[reducers]]
