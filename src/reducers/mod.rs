@@ -10,23 +10,35 @@ type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
 pub mod point_by_tx;
 pub mod pool_by_stake;
-pub mod total_transactions_count;
-pub mod total_transactions_count_by_contract_addresses;
-pub mod transactions_count_by_contract_address;
-pub mod transactions_count_by_contract_address_by_epoch;
-pub mod transactions_count_by_epoch;
 pub mod utxo_by_address;
+
+#[cfg(feature = "unstable")]
+pub mod total_transactions_count;
+#[cfg(feature = "unstable")]
+pub mod total_transactions_count_by_contract_addresses;
+#[cfg(feature = "unstable")]
+pub mod transactions_count_by_contract_address;
+#[cfg(feature = "unstable")]
+pub mod transactions_count_by_contract_address_by_epoch;
+#[cfg(feature = "unstable")]
+pub mod transactions_count_by_epoch;
 
 pub enum Plugin {
     UtxoByAddress(utxo_by_address::Reducer),
     PointByTx(point_by_tx::Reducer),
     PoolByStake(pool_by_stake::Reducer),
+
+    #[cfg(feature = "unstable")]
     TotalTransactionsCount(total_transactions_count::Reducer),
+    #[cfg(feature = "unstable")]
     TransactionsCountByEpoch(transactions_count_by_epoch::Reducer),
+    #[cfg(feature = "unstable")]
     TransactionsCountByContractAddress(transactions_count_by_contract_address::Reducer),
+    #[cfg(feature = "unstable")]
     TransactionsCountByContractAddressByEpoch(
         transactions_count_by_contract_address_by_epoch::Reducer,
     ),
+    #[cfg(feature = "unstable")]
     TotalTransactionsCountByContractAddresses(
         total_transactions_count_by_contract_addresses::Reducer,
     ),
@@ -42,10 +54,16 @@ impl Plugin {
             Plugin::UtxoByAddress(x) => x.reduce_block(block, output),
             Plugin::PointByTx(x) => x.reduce_block(block, output),
             Plugin::PoolByStake(x) => x.reduce_block(block, output),
+
+            #[cfg(feature = "unstable")]
             Plugin::TotalTransactionsCount(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
             Plugin::TransactionsCountByEpoch(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
             Plugin::TransactionsCountByContractAddress(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
             Plugin::TransactionsCountByContractAddressByEpoch(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
             Plugin::TotalTransactionsCountByContractAddresses(x) => x.reduce_block(block, output),
         }
     }
