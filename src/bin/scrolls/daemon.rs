@@ -35,6 +35,8 @@ pub enum ReducerConfig {
     PoolByStake(reducers::pool_by_stake::Config),
 
     #[cfg(feature = "unstable")]
+    AddressByTxo(reducers::address_by_txo::Config),
+    #[cfg(feature = "unstable")]
     TotalTransactionsCount(reducers::total_transactions_count::Config),
     #[cfg(feature = "unstable")]
     TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
@@ -57,6 +59,8 @@ impl ReducerConfig {
             ReducerConfig::PointByTx(c) => c.plugin(),
             ReducerConfig::PoolByStake(c) => c.plugin(),
 
+            #[cfg(feature = "unstable")]
+            ReducerConfig::AddressByTxo(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             ReducerConfig::TotalTransactionsCount(c) => c.plugin(),
             #[cfg(feature = "unstable")]

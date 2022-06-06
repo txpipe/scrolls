@@ -13,6 +13,8 @@ pub mod pool_by_stake;
 pub mod utxo_by_address;
 
 #[cfg(feature = "unstable")]
+pub mod address_by_txo;
+#[cfg(feature = "unstable")]
 pub mod total_transactions_count;
 #[cfg(feature = "unstable")]
 pub mod total_transactions_count_by_contract_addresses;
@@ -28,6 +30,8 @@ pub enum Plugin {
     PointByTx(point_by_tx::Reducer),
     PoolByStake(pool_by_stake::Reducer),
 
+    #[cfg(feature = "unstable")]
+    AddressByTxo(address_by_txo::Reducer),
     #[cfg(feature = "unstable")]
     TotalTransactionsCount(total_transactions_count::Reducer),
     #[cfg(feature = "unstable")]
@@ -55,6 +59,8 @@ impl Plugin {
             Plugin::PointByTx(x) => x.reduce_block(block, output),
             Plugin::PoolByStake(x) => x.reduce_block(block, output),
 
+            #[cfg(feature = "unstable")]
+            Plugin::AddressByTxo(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Plugin::TotalTransactionsCount(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
