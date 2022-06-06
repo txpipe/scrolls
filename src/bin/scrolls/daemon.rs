@@ -33,13 +33,18 @@ pub enum ReducerConfig {
     UtxoByAddress(reducers::utxo_by_address::Config),
     PointByTx(reducers::point_by_tx::Config),
     PoolByStake(reducers::pool_by_stake::Config),
-    TotalTransactionsCount(reducers::total_transactions_count::Config),
 
+    #[cfg(feature = "unstable")]
+    TotalTransactionsCount(reducers::total_transactions_count::Config),
+    #[cfg(feature = "unstable")]
     TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
+    #[cfg(feature = "unstable")]
     TransactionsCountByContractAddress(reducers::transactions_count_by_contract_address::Config),
+    #[cfg(feature = "unstable")]
     TransactionsCountByContractAddressByEpoch(
         reducers::transactions_count_by_contract_address_by_epoch::Config,
     ),
+    #[cfg(feature = "unstable")]
     TotalTransactionsCountByContractAddresses(
         reducers::total_transactions_count_by_contract_addresses::Config,
     ),
@@ -51,10 +56,16 @@ impl ReducerConfig {
             ReducerConfig::UtxoByAddress(c) => c.plugin(chain),
             ReducerConfig::PointByTx(c) => c.plugin(),
             ReducerConfig::PoolByStake(c) => c.plugin(),
+
+            #[cfg(feature = "unstable")]
             ReducerConfig::TotalTransactionsCount(c) => c.plugin(),
+            #[cfg(feature = "unstable")]
             ReducerConfig::TransactionsCountByEpoch(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
             ReducerConfig::TransactionsCountByContractAddress(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
             ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
             ReducerConfig::TotalTransactionsCountByContractAddresses(c) => c.plugin(),
         }
     }

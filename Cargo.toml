@@ -33,4 +33,5 @@ thiserror = "1.0.30"
 redis = "0.21.5"
 
 [features]
+unstable = []
 default = []
