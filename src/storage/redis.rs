@@ -5,10 +5,13 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 
-use redis::Commands;
+use redis::{Commands, Connection};
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model};
+use crate::{
+    bootstrap, crosscut,
+    model::{self, StateData},
+};
 
 type FunnelPort = gasket::messaging::FunnelPort<model::CRDTCommand>;
 
@@ -43,6 +46,7 @@ impl Bootstrapper {
     pub fn build_read_plugin(&self) -> ReadPlugin {
         ReadPlugin {
             config: self.config.clone(),
+            connection: None,
         }
     }
 
@@ -103,6 +107,13 @@ impl gasket::runtime::Worker for Worker {
                     .zadd(key, value, timestamp)
                     .or_work_err()?;
             }
+            model::CRDTCommand::AnyWriteWins(key, value) => {
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .set(key, value)
+                    .or_work_err()?;
+            }
             model::CRDTCommand::PNCounter(key, value) => {
                 self.connection
                     .as_mut()
@@ -142,28 +153,58 @@ impl gasket::runtime::Worker for Worker {
 
 pub struct ReadPlugin {
     config: Config,
+    connection: Option<Connection>,
 }
 
 impl ReadPlugin {
-    fn redis_connect(&self) -> Result<redis::Connection, redis::RedisError> {
-        let client = redis::Client::open(self.config.connection_params.clone())?;
-        client.get_connection()
+    pub fn bootstrap(&mut self) -> Result<(), crate::Error> {
+        let connection = redis::Client::open(self.config.connection_params.clone())
+            .and_then(|c| c.get_connection())
+            .map_err(crate::Error::storage)?;
+
+        self.connection = Some(connection);
+
+        Ok(())
     }
 
     pub fn read_state(
         &mut self,
         query: model::StateQuery,
     ) -> Result<model::StateData, crate::Error> {
-        match query {
-            model::StateQuery::LatestKeyValue(_) => todo!(),
-            model::StateQuery::SetMembers(_) => todo!(),
-        }
+        let value = match query {
+            model::StateQuery::KeyValue(key) => self
+                .connection
+                .as_mut()
+                .unwrap()
+                .get(key)
+                .map(|v| StateData::KeyValue(v))
+                .map_err(crate::Error::storage)?,
+            model::StateQuery::LatestKeyValue(key) => self
+                .connection
+                .as_mut()
+                .unwrap()
+                .zrevrange(key, 0, 1)
+                .map(|v| StateData::KeyValue(v))
+                .map_err(crate::Error::storage)?,
+            model::StateQuery::SetMembers(key) => self
+                .connection
+                .as_mut()
+                .unwrap()
+                .get(key)
+                .map(|v| StateData::SetMembers(v))
+                .map_err(crate::Error::storage)?,
+        };
+
+        Ok(value.into())
     }
 
-    pub fn read_cursor(&self) -> Result<crosscut::Cursor, crate::Error> {
-        let mut connection = self.redis_connect().map_err(crate::Error::storage)?;
-
-        let raw: Option<String> = connection.get("_cursor").map_err(crate::Error::storage)?;
+    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
+        let raw: Option<String> = self
+            .connection
+            .as_mut()
+            .unwrap()
+            .get("_cursor")
+            .map_err(crate::Error::storage)?;
 
         let point = match raw {
             Some(x) => Some(crosscut::PointArg::from_str(&x)?),

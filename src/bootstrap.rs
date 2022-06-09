@@ -40,9 +40,11 @@ pub fn build(
     );
 
     let reader = storage.build_read_plugin();
+    source.spawn_stages(&mut pipeline, reader);
 
-    source.spawn(&mut pipeline, &reader);
+    let reader = storage.build_read_plugin();
     reducer.spawn_stages(&mut pipeline, reader);
+
     storage.spawn_stages(&mut pipeline);
 
     Ok(pipeline)

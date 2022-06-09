@@ -1,4 +1,4 @@
-use gasket::messaging::FanoutPort;
+use gasket::messaging::OutputPort;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model, storage};
@@ -37,17 +37,17 @@ pub enum Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<model::ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::ChainSyncCommandEx> {
         match self {
             Bootstrapper::N2N(p) => p.borrow_output_port(),
             Bootstrapper::N2C(p) => p.borrow_output_port(),
         }
     }
 
-    pub fn spawn(self, pipeline: &mut bootstrap::Pipeline, storage: &storage::ReadPlugin) {
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, state: storage::ReadPlugin) {
         match self {
-            Bootstrapper::N2N(p) => p.spawn(pipeline, storage),
-            Bootstrapper::N2C(p) => p.spawn_stages(pipeline, storage),
+            Bootstrapper::N2N(p) => p.spawn_stages(pipeline, state),
+            Bootstrapper::N2C(p) => p.spawn_stages(pipeline, state),
         }
     }
 }

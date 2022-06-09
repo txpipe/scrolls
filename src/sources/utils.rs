@@ -58,7 +58,7 @@ pub fn find_end_of_chain(
 pub fn define_known_points(
     chain: &crosscut::ChainWellKnownInfo,
     intersect: &crosscut::IntersectConfig,
-    storage: &storage::ReadPlugin,
+    storage: &mut storage::ReadPlugin,
     channel: &mut Channel,
 ) -> Result<Option<Vec<Point>>, crate::Error> {
     // if we have a cursor available, it should override any other configuration

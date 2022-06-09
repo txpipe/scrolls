@@ -3,7 +3,7 @@ use pallas::crypto::hash::Hash;
 use pallas::ledger::primitives::{alonzo, byron};
 use serde::Deserialize;
 
-use crate::{crosscut, model};
+use crate::{crosscut, model, storage};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -89,6 +89,7 @@ impl Reducer {
     pub fn reduce_block(
         &mut self,
         block: &model::MultiEraBlock,
+        _state: &mut storage::ReadPlugin,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         match block {

@@ -11,13 +11,15 @@ use gasket::{
 };
 
 use crate::{
+    crosscut,
     model::{ChainSyncCommandEx, MultiEraBlock},
     sources::utils,
+    storage,
 };
 
 struct ChainObserver {
     min_depth: usize,
-    output: gasket::messaging::FanoutPort<ChainSyncCommandEx>,
+    output: OutputPort,
     chain_buffer: chainsync::RollbackBuffer,
     blocks: HashMap<Point, MultiEraBlock>,
     block_count: gasket::metrics::Counter,
@@ -25,12 +27,7 @@ struct ChainObserver {
 }
 
 impl ChainObserver {
-    fn new(
-        min_depth: usize,
-        block_count: Counter,
-        chain_tip: Gauge,
-        output: gasket::messaging::FanoutPort<ChainSyncCommandEx>,
-    ) -> Self {
+    fn new(min_depth: usize, block_count: Counter, chain_tip: Gauge, output: OutputPort) -> Self {
         Self {
             min_depth,
             block_count,
@@ -99,15 +96,18 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
     }
 }
 
-type OutputPort = gasket::messaging::FanoutPort<ChainSyncCommandEx>;
+type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
 type Runner = miniprotocols::Runner<chainsync::BlockConsumer<ChainObserver>>;
 
 pub struct Worker {
     channel: Channel,
     pub min_depth: usize,
-    pub known_points: Option<Vec<Point>>,
+    chain: crosscut::ChainWellKnownInfo,
+    intersect: crosscut::IntersectConfig,
+    state: storage::ReadPlugin,
+    output: OutputPort,
     //finalize_config: Option<FinalizeConfig>,
-    runner: Runner,
+    runner: Option<Runner>,
     block_count: gasket::metrics::Counter,
     chain_tip: Gauge,
 }
@@ -116,29 +116,21 @@ impl Worker {
     pub fn new(
         channel: Channel,
         min_depth: usize,
-        known_points: Option<Vec<Point>>,
+        chain: crosscut::ChainWellKnownInfo,
+        intersect: crosscut::IntersectConfig,
+        state: storage::ReadPlugin,
         output: OutputPort,
     ) -> Self {
-        let block_count = Counter::default();
-        let chain_tip = Gauge::default();
-
-        let runner = Runner::new(chainsync::Consumer::initial(
-            known_points.clone(),
-            ChainObserver::new(
-                min_depth as usize,
-                block_count.clone(),
-                chain_tip.clone(),
-                output,
-            ),
-        ));
-
         Self {
             channel,
             min_depth,
-            known_points,
-            runner,
-            block_count,
-            chain_tip,
+            chain,
+            intersect,
+            state,
+            output,
+            runner: None,
+            block_count: Default::default(),
+            chain_tip: Default::default(),
         }
     }
 }
@@ -152,13 +144,35 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        self.runner.start().or_work_err()?;
+        self.state.bootstrap().or_work_err()?;
+
+        let known_points = utils::define_known_points(
+            &self.chain,
+            &self.intersect,
+            &mut self.state,
+            &mut self.channel,
+        )
+        .or_work_err()?;
+
+        let mut runner = Runner::new(chainsync::Consumer::initial(
+            known_points,
+            ChainObserver::new(
+                self.min_depth,
+                self.block_count.clone(),
+                self.chain_tip.clone(),
+                self.output.clone(),
+            ),
+        ));
+
+        runner.start().or_work_err()?;
+
+        self.runner = Some(runner);
 
         Ok(())
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        match self.runner.run_step(&mut self.channel) {
+        match self.runner.as_mut().unwrap().run_step(&mut self.channel) {
             Ok(true) => Ok(gasket::runtime::WorkOutcome::Done),
             Ok(false) => Ok(gasket::runtime::WorkOutcome::Partial),
             Err(err) => Err(gasket::error::Error::WorkError(format!(

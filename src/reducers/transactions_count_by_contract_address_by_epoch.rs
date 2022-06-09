@@ -39,7 +39,7 @@ impl Reducer {
                 None => format!("{}.{}", contract_address.to_string(), epoch_no),
             };
 
-            let crdt = model::CRDTCommand::PNCounter(key, "1".to_string());
+            let crdt = model::CRDTCommand::PNCounter(key, 1);
             output.send(gasket::messaging::Message::from(crdt))?;
         }
 

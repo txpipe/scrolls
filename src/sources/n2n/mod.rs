@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use gasket::{
     error::AsWorkError,
-    messaging::{FanoutPort, InputPort, OutputPort},
+    messaging::{InputPort, OutputPort},
     retries,
 };
 pub use messages::*;
@@ -22,8 +22,6 @@ use crate::{
 };
 
 use self::transport::Transport;
-
-use super::utils;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -49,7 +47,7 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    output: FanoutPort<ChainSyncCommandEx>,
+    output: OutputPort<ChainSyncCommandEx>,
 }
 
 impl Bootstrapper {
@@ -66,21 +64,17 @@ impl Bootstrapper {
         )
     }
 
-    pub fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<ChainSyncCommandEx> {
         &mut self.output
     }
 
-    pub fn spawn(self, pipeline: &mut Pipeline, storage: &storage::ReadPlugin) {
+    pub fn spawn_stages(self, pipeline: &mut Pipeline, state: storage::ReadPlugin) {
         let mut transport = self
             .bootstrap_transport()
             .expect("transport should be connected after several retries");
 
-        let mut cs_channel = transport.muxer.use_channel(2);
+        let cs_channel = transport.muxer.use_channel(2);
         let bf_channel = transport.muxer.use_channel(3);
-
-        let known_points =
-            utils::define_known_points(&self.chain, &self.intersect, storage, &mut cs_channel)
-                .expect("chainsync known-points should be defined");
 
         let mut headers_out = OutputPort::<ChainSyncCommand>::default();
         let mut headers_in = InputPort::<ChainSyncCommand>::default();
@@ -89,7 +83,14 @@ impl Bootstrapper {
         pipeline.register_stage(
             "n2n-headers",
             gasket::runtime::spawn_stage(
-                self::chainsync::Worker::new(cs_channel, 0, known_points, headers_out),
+                self::chainsync::Worker::new(
+                    cs_channel,
+                    0,
+                    self.chain,
+                    self.intersect,
+                    state,
+                    headers_out,
+                ),
                 gasket::runtime::Policy::default(),
             ),
         );

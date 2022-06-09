@@ -10,7 +10,7 @@ use gasket::{
     metrics::{Counter, Gauge},
 };
 
-use crate::model::ChainSyncCommand;
+use crate::{crosscut, model::ChainSyncCommand, sources::utils, storage};
 
 use super::messages;
 
@@ -101,8 +101,10 @@ type Runner = miniprotocols::Runner<chainsync::HeaderConsumer<ChainObserver>>;
 pub struct Worker {
     channel: Channel,
     pub min_depth: usize,
-    pub known_points: Option<Vec<Point>>,
+    chain: crosscut::ChainWellKnownInfo,
+    intersect: crosscut::IntersectConfig,
     //finalize_config: Option<FinalizeConfig>,
+    state: storage::ReadPlugin,
     runner: Cell<Option<Runner>>,
     output: OutputPort,
     block_count: gasket::metrics::Counter,
@@ -113,13 +115,17 @@ impl Worker {
     pub fn new(
         channel: Channel,
         min_depth: usize,
-        known_points: Option<Vec<Point>>,
+        chain: crosscut::ChainWellKnownInfo,
+        intersect: crosscut::IntersectConfig,
+        state: storage::ReadPlugin,
         output: OutputPort,
     ) -> Self {
         Self {
             channel,
             min_depth,
-            known_points,
+            chain,
+            intersect,
+            state,
             output,
             runner: Cell::new(None),
             block_count: Default::default(),
@@ -137,8 +143,18 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
+        self.state.bootstrap().or_work_err()?;
+
+        let known_points = utils::define_known_points(
+            &self.chain,
+            &self.intersect,
+            &mut self.state,
+            &mut self.channel,
+        )
+        .or_work_err()?;
+
         let mut runner = Runner::new(chainsync::Consumer::initial(
-            self.known_points.clone(),
+            known_points,
             ChainObserver::new(
                 self.min_depth as usize,
                 self.block_count.clone(),
