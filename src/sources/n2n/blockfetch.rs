@@ -10,7 +10,7 @@ use crate::model::{ChainSyncCommand, ChainSyncCommandEx};
 use crate::sources::utils;
 
 struct Observer<'a> {
-    output: &'a mut FanoutPort,
+    output: &'a mut OutputPort,
 }
 
 impl<'a> blockfetch::Observer for Observer<'a> {
@@ -23,17 +23,17 @@ impl<'a> blockfetch::Observer for Observer<'a> {
 }
 
 pub type InputPort = gasket::messaging::InputPort<ChainSyncCommand>;
-pub type FanoutPort = gasket::messaging::FanoutPort<ChainSyncCommandEx>;
+pub type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
 
 pub struct Worker {
     channel: Channel,
     block_count: gasket::metrics::Counter,
     input: InputPort,
-    output: FanoutPort,
+    output: OutputPort,
 }
 
 impl Worker {
-    pub fn new(channel: Channel, input: InputPort, output: FanoutPort) -> Self {
+    pub fn new(channel: Channel, input: InputPort, output: OutputPort) -> Self {
         Self {
             channel,
             input,

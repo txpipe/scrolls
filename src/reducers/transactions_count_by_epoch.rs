@@ -60,7 +60,7 @@ impl Reducer {
 
         let key = format!("{}.{}", prefix, epoch_no.to_string());
 
-        let crdt = model::CRDTCommand::PNCounter(key, 1.to_string());
+        let crdt = model::CRDTCommand::PNCounter(key, 1);
 
         output.send(gasket::messaging::Message::from(crdt))?;
 

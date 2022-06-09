@@ -3,15 +3,13 @@ mod transport;
 
 use std::time::Duration;
 
-use gasket::{error::AsWorkError, messaging::FanoutPort, retries};
+use gasket::{error::AsWorkError, messaging::OutputPort, retries};
 
 use serde::Deserialize;
 
 use crate::{bootstrap::Pipeline, crosscut, model::ChainSyncCommandEx, storage};
 
 use self::transport::Transport;
-
-use super::utils;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -37,7 +35,7 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    output: FanoutPort<ChainSyncCommandEx>,
+    output: OutputPort<ChainSyncCommandEx>,
 }
 
 impl Bootstrapper {
@@ -54,25 +52,28 @@ impl Bootstrapper {
         )
     }
 
-    pub fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<ChainSyncCommandEx> {
         &mut self.output
     }
 
-    pub fn spawn_stages(self, pipeline: &mut Pipeline, storage: &storage::ReadPlugin) {
+    pub fn spawn_stages(self, pipeline: &mut Pipeline, state: storage::ReadPlugin) {
         let mut transport = self
             .bootstrap_transport()
             .expect("transport should be connected after several retries");
 
-        let mut cs_channel = transport.muxer.use_channel(5);
-
-        let known_points =
-            utils::define_known_points(&self.chain, &self.intersect, storage, &mut cs_channel)
-                .expect("chainsync known-points should be defined");
+        let cs_channel = transport.muxer.use_channel(5);
 
         pipeline.register_stage(
             "n2c",
             gasket::runtime::spawn_stage(
-                self::chainsync::Worker::new(cs_channel, 0, known_points, self.output),
+                self::chainsync::Worker::new(
+                    cs_channel,
+                    0,
+                    self.chain,
+                    self.intersect,
+                    state,
+                    self.output,
+                ),
                 gasket::runtime::Policy::default(),
             ),
         );

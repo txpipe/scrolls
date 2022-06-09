@@ -37,7 +37,7 @@ impl Worker {
         ))?;
 
         for reducer in self.reducers.iter_mut() {
-            reducer.reduce_block(block, &mut self.output)?;
+            reducer.reduce_block(block, &mut self.state, &mut self.output)?;
             self.ops_count.inc(1);
         }
 

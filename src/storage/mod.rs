@@ -52,6 +52,12 @@ pub enum ReadPlugin {
 }
 
 impl ReadPlugin {
+    pub fn bootstrap(&mut self) -> Result<(), crate::Error> {
+        match self {
+            ReadPlugin::Redis(x) => x.bootstrap(),
+        }
+    }
+
     pub fn read_state(
         &mut self,
         query: model::StateQuery,
@@ -61,7 +67,7 @@ impl ReadPlugin {
         }
     }
 
-    pub fn read_cursor(&self) -> Result<crosscut::Cursor, crate::Error> {
+    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
         match self {
             ReadPlugin::Redis(x) => x.read_cursor(),
         }

@@ -128,6 +128,7 @@ impl Reducer {
     pub fn reduce_block(
         &mut self,
         block: &model::MultiEraBlock,
+        state: &mut storage::ReadPlugin,
         output: &mut OutputPort,
     ) -> Result<(), gasket::error::Error> {
         match self {
@@ -136,7 +137,7 @@ impl Reducer {
             Reducer::PoolByStake(x) => x.reduce_block(block, output),
 
             #[cfg(feature = "unstable")]
-            Reducer::AddressByTxo(x) => x.reduce_block(block, output),
+            Reducer::AddressByTxo(x) => x.reduce_block(block, state, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]

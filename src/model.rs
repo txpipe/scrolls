@@ -80,6 +80,7 @@ pub type Set = String;
 pub type Member = String;
 pub type Key = String;
 pub type Value = String;
+pub type Delta = i64;
 pub type Timestamp = u64;
 
 #[derive(Debug)]
@@ -90,8 +91,9 @@ pub enum CRDTCommand {
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
     LastWriteWins(Key, Value, Timestamp),
+    AnyWriteWins(Key, Value),
     // TODO make sure Value is a generic not stringly typed
-    PNCounter(Key, Value),
+    PNCounter(Key, Delta),
     BlockFinished(Point),
 }
 
@@ -108,6 +110,7 @@ impl CRDTCommand {
 }
 
 pub enum StateQuery {
+    KeyValue(Key),
     LatestKeyValue(Key),
     SetMembers(Set),
 }
