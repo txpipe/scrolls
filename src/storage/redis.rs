@@ -12,22 +12,55 @@ use crate::{bootstrap, crosscut, model};
 
 type FunnelPort = gasket::messaging::FunnelPort<model::CRDTCommand>;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub connection_params: String,
+}
+
+impl Config {
+    pub fn boostrapper(
+        self,
+        _chain: &crosscut::ChainWellKnownInfo,
+        _intersect: &crosscut::IntersectConfig,
+    ) -> Bootstrapper {
+        Bootstrapper {
+            config: self,
+            input: Default::default(),
+        }
+    }
+}
+
+pub struct Bootstrapper {
+    config: Config,
+    input: FunnelPort,
+}
+
+impl Bootstrapper {
+    pub fn borrow_input_port(&mut self) -> &'_ mut FunnelPort {
+        &mut self.input
+    }
+
+    pub fn build_read_plugin(&self) -> ReadPlugin {
+        ReadPlugin {
+            config: self.config.clone(),
+        }
+    }
+
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
+        let worker = Worker {
+            config: self.config.clone(),
+            connection: None,
+            input: self.input,
+        };
+
+        pipeline.register_stage("redis", spawn_stage(worker, Default::default()));
+    }
 }
 
 pub struct Worker {
     config: Config,
     connection: Option<redis::Connection>,
     input: FunnelPort,
-}
-
-impl Worker {
-    fn redis_connect(&self) -> Result<redis::Connection, redis::RedisError> {
-        let client = redis::Client::open(self.config.connection_params.clone())?;
-        client.get_connection()
-    }
 }
 
 impl gasket::runtime::Worker for Worker {
@@ -94,7 +127,8 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        let connection = self.redis_connect().or_work_err()?;
+        let client = redis::Client::open(self.config.connection_params.clone()).or_work_err()?;
+        let connection = client.get_connection().or_work_err()?;
 
         self.connection = Some(connection);
 
@@ -106,12 +140,27 @@ impl gasket::runtime::Worker for Worker {
     }
 }
 
-impl super::Pluggable for Worker {
-    fn borrow_input_port(&mut self) -> &'_ mut FunnelPort {
-        &mut self.input
+pub struct ReadPlugin {
+    config: Config,
+}
+
+impl ReadPlugin {
+    fn redis_connect(&self) -> Result<redis::Connection, redis::RedisError> {
+        let client = redis::Client::open(self.config.connection_params.clone())?;
+        client.get_connection()
     }
 
-    fn read_cursor(&self) -> Result<crosscut::Cursor, crate::Error> {
+    pub fn read_state(
+        &mut self,
+        query: model::StateQuery,
+    ) -> Result<model::StateData, crate::Error> {
+        match query {
+            model::StateQuery::LatestKeyValue(_) => todo!(),
+            model::StateQuery::SetMembers(_) => todo!(),
+        }
+    }
+
+    pub fn read_cursor(&self) -> Result<crosscut::Cursor, crate::Error> {
         let mut connection = self.redis_connect().map_err(crate::Error::storage)?;
 
         let raw: Option<String> = connection.get("_cursor").map_err(crate::Error::storage)?;
@@ -122,25 +171,5 @@ impl super::Pluggable for Worker {
         };
 
         Ok(point)
-    }
-
-    fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
-        pipeline.register_stage("redis", spawn_stage(self, Default::default()));
-    }
-}
-
-impl Config {
-    pub fn plugin(
-        self,
-        _chain: &crosscut::ChainWellKnownInfo,
-        _intersect: &crosscut::IntersectConfig,
-    ) -> super::Plugin {
-        let worker = Worker {
-            config: self,
-            connection: None,
-            input: Default::default(),
-        };
-
-        super::Plugin::Redis(worker)
     }
 }

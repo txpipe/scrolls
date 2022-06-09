@@ -1,6 +1,7 @@
 use gasket::messaging::FanoutPort;
+use serde::Deserialize;
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model, storage};
 
 #[cfg(target_family = "unix")]
 pub mod n2c;
@@ -8,28 +9,45 @@ pub mod n2c;
 pub mod n2n;
 pub mod utils;
 
-pub trait Pluggable {
-    fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<model::ChainSyncCommandEx>;
-    fn spawn(self, pipeline: &mut bootstrap::Pipeline);
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+pub enum Config {
+    N2N(n2n::Config),
+
+    #[cfg(target_family = "unix")]
+    N2C(n2c::Config),
 }
 
-pub enum Plugin {
-    N2N(n2n::Plugin),
-    N2C(n2c::Plugin),
+impl Config {
+    pub fn bootstrapper(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Bootstrapper {
+        match self {
+            Config::N2N(c) => Bootstrapper::N2N(c.bootstrapper(chain, intersect)),
+            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, intersect)),
+        }
+    }
 }
 
-impl Plugin {
+pub enum Bootstrapper {
+    N2N(n2n::Bootstrapper),
+    N2C(n2c::Bootstrapper),
+}
+
+impl Bootstrapper {
     pub fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<model::ChainSyncCommandEx> {
         match self {
-            Plugin::N2N(p) => p.borrow_output_port(),
-            Plugin::N2C(p) => p.borrow_output_port(),
+            Bootstrapper::N2N(p) => p.borrow_output_port(),
+            Bootstrapper::N2C(p) => p.borrow_output_port(),
         }
     }
 
-    pub fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
+    pub fn spawn(self, pipeline: &mut bootstrap::Pipeline, storage: &storage::ReadPlugin) {
         match self {
-            Plugin::N2N(p) => p.spawn(pipeline),
-            Plugin::N2C(p) => p.spawn(pipeline),
+            Bootstrapper::N2N(p) => p.spawn(pipeline, storage),
+            Bootstrapper::N2C(p) => p.spawn_stages(pipeline, storage),
         }
     }
 }

@@ -106,12 +106,12 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Plugin {
+    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             address_hrp: chain.address_hrp.clone(),
         };
 
-        super::Plugin::TransactionsCountByContractAddress(reducer)
+        super::Reducer::TransactionsCountByContractAddress(reducer)
     }
 }

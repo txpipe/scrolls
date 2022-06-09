@@ -94,7 +94,7 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Plugin {
+    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             shelley_known_slot: chain.shelley_known_slot.clone() as u64,
@@ -103,6 +103,6 @@ impl Config {
             byron_slot_length: chain.byron_slot_length.clone() as u64,
         };
 
-        super::Plugin::TransactionsCountByEpoch(reducer)
+        super::Reducer::TransactionsCountByEpoch(reducer)
     }
 }

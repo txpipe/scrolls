@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::{collections::HashSet, ops::Deref, sync::Arc};
 
 use pallas::{
     ledger::primitives::{alonzo, byron},
@@ -105,4 +105,14 @@ impl CRDTCommand {
         let point = block.point().expect("block has defined point");
         CRDTCommand::BlockFinished(point)
     }
+}
+
+pub enum StateQuery {
+    LatestKeyValue(Key),
+    SetMembers(Set),
+}
+
+pub enum StateData {
+    KeyValue(Value),
+    SetMembers(HashSet<Member>),
 }
