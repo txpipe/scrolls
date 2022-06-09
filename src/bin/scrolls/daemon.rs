@@ -6,95 +6,6 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
-pub enum SourceConfig {
-    N2N(sources::n2n::Config),
-
-    #[cfg(target_family = "unix")]
-    N2C(sources::n2c::Config),
-}
-
-impl SourceConfig {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-        cursor: &crosscut::Cursor,
-    ) -> sources::Plugin {
-        match self {
-            SourceConfig::N2N(c) => c.plugin(chain, intersect, cursor),
-            SourceConfig::N2C(c) => c.plugin(chain, intersect, cursor),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "type")]
-pub enum ReducerConfig {
-    UtxoByAddress(reducers::utxo_by_address::Config),
-    PointByTx(reducers::point_by_tx::Config),
-    PoolByStake(reducers::pool_by_stake::Config),
-
-    #[cfg(feature = "unstable")]
-    AddressByTxo(reducers::address_by_txo::Config),
-    #[cfg(feature = "unstable")]
-    TotalTransactionsCount(reducers::total_transactions_count::Config),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByEpoch(reducers::transactions_count_by_epoch::Config),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByContractAddress(reducers::transactions_count_by_contract_address::Config),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByContractAddressByEpoch(
-        reducers::transactions_count_by_contract_address_by_epoch::Config,
-    ),
-    #[cfg(feature = "unstable")]
-    TotalTransactionsCountByContractAddresses(
-        reducers::total_transactions_count_by_contract_addresses::Config,
-    ),
-}
-
-impl ReducerConfig {
-    fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> reducers::Plugin {
-        match self {
-            ReducerConfig::UtxoByAddress(c) => c.plugin(chain),
-            ReducerConfig::PointByTx(c) => c.plugin(),
-            ReducerConfig::PoolByStake(c) => c.plugin(),
-
-            #[cfg(feature = "unstable")]
-            ReducerConfig::AddressByTxo(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            ReducerConfig::TotalTransactionsCount(c) => c.plugin(),
-            #[cfg(feature = "unstable")]
-            ReducerConfig::TransactionsCountByEpoch(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            ReducerConfig::TransactionsCountByContractAddress(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            ReducerConfig::TransactionsCountByContractAddressByEpoch(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            ReducerConfig::TotalTransactionsCountByContractAddresses(c) => c.plugin(),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "type")]
-pub enum StorageConfig {
-    Redis(storage::redis::Config),
-}
-
-impl StorageConfig {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-    ) -> storage::Plugin {
-        match self {
-            StorageConfig::Redis(c) => c.plugin(chain, intersect),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "type")]
 pub enum ChainConfig {
     Mainnet,
     Testnet,
@@ -119,9 +30,9 @@ impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
 
 #[derive(Deserialize)]
 struct ConfigRoot {
-    source: SourceConfig,
-    reducers: Vec<ReducerConfig>,
-    storage: StorageConfig,
+    source: sources::Config,
+    reducers: Vec<reducers::Config>,
+    storage: storage::Config,
     intersect: crosscut::IntersectConfig,
     chain: Option<ChainConfig>,
 }
@@ -167,29 +78,13 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let chain = config.chain.unwrap_or_default().into();
 
-    // We need to setup the storage first so that we can retrieve the potential
-    // cursor
     let storage = config.storage.plugin(&chain, &config.intersect);
 
-    let cursor = storage.read_cursor()?;
+    let reducer = reducers::Bootstrapper::new(config.reducers, &chain);
 
-    match &cursor {
-        Some(x) => log::info!("found existing cursor in storage plugin: {:?}", x),
-        None => log::debug!("no cursor found in storage plugin"),
-    };
+    let source = config.source.bootstrapper(&chain, &config.intersect);
 
-    // We can now setup the source plugin specifying a potential cursor
-    let source = config.source.plugin(&chain, &config.intersect, &cursor);
-
-    let reducer_plugins = config
-        .reducers
-        .into_iter()
-        .map(|x| x.plugin(&chain))
-        .collect();
-
-    let reducer = reducers::Worker::new(reducer_plugins);
-
-    let pipeline = bootstrap::build(source, reducer, storage);
+    let pipeline = bootstrap::build(source, reducer, storage)?;
 
     loop {
         for (name, tether) in pipeline.tethers.iter() {

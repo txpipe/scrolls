@@ -6,7 +6,7 @@ use pallas::{
     },
 };
 
-use crate::{crosscut, model, Error};
+use crate::{crosscut, model, storage, Error};
 
 pub fn parse_block_content(body: &[u8]) -> Result<model::MultiEraBlock, Error> {
     match probing::probe_block_cbor_era(&body) {
@@ -58,14 +58,18 @@ pub fn find_end_of_chain(
 pub fn define_known_points(
     chain: &crosscut::ChainWellKnownInfo,
     intersect: &crosscut::IntersectConfig,
-    cursor: &crosscut::Cursor,
+    storage: &storage::ReadPlugin,
     channel: &mut Channel,
 ) -> Result<Option<Vec<Point>>, crate::Error> {
     // if we have a cursor available, it should override any other configuration
     // opiton
-    if let Some(point) = cursor {
-        return Ok(Some(vec![point.clone().try_into()?]));
-    }
+    match &storage.read_cursor()? {
+        Some(x) => {
+            log::info!("found existing cursor in storage plugin: {:?}", x);
+            return Ok(Some(vec![x.clone().try_into()?]));
+        }
+        None => log::debug!("no cursor found in storage plugin"),
+    };
 
     match &intersect {
         crosscut::IntersectConfig::Origin => Ok(None),

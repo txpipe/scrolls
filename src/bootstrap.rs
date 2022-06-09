@@ -21,10 +21,10 @@ impl Pipeline {
 }
 
 pub fn build(
-    mut source: sources::Plugin,
-    mut reducer: reducers::Worker,
-    mut storage: storage::Plugin,
-) -> Pipeline {
+    mut source: sources::Bootstrapper,
+    mut reducer: reducers::Bootstrapper,
+    mut storage: storage::Bootstrapper,
+) -> Result<Pipeline, crate::Error> {
     let mut pipeline = Pipeline::new();
 
     connect_ports(
@@ -39,9 +39,11 @@ pub fn build(
         100,
     );
 
-    source.spawn(&mut pipeline);
-    reducer.spawn(&mut pipeline);
-    storage.spawn(&mut pipeline);
+    let reader = storage.build_read_plugin();
 
-    pipeline
+    source.spawn(&mut pipeline, &reader);
+    reducer.spawn_stages(&mut pipeline, reader);
+    storage.spawn_stages(&mut pipeline);
+
+    Ok(pipeline)
 }

@@ -8,7 +8,7 @@ use crate::{crosscut, model};
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub filter: Option<Vec<String>>
+    pub filter: Option<Vec<String>>,
 }
 
 pub struct Reducer {
@@ -25,8 +25,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address.to_string())
-            {
+            if let Err(_) = addresses.binary_search(&address.to_string()) {
                 return Ok(());
             }
         }
@@ -109,12 +108,12 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Plugin {
+    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             address_hrp: chain.address_hrp.clone(),
         };
 
-        super::Plugin::UtxoByAddress(reducer)
+        super::Reducer::UtxoByAddress(reducer)
     }
 }

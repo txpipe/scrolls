@@ -54,8 +54,8 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self) -> super::Plugin {
+    pub fn plugin(self) -> super::Reducer {
         let reducer = Reducer { config: self };
-        super::Plugin::TotalTransactionsCount(reducer)
+        super::Reducer::TotalTransactionsCount(reducer)
     }
 }

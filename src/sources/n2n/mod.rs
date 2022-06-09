@@ -18,6 +18,7 @@ use crate::{
     bootstrap::Pipeline,
     crosscut,
     model::{ChainSyncCommand, ChainSyncCommandEx},
+    storage,
 };
 
 use self::transport::Transport;
@@ -29,15 +30,29 @@ pub struct Config {
     pub address: String,
 }
 
-pub struct Plugin {
+impl Config {
+    pub fn bootstrapper(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Bootstrapper {
+        Bootstrapper {
+            config: self,
+            intersect: intersect.clone(),
+            chain: chain.clone(),
+            output: Default::default(),
+        }
+    }
+}
+
+pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    cursor: crosscut::Cursor,
     output: FanoutPort<ChainSyncCommandEx>,
 }
 
-impl Plugin {
+impl Bootstrapper {
     fn bootstrap_transport(&self) -> Result<Transport, gasket::error::Error> {
         gasket::retries::retry_operation(
             || Transport::setup(&self.config.address, self.chain.magic).or_work_err(),
@@ -50,14 +65,12 @@ impl Plugin {
             None,
         )
     }
-}
 
-impl super::Pluggable for Plugin {
-    fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut FanoutPort<ChainSyncCommandEx> {
         &mut self.output
     }
 
-    fn spawn(self, pipeline: &mut Pipeline) {
+    pub fn spawn(self, pipeline: &mut Pipeline, storage: &storage::ReadPlugin) {
         let mut transport = self
             .bootstrap_transport()
             .expect("transport should be connected after several retries");
@@ -66,7 +79,7 @@ impl super::Pluggable for Plugin {
         let bf_channel = transport.muxer.use_channel(3);
 
         let known_points =
-            utils::define_known_points(&self.chain, &self.intersect, &self.cursor, &mut cs_channel)
+            utils::define_known_points(&self.chain, &self.intersect, storage, &mut cs_channel)
                 .expect("chainsync known-points should be defined");
 
         let mut headers_out = OutputPort::<ChainSyncCommand>::default();
@@ -88,24 +101,5 @@ impl super::Pluggable for Plugin {
                 gasket::runtime::Policy::default(),
             ),
         );
-    }
-}
-
-impl Config {
-    pub fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        intersect: &crosscut::IntersectConfig,
-        cursor: &crosscut::Cursor,
-    ) -> super::Plugin {
-        let plugin = Plugin {
-            config: self,
-            intersect: intersect.clone(),
-            chain: chain.clone(),
-            cursor: cursor.clone(),
-            output: Default::default(),
-        };
-
-        super::Plugin::N2N(plugin)
     }
 }

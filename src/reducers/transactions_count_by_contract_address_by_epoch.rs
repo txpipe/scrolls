@@ -121,7 +121,7 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Plugin {
+    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             address_hrp: chain.address_hrp.clone(),
@@ -129,6 +129,6 @@ impl Config {
             shelley_epoch_length: chain.shelley_epoch_length.clone() as u64,
         };
 
-        super::Plugin::TransactionsCountByContractAddressByEpoch(reducer)
+        super::Reducer::TransactionsCountByContractAddressByEpoch(reducer)
     }
 }

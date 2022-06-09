@@ -80,8 +80,8 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self) -> super::Plugin {
+    pub fn plugin(self) -> super::Reducer {
         let reducer = Reducer { config: self };
-        super::Plugin::PoolByStake(reducer)
+        super::Reducer::PoolByStake(reducer)
     }
 }

@@ -67,8 +67,8 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self) -> super::Plugin {
+    pub fn plugin(self) -> super::Reducer {
         let worker = Reducer { config: self };
-        super::Plugin::PointByTx(worker)
+        super::Reducer::PointByTx(worker)
     }
 }

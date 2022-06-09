@@ -1,35 +1,69 @@
 pub mod redis;
 
 use gasket::messaging::FunnelPort;
+use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model, Error};
+use crate::{bootstrap, crosscut, model};
 
-pub trait Pluggable {
-    fn borrow_input_port(&mut self) -> &'_ mut FunnelPort<model::CRDTCommand>;
-    fn spawn(self, pipeline: &mut bootstrap::Pipeline);
-    fn read_cursor(&self) -> Result<crosscut::Cursor, Error>;
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+pub enum Config {
+    Redis(redis::Config),
 }
 
-pub enum Plugin {
-    Redis(redis::Worker),
+impl Config {
+    pub fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        intersect: &crosscut::IntersectConfig,
+    ) -> Bootstrapper {
+        match self {
+            Config::Redis(c) => Bootstrapper::Redis(c.boostrapper(chain, intersect)),
+        }
+    }
 }
 
-impl Plugin {
+pub enum Bootstrapper {
+    Redis(redis::Bootstrapper),
+}
+
+impl Bootstrapper {
     pub fn borrow_input_port(&mut self) -> &'_ mut FunnelPort<model::CRDTCommand> {
         match self {
-            Plugin::Redis(x) => x.borrow_input_port(),
+            Bootstrapper::Redis(x) => x.borrow_input_port(),
         }
     }
 
-    pub fn read_cursor(&self) -> Result<crosscut::Cursor, Error> {
+    pub fn build_read_plugin(&self) -> ReadPlugin {
         match self {
-            Plugin::Redis(x) => x.read_cursor(),
+            Bootstrapper::Redis(x) => ReadPlugin::Redis(x.build_read_plugin()),
         }
     }
 
-    pub fn spawn(self, pipeline: &mut bootstrap::Pipeline) {
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
         match self {
-            Plugin::Redis(x) => x.spawn(pipeline),
+            Bootstrapper::Redis(x) => x.spawn_stages(pipeline),
+        }
+    }
+}
+
+pub enum ReadPlugin {
+    Redis(redis::ReadPlugin),
+}
+
+impl ReadPlugin {
+    pub fn read_state(
+        &mut self,
+        query: model::StateQuery,
+    ) -> Result<model::StateData, crate::Error> {
+        match self {
+            ReadPlugin::Redis(x) => x.read_state(query),
+        }
+    }
+
+    pub fn read_cursor(&self) -> Result<crosscut::Cursor, crate::Error> {
+        match self {
+            ReadPlugin::Redis(x) => x.read_cursor(),
         }
     }
 }
