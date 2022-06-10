@@ -11,17 +11,12 @@ pub mod pool_by_stake;
 pub mod utxo_by_address;
 mod worker;
 
-#[cfg(feature = "unstable")]
 pub mod address_by_txo;
-#[cfg(feature = "unstable")]
+pub mod plutus_script_by_hash;
 pub mod total_transactions_count;
-#[cfg(feature = "unstable")]
 pub mod total_transactions_count_by_contract_addresses;
-#[cfg(feature = "unstable")]
 pub mod transactions_count_by_contract_address;
-#[cfg(feature = "unstable")]
 pub mod transactions_count_by_contract_address_by_epoch;
-#[cfg(feature = "unstable")]
 pub mod transactions_count_by_epoch;
 
 #[derive(Deserialize)]
@@ -31,19 +26,21 @@ pub enum Config {
     PointByTx(point_by_tx::Config),
     PoolByStake(pool_by_stake::Config),
 
-    #[cfg(feature = "unstable")]
+    
     AddressByTxo(address_by_txo::Config),
-    #[cfg(feature = "unstable")]
+    
+    PlutusScriptByHash(plutus_script_by_hash::Config),
+    
     TotalTransactionsCount(total_transactions_count::Config),
-    #[cfg(feature = "unstable")]
+    
     TransactionsCountByEpoch(transactions_count_by_epoch::Config),
-    #[cfg(feature = "unstable")]
+    
     TransactionsCountByContractAddress(transactions_count_by_contract_address::Config),
-    #[cfg(feature = "unstable")]
+    
     TransactionsCountByContractAddressByEpoch(
         transactions_count_by_contract_address_by_epoch::Config,
     ),
-    #[cfg(feature = "unstable")]
+    
     TotalTransactionsCountByContractAddresses(
         total_transactions_count_by_contract_addresses::Config,
     ),
@@ -56,17 +53,19 @@ impl Config {
             Config::PointByTx(c) => c.plugin(),
             Config::PoolByStake(c) => c.plugin(),
 
-            #[cfg(feature = "unstable")]
+            
             Config::AddressByTxo(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
+            
+            Config::PlutusScriptByHash(c) => c.plugin(chain),
+            
             Config::TotalTransactionsCount(c) => c.plugin(),
-            #[cfg(feature = "unstable")]
+            
             Config::TransactionsCountByEpoch(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
+            
             Config::TransactionsCountByContractAddress(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
+            
             Config::TransactionsCountByContractAddressByEpoch(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
+            
             Config::TotalTransactionsCountByContractAddresses(c) => c.plugin(),
         }
     }
@@ -106,19 +105,21 @@ pub enum Reducer {
     PointByTx(point_by_tx::Reducer),
     PoolByStake(pool_by_stake::Reducer),
 
-    #[cfg(feature = "unstable")]
+    
     AddressByTxo(address_by_txo::Reducer),
-    #[cfg(feature = "unstable")]
+    
+    PlutusScriptByHash(plutus_script_by_hash::Reducer),
+    
     TotalTransactionsCount(total_transactions_count::Reducer),
-    #[cfg(feature = "unstable")]
+    
     TransactionsCountByEpoch(transactions_count_by_epoch::Reducer),
-    #[cfg(feature = "unstable")]
+    
     TransactionsCountByContractAddress(transactions_count_by_contract_address::Reducer),
-    #[cfg(feature = "unstable")]
+    
     TransactionsCountByContractAddressByEpoch(
         transactions_count_by_contract_address_by_epoch::Reducer,
     ),
-    #[cfg(feature = "unstable")]
+    
     TotalTransactionsCountByContractAddresses(
         total_transactions_count_by_contract_addresses::Reducer,
     ),
@@ -135,17 +136,19 @@ impl Reducer {
             Reducer::PointByTx(x) => x.reduce_block(block, output),
             Reducer::PoolByStake(x) => x.reduce_block(block, output),
 
-            #[cfg(feature = "unstable")]
+            
             Reducer::AddressByTxo(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
+            
+            Reducer::PlutusScriptByHash(x) => x.reduce_block(block, output),
+            
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
+            
             Reducer::TransactionsCountByEpoch(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
+            
             Reducer::TransactionsCountByContractAddress(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
+            
             Reducer::TransactionsCountByContractAddressByEpoch(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
+            
             Reducer::TotalTransactionsCountByContractAddresses(x) => x.reduce_block(block, output),
         }
     }

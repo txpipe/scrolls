@@ -14,13 +14,16 @@ key_prefix = "c2"
 type = "PoolByStake"
 key_prefix = "c3"
 
+[[reducers]]
+type = "PlutusScriptByHash"
+key_prefix = "c4"
+
 [storage]
 type = "Redis"
-connection_params = "redis://redis:6379"
+connection_params = "redis://localhost:6379"
 
 [intersect]
-type = "Point"
-value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
+type = "Tip"
 
 [chain]
 type = "Mainnet"
