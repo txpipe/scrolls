@@ -1,5 +1,5 @@
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::byron;
+use pallas::ledger::primitives::{byron, ToHash};
 use serde::Deserialize;
 
 use crate::model;

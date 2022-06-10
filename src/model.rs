@@ -1,7 +1,7 @@
-use std::{collections::HashSet, ops::Deref, sync::Arc};
+use std::{collections::HashSet, ops::Deref};
 
 use pallas::{
-    ledger::primitives::{alonzo, byron},
+    ledger::primitives::{alonzo, byron, probing, Era, Fragment, ToHash},
     network::miniprotocols::Point,
 };
 
@@ -29,14 +29,14 @@ impl ChainSyncCommand {
 
 #[derive(Debug, Clone)]
 pub enum ChainSyncCommandEx {
-    RollForward(Arc<MultiEraBlock>),
+    RollForward(Vec<u8>),
     RollBack(Point),
 }
 
 impl ChainSyncCommandEx {
-    pub fn roll_forward(block: MultiEraBlock) -> gasket::messaging::Message<Self> {
+    pub fn roll_forward(block: Vec<u8>) -> gasket::messaging::Message<Self> {
         gasket::messaging::Message {
-            payload: Self::RollForward(Arc::new(block)),
+            payload: Self::RollForward(block),
         }
     }
 
@@ -48,12 +48,40 @@ impl ChainSyncCommandEx {
 }
 
 #[derive(Debug)]
-pub enum MultiEraBlock {
-    AlonzoCompatible(alonzo::BlockWrapper),
+pub enum MultiEraBlock<'b> {
+    AlonzoCompatible(alonzo::BlockWrapper<'b>),
     Byron(byron::Block),
 }
 
-impl MultiEraBlock {
+pub fn parse_block_content(body: &[u8]) -> Result<MultiEraBlock, Error> {
+    match probing::probe_block_cbor_era(&body) {
+        probing::Outcome::Matched(era) => match era {
+            Era::Byron => {
+                let primitive = byron::Block::decode_fragment(&body)?;
+                let block = MultiEraBlock::Byron(primitive);
+                Ok(block)
+            }
+            _ => {
+                let primitive = alonzo::BlockWrapper::decode_fragment(&body)?;
+                let block = MultiEraBlock::AlonzoCompatible(primitive);
+                Ok(block)
+            }
+        },
+        // TODO: we're assuming that the genesis block is Byron-compatible. Is this a safe
+        // assumption?
+        probing::Outcome::GenesisBlock => {
+            let primitive = byron::Block::decode_fragment(&body)?;
+            let block = MultiEraBlock::Byron(primitive);
+            Ok(block)
+        }
+        probing::Outcome::Inconclusive => {
+            let msg = format!("can't infer primitive block from cbor, inconclusive probing. CBOR hex for debugging: {}", hex::encode(body));
+            return Err(Error::Message(msg));
+        }
+    }
+}
+
+impl<'b> MultiEraBlock<'b> {
     pub fn point(&self) -> Result<Point, Error> {
         match self {
             MultiEraBlock::Byron(x) => match x.deref() {
@@ -69,7 +97,7 @@ impl MultiEraBlock {
                 }
             },
             MultiEraBlock::AlonzoCompatible(x) => {
-                let hash = alonzo::crypto::hash_block_header(&x.1.header);
+                let hash = &x.1.header.to_hash();
                 Ok(Point::Specific(x.1.header.header_body.slot, hash.to_vec()))
             }
         }

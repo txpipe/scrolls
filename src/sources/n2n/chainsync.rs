@@ -1,9 +1,5 @@
-use std::cell::Cell;
-
-use pallas::network::{
-    miniprotocols::{self, chainsync, Error, Point},
-    multiplexer::Channel,
-};
+use pallas::network::miniprotocols::{self, chainsync, Agent, Point};
+use pallas::network::multiplexer;
 
 use gasket::{
     error::AsWorkError,
@@ -44,7 +40,7 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
         &mut self,
         content: chainsync::HeaderContent,
         tip: &chainsync::Tip,
-    ) -> Result<chainsync::Continuation, Error> {
+    ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
         // parse the header and extract the point of the chain
         let header = messages::MultiEraHeader::try_from(content)?;
         let point = header.read_cursor()?;
@@ -77,7 +73,10 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
         Ok(chainsync::Continuation::Proceed)
     }
 
-    fn on_rollback(&mut self, point: &Point) -> Result<chainsync::Continuation, Error> {
+    fn on_rollback(
+        &mut self,
+        point: &Point,
+    ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
         log::info!("rolling block to point {:?}", point);
 
         match self.chain_buffer.roll_back(point) {
@@ -96,16 +95,15 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
 }
 
 type OutputPort = gasket::messaging::OutputPort<ChainSyncCommand>;
-type Runner = miniprotocols::Runner<chainsync::HeaderConsumer<ChainObserver>>;
 
 pub struct Worker {
-    channel: Channel,
-    pub min_depth: usize,
+    channel: multiplexer::StdChannelBuffer,
+    min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
     //finalize_config: Option<FinalizeConfig>,
     state: storage::ReadPlugin,
-    runner: Cell<Option<Runner>>,
+    agent: Option<chainsync::HeaderConsumer<ChainObserver>>,
     output: OutputPort,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
@@ -113,7 +111,7 @@ pub struct Worker {
 
 impl Worker {
     pub fn new(
-        channel: Channel,
+        channel: multiplexer::StdChannelBuffer,
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
@@ -127,7 +125,7 @@ impl Worker {
             intersect,
             state,
             output,
-            runner: Cell::new(None),
+            agent: None,
             block_count: Default::default(),
             chain_tip: Default::default(),
         }
@@ -153,37 +151,37 @@ impl gasket::runtime::Worker for Worker {
         )
         .or_work_err()?;
 
-        let mut runner = Runner::new(chainsync::Consumer::initial(
+        log::warn!("{:?}", known_points);
+
+        let agent = chainsync::Consumer::initial(
             known_points,
             ChainObserver::new(
-                self.min_depth as usize,
+                self.min_depth,
                 self.block_count.clone(),
                 self.chain_tip.clone(),
                 self.output.clone(),
             ),
-        ));
+        )
+        .apply_start()
+        .or_work_err()?;
 
-        runner.start().or_work_err()?;
-
-        self.runner.set(Some(runner));
+        self.agent = Some(agent);
 
         Ok(())
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        match self
-            .runner
-            .get_mut()
-            .as_mut()
-            .unwrap()
-            .run_step(&mut self.channel)
-        {
-            Ok(true) => Ok(gasket::runtime::WorkOutcome::Done),
-            Ok(false) => Ok(gasket::runtime::WorkOutcome::Partial),
-            Err(err) => Err(gasket::error::Error::WorkError(format!(
-                "chainsync agent error {:?}",
-                err
-            ))),
+        let agent = self.agent.take().unwrap();
+
+        let agent = miniprotocols::run_agent_step(agent, &mut self.channel).or_work_err()?;
+
+        let is_done = agent.is_done();
+
+        self.agent = Some(agent);
+
+        match is_done {
+            true => Ok(gasket::runtime::WorkOutcome::Done),
+            false => Ok(gasket::runtime::WorkOutcome::Partial),
         }
     }
 }
