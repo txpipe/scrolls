@@ -1,27 +1,21 @@
 use std::{collections::HashMap, ops::Deref};
 
-use pallas::network::{
-    miniprotocols::{self, chainsync, Error, Point},
-    multiplexer::Channel,
-};
+use pallas::network::miniprotocols::{self, chainsync, Agent, Point};
+use pallas::network::multiplexer;
 
 use gasket::{
     error::AsWorkError,
     metrics::{Counter, Gauge},
 };
 
-use crate::{
-    crosscut,
-    model::{ChainSyncCommandEx, MultiEraBlock},
-    sources::utils,
-    storage,
-};
+use crate::model;
+use crate::{crosscut, model::ChainSyncCommandEx, sources::utils, storage};
 
 struct ChainObserver {
     min_depth: usize,
     output: OutputPort,
     chain_buffer: chainsync::RollbackBuffer,
-    blocks: HashMap<Point, MultiEraBlock>,
+    blocks: HashMap<Point, Vec<u8>>,
     block_count: gasket::metrics::Counter,
     chain_tip: Gauge,
 }
@@ -44,14 +38,14 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
         &mut self,
         content: chainsync::BlockContent,
         tip: &chainsync::Tip,
-    ) -> Result<chainsync::Continuation, Error> {
+    ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
         // parse the block and extract the point of the chain
         let cbor = Vec::from(content.deref());
-        let block = utils::parse_block_content(&cbor)?;
+        let block = model::parse_block_content(&cbor)?;
         let point = block.point()?;
 
         // store the block for later retrieval
-        self.blocks.insert(point.clone(), block);
+        self.blocks.insert(point.clone(), cbor);
 
         // track the new point in our memory buffer
         log::info!("rolling forward to point {:?}", point);
@@ -78,7 +72,10 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
         Ok(chainsync::Continuation::Proceed)
     }
 
-    fn on_rollback(&mut self, point: &Point) -> Result<chainsync::Continuation, Error> {
+    fn on_rollback(
+        &mut self,
+        point: &Point,
+    ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
         log::info!("rolling block to point {:?}", point);
 
         match self.chain_buffer.roll_back(point) {
@@ -97,24 +94,24 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
 }
 
 type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
-type Runner = miniprotocols::Runner<chainsync::BlockConsumer<ChainObserver>>;
+type MyAgent = chainsync::BlockConsumer<ChainObserver>;
 
 pub struct Worker {
-    channel: Channel,
-    pub min_depth: usize,
+    channel: multiplexer::StdChannelBuffer,
+    min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
-    state: storage::ReadPlugin,
-    output: OutputPort,
     //finalize_config: Option<FinalizeConfig>,
-    runner: Option<Runner>,
+    state: storage::ReadPlugin,
+    agent: Option<MyAgent>,
+    output: OutputPort,
     block_count: gasket::metrics::Counter,
-    chain_tip: Gauge,
+    chain_tip: gasket::metrics::Gauge,
 }
 
 impl Worker {
     pub fn new(
-        channel: Channel,
+        channel: multiplexer::StdChannelBuffer,
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
@@ -128,7 +125,7 @@ impl Worker {
             intersect,
             state,
             output,
-            runner: None,
+            agent: None,
             block_count: Default::default(),
             chain_tip: Default::default(),
         }
@@ -154,7 +151,7 @@ impl gasket::runtime::Worker for Worker {
         )
         .or_work_err()?;
 
-        let mut runner = Runner::new(chainsync::Consumer::initial(
+        let agent = MyAgent::initial(
             known_points,
             ChainObserver::new(
                 self.min_depth,
@@ -162,23 +159,27 @@ impl gasket::runtime::Worker for Worker {
                 self.chain_tip.clone(),
                 self.output.clone(),
             ),
-        ));
+        )
+        .apply_start()
+        .or_work_err()?;
 
-        runner.start().or_work_err()?;
-
-        self.runner = Some(runner);
+        self.agent = Some(agent);
 
         Ok(())
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        match self.runner.as_mut().unwrap().run_step(&mut self.channel) {
-            Ok(true) => Ok(gasket::runtime::WorkOutcome::Done),
-            Ok(false) => Ok(gasket::runtime::WorkOutcome::Partial),
-            Err(err) => Err(gasket::error::Error::WorkError(format!(
-                "chainsync agent error {:?}",
-                err
-            ))),
+        let agent = self.agent.take().unwrap();
+
+        let agent = miniprotocols::run_agent_step(agent, &mut self.channel).or_work_err()?;
+
+        let is_done = agent.is_done();
+
+        self.agent = Some(agent);
+
+        match is_done {
+            true => Ok(gasket::runtime::WorkOutcome::Done),
+            false => Ok(gasket::runtime::WorkOutcome::Partial),
         }
     }
 }

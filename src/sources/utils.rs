@@ -1,44 +1,13 @@
-use pallas::{
-    ledger::primitives::{alonzo, byron, probing, Era, Fragment},
-    network::{
-        miniprotocols::{chainsync::TipFinder, run_agent, Point},
-        multiplexer::Channel,
-    },
+use pallas::network::{
+    miniprotocols::{chainsync::TipFinder, run_agent, Point},
+    multiplexer::StdChannelBuffer,
 };
 
-use crate::{crosscut, model, storage, Error};
-
-pub fn parse_block_content(body: &[u8]) -> Result<model::MultiEraBlock, Error> {
-    match probing::probe_block_cbor_era(&body) {
-        probing::Outcome::Matched(era) => match era {
-            Era::Byron => {
-                let primitive = byron::Block::decode_fragment(&body)?;
-                let block = model::MultiEraBlock::Byron(primitive);
-                Ok(block)
-            }
-            _ => {
-                let primitive = alonzo::BlockWrapper::decode_fragment(&body)?;
-                let block = model::MultiEraBlock::AlonzoCompatible(primitive);
-                Ok(block)
-            }
-        },
-        // TODO: we're assuming that the genesis block is Byron-compatible. Is this a safe
-        // assumption?
-        probing::Outcome::GenesisBlock => {
-            let primitive = byron::Block::decode_fragment(&body)?;
-            let block = model::MultiEraBlock::Byron(primitive);
-            Ok(block)
-        }
-        probing::Outcome::Inconclusive => {
-            let msg = format!("can't infer primitive block from cbor, inconclusive probing. CBOR hex for debugging: {}", hex::encode(body));
-            return Err(Error::Message(msg));
-        }
-    }
-}
+use crate::{crosscut, storage};
 
 pub fn find_end_of_chain(
     chain: &crosscut::ChainWellKnownInfo,
-    channel: &mut Channel,
+    channel: &mut StdChannelBuffer,
 ) -> Result<Point, crate::Error> {
     let point = Point::Specific(
         chain.shelley_known_slot,
@@ -59,7 +28,7 @@ pub fn define_known_points(
     chain: &crosscut::ChainWellKnownInfo,
     intersect: &crosscut::IntersectConfig,
     storage: &mut storage::ReadPlugin,
-    channel: &mut Channel,
+    channel: &mut StdChannelBuffer,
 ) -> Result<Option<Vec<Point>>, crate::Error> {
     // if we have a cursor available, it should override any other configuration
     // opiton

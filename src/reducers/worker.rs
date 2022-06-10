@@ -1,4 +1,4 @@
-use gasket::runtime::WorkOutcome;
+use gasket::{error::AsWorkError, runtime::WorkOutcome};
 
 use crate::{model, storage};
 
@@ -31,18 +31,20 @@ impl Worker {
         }
     }
 
-    fn reduce_block(&mut self, block: &model::MultiEraBlock) -> Result<(), gasket::error::Error> {
+    fn reduce_block(&mut self, block: &[u8]) -> Result<(), gasket::error::Error> {
+        let block = model::parse_block_content(block).or_work_err()?;
+
         self.output.send(gasket::messaging::Message::from(
-            model::CRDTCommand::block_starting(block),
+            model::CRDTCommand::block_starting(&block),
         ))?;
 
         for reducer in self.reducers.iter_mut() {
-            reducer.reduce_block(block, &mut self.state, &mut self.output)?;
+            reducer.reduce_block(&block, &mut self.state, &mut self.output)?;
             self.ops_count.inc(1);
         }
 
         self.output.send(gasket::messaging::Message::from(
-            model::CRDTCommand::block_finished(block),
+            model::CRDTCommand::block_finished(&block),
         ))?;
 
         Ok(())

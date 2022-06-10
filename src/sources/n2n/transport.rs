@@ -1,50 +1,55 @@
-use std::net::TcpStream;
-
 use pallas::network::{
     miniprotocols::{self, handshake},
-    multiplexer::Multiplexer,
+    multiplexer,
 };
 
 pub struct Transport {
-    pub muxer: Multiplexer,
+    pub channel2: multiplexer::StdChannelBuffer,
+    pub channel3: multiplexer::StdChannelBuffer,
     pub version: handshake::VersionNumber,
 }
 
 impl Transport {
-    fn connect_muxer(address: &str) -> Result<Multiplexer, miniprotocols::Error> {
-        log::debug!("connecting muxer");
-
-        let tcp = TcpStream::connect(address)?;
-        tcp.set_nodelay(true)?;
-        //tcp.set_keepalive_ms(Some(30_000u32))?;
-
-        let muxer = Multiplexer::setup(tcp, &[0, 2, 3])?;
-
-        Ok(muxer)
-    }
-
     fn do_handshake(
-        muxer: &mut Multiplexer,
+        channel: &mut multiplexer::StdChannelBuffer,
         magic: u64,
-    ) -> Result<handshake::VersionNumber, miniprotocols::Error> {
+    ) -> Result<handshake::VersionNumber, crate::Error> {
         log::debug!("doing handshake");
 
-        let mut channel = muxer.use_channel(0);
         let versions = handshake::n2n::VersionTable::v6_and_above(magic);
-        let agent =
-            miniprotocols::run_agent(handshake::Initiator::initial(versions), &mut channel)?;
+        let agent = miniprotocols::run_agent(handshake::Initiator::initial(versions), channel)
+            .map_err(crate::Error::ouroboros)?;
+
         log::info!("handshake output: {:?}", agent.output);
 
         match agent.output {
             handshake::Output::Accepted(version, _) => Ok(version),
-            _ => Err("couldn't agree on handshake version".into()),
+            _ => Err(crate::Error::ouroboros(
+                "couldn't agree on handshake version",
+            )),
         }
     }
 
-    pub fn setup(address: &str, magic: u64) -> Result<Self, miniprotocols::Error> {
-        let mut muxer = Self::connect_muxer(address)?;
-        let version = Self::do_handshake(&mut muxer, magic)?;
+    pub fn setup(address: &str, magic: u64) -> Result<Self, crate::Error> {
+        log::debug!("connecting muxer");
 
-        Ok(Self { muxer, version })
+        let bearer =
+            multiplexer::bearers::Bearer::connect_tcp(address).map_err(crate::Error::network)?;
+        let mut plexer = multiplexer::StdPlexer::new(bearer);
+
+        let mut channel0 = plexer.use_channel(0).into();
+        let channel2 = plexer.use_channel(2).into();
+        let channel3 = plexer.use_channel(3).into();
+
+        plexer.muxer.spawn();
+        plexer.demuxer.spawn();
+
+        let version = Self::do_handshake(&mut channel0, magic)?;
+
+        Ok(Self {
+            channel2,
+            channel3,
+            version,
+        })
     }
 }

@@ -51,7 +51,7 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    fn bootstrap_transport(&self) -> Result<Transport, gasket::error::Error> {
+    fn bootstrap_transport(&self) -> Result<Transport, crate::Error> {
         gasket::retries::retry_operation(
             || Transport::setup(&self.config.address, self.chain.magic).or_work_err(),
             &retries::Policy {
@@ -62,6 +62,7 @@ impl Bootstrapper {
             },
             None,
         )
+        .map_err(crate::Error::source)
     }
 
     pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<ChainSyncCommandEx> {
@@ -69,12 +70,9 @@ impl Bootstrapper {
     }
 
     pub fn spawn_stages(self, pipeline: &mut Pipeline, state: storage::ReadPlugin) {
-        let mut transport = self
+        let transport = self
             .bootstrap_transport()
             .expect("transport should be connected after several retries");
-
-        let cs_channel = transport.muxer.use_channel(2);
-        let bf_channel = transport.muxer.use_channel(3);
 
         let mut headers_out = OutputPort::<ChainSyncCommand>::default();
         let mut headers_in = InputPort::<ChainSyncCommand>::default();
@@ -84,7 +82,7 @@ impl Bootstrapper {
             "n2n-headers",
             gasket::runtime::spawn_stage(
                 self::chainsync::Worker::new(
-                    cs_channel,
+                    transport.channel2,
                     0,
                     self.chain,
                     self.intersect,
@@ -98,7 +96,7 @@ impl Bootstrapper {
         pipeline.register_stage(
             "n2n-blocks",
             gasket::runtime::spawn_stage(
-                self::blockfetch::Worker::new(bf_channel, headers_in, self.output),
+                self::blockfetch::Worker::new(transport.channel3, headers_in, self.output),
                 gasket::runtime::Policy::default(),
             ),
         );

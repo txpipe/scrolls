@@ -1,6 +1,6 @@
 use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::{alonzo, byron};
+use pallas::ledger::primitives::{alonzo, byron, ToHash};
 use serde::Deserialize;
 
 use crate::{crosscut, model, storage};

@@ -14,14 +14,17 @@ pub enum Error {
     #[error("configuration error: {0}")]
     ConfigError(String),
 
-    #[error("network transport error: {0}")]
-    TransportError(String),
+    #[error("network error: {0}")]
+    NetworkError(String),
 
     #[error("ouroboros error: {0}")]
     OuroborosError(String),
 
     #[error("ledger error: {0}")]
     LedgerError(String),
+
+    #[error("source error: {0}")]
+    SourceError(String),
 
     #[error("ledger error: {0}")]
     StorageError(String),
@@ -42,12 +45,20 @@ impl Error {
         Error::Message(text.into())
     }
 
-    pub fn ouroboros(error: Box<dyn std::error::Error>) -> Error {
-        Error::OuroborosError(format!("{}", error))
+    pub fn network(error: impl Display) -> Error {
+        Error::NetworkError(format!("network error: {}", error))
+    }
+
+    pub fn ouroboros(error: impl Display) -> Error {
+        Error::OuroborosError(format!("ouroboros error: {}", error))
+    }
+
+    pub fn source(error: impl Display) -> Error {
+        Error::SourceError(format!("source error: {}", error))
     }
 
     pub fn storage(error: impl Display) -> Error {
-        Error::StorageError(format!("{}", error))
+        Error::StorageError(format!("storage error: {}", error))
     }
 
     pub fn custom(error: Box<dyn std::error::Error>) -> Error {
