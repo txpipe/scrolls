@@ -1,5 +1,6 @@
 pub mod bootstrap;
 pub mod crosscut;
+pub mod enrich;
 pub mod model;
 pub mod reducers;
 pub mod sources;
@@ -19,6 +20,9 @@ pub enum Error {
 
     #[error("ouroboros error: {0}")]
     OuroborosError(String),
+
+    #[error("cbor error: {0}")]
+    CborError(String),
 
     #[error("ledger error: {0}")]
     LedgerError(String),
@@ -47,6 +51,10 @@ impl Error {
 
     pub fn network(error: impl Display) -> Error {
         Error::NetworkError(format!("network error: {}", error))
+    }
+
+    pub fn cbor(error: impl Display) -> Error {
+        Error::CborError(format!("cbor error: {}", error))
     }
 
     pub fn ouroboros(error: impl Display) -> Error {

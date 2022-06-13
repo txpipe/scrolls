@@ -1,5 +1,6 @@
 use pallas::ledger::primitives::alonzo;
 use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
+use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
 use serde::Deserialize;
 
 use crate::model;
@@ -40,10 +41,10 @@ impl Reducer {
         Ok(())
     }
 
-    fn reduce_alonzo_compatible_tx(
+    fn reduce_tx(
         &mut self,
         slot: u64,
-        tx: &alonzo::TransactionBody,
+        tx: &MultiEraTx,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         tx.iter()
@@ -62,20 +63,15 @@ impl Reducer {
 
     pub fn reduce_block(
         &mut self,
-        block: &model::MultiEraBlock,
+        block: &MultiEraBlock,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        match block {
-            model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(block) => block
-                .1
-                .transaction_bodies
-                .iter()
-                .map(|tx| {
-                    self.reduce_alonzo_compatible_tx(block.1.header.header_body.slot, tx, output)
-                })
-                .collect(),
-        }
+        let slot = block.slot();
+
+        block
+            .tx_iter()
+            .map(|tx| self.reduce_tx(slot, tx, output))
+            .collect()
     }
 }
 
