@@ -58,6 +58,10 @@ impl gasket::runtime::Worker for Worker {
             .build()
     }
 
+    fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
+        self.state.bootstrap().or_work_err()
+    }
+
     fn work(&mut self) -> gasket::runtime::WorkResult {
         let msg = self.input.recv()?;
 
