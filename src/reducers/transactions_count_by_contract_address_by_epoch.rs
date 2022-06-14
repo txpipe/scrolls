@@ -1,4 +1,7 @@
-use pallas::ledger::primitives::alonzo;
+use pallas::ledger::{
+    primitives::alonzo,
+    traverse::{Feature, MultiEraBlock},
+};
 use serde::Deserialize;
 
 use crate::{
@@ -6,6 +9,7 @@ use crate::{
     model,
 };
 
+use core::slice::SlicePattern;
 use std::collections::HashSet;
 
 #[derive(Deserialize)]
@@ -23,7 +27,7 @@ pub struct Reducer {
 impl Reducer {
     fn increment_for_addresses(
         &mut self,
-        contract_addresses: &std::collections::HashSet<String>,
+        address: &str,
         slot: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -33,90 +37,41 @@ impl Reducer {
             slot,
         );
 
-        for contract_address in contract_addresses {
-            let key = match &self.config.key_prefix {
-                Some(prefix) => format!("{}.{}.{}", prefix, contract_address.to_string(), epoch_no),
-                None => format!("{}.{}", contract_address.to_string(), epoch_no),
-            };
+        let key = match &self.config.key_prefix {
+            Some(prefix) => format!("{}.{}.{}", prefix, address.to_string(), epoch_no),
+            None => format!("{}.{}", address.to_string(), epoch_no),
+        };
 
-            let crdt = model::CRDTCommand::PNCounter(key, 1);
-            output.send(gasket::messaging::Message::from(crdt))?;
-        }
+        let crdt = model::CRDTCommand::PNCounter(key, 1);
+        output.send(gasket::messaging::Message::from(crdt))?;
 
         Ok(())
     }
 
-    fn reduce_alonzo_compatible_tx(
-        &mut self,
-        tx: &alonzo::TransactionBody,
-        slot: u64,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        let hrp_addr = &self.address_hrp.clone();
-
-        let addresses: Vec<Option<String>> = tx
-            .iter()
-            .filter_map(|b| match b {
-                alonzo::TransactionBodyComponent::Outputs(o) => Some(o),
-                _ => None,
-            })
-            .flat_map(|o| o.iter())
-            .enumerate()
-            .map(move |(_tx_idx, output)| {
-                let address = output.to_bech32_address(hrp_addr).unwrap();
-
-                fn get_bit_at(input: u8, n: u8) -> bool {
-                    if n < 32 {
-                        input & (1 << n) != 0
-                    } else {
-                        false
-                    }
-                }
-
-                // first byte of address is header
-                let first_byte_of_address = output.address.as_slice()[0];
-                // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/alonzo/test-suite/cddl-files/alonzo.cddl#L135
-                let is_smart_contract_address = get_bit_at(first_byte_of_address, 4);
-
-                if is_smart_contract_address {
-                    return Some(address);
-                }
-
-                return None::<String>;
-            })
-            .collect();
-
-        if addresses.len() == 0 {
-            return Result::Ok(());
-        }
-
-        let currated_addresses: Vec<String> = addresses
-            .into_iter()
-            .filter(|x| x.is_some())
-            .map(|x| x.unwrap())
-            .collect();
-
-        let deduped_addresses: HashSet<String> = HashSet::from_iter(currated_addresses);
-
-        return self.increment_for_addresses(&deduped_addresses, slot, output);
-    }
-
     pub fn reduce_block(
         &mut self,
-        block: &model::MultiEraBlock,
+        block: &MultiEraBlock,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        match block {
-            model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(x) => {
-                let slot = x.1.header.header_body.slot;
+        if block.era().has_feature(Feature::SmartContracts) {
+            let slot = block.slot();
 
-                x.1.transaction_bodies
+            for tx in block.txs() {
+                let addresses: HashSet<_> = tx
+                    .outputs()
                     .iter()
-                    .map(|tx| self.reduce_alonzo_compatible_tx(tx, slot, output))
-                    .collect()
+                    .filter_map(|tx| tx.as_alonzo())
+                    .filter(|x| crosscut::addresses::is_smart_contract(x.address.as_slice()))
+                    .filter_map(|x| x.to_bech32_address(&self.address_hrp).ok())
+                    .collect();
+
+                for address in addresses {
+                    self.increment_for_addresses(address, slot, output)?;
+                }
             }
         }
+
+        Ok(())
     }
 }
 

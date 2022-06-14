@@ -34,18 +34,19 @@ impl Reducer {
         Ok(())
     }
 
-    pub fn reduce_block(
+    pub fn reduce_block<'b>(
         &mut self,
-        block: &MultiEraBlock,
+        block: &'b MultiEraBlock<'b>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let block_hash = block.hash();
         let block_slot = block.slot();
 
-        block
-            .tx_iter()
-            .map(|tx| self.send_set_add(tx.hash(), block_slot, block_hash, output))
-            .collect()
+        for tx in &block.txs() {
+            self.send_set_add(tx.hash(), block_slot, block_hash, output)?;
+        }
+
+        Ok(())
     }
 }
 

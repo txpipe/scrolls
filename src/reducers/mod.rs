@@ -1,4 +1,5 @@
 use gasket::runtime::spawn_stage;
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model, storage};
@@ -125,9 +126,9 @@ pub enum Reducer {
 }
 
 impl Reducer {
-    pub fn reduce_block(
+    pub fn reduce_block<'b>(
         &mut self,
-        block: &model::MultiEraBlock,
+        block: &'b MultiEraBlock<'b>,
         state: &mut storage::ReadPlugin,
         output: &mut OutputPort,
     ) -> Result<(), gasket::error::Error> {

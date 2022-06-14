@@ -1,6 +1,6 @@
 use pallas::ledger::primitives::alonzo;
 use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::model;
@@ -41,37 +41,24 @@ impl Reducer {
         Ok(())
     }
 
-    fn reduce_tx(
+    pub fn reduce_block<'b>(
         &mut self,
-        slot: u64,
-        tx: &MultiEraTx,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        tx.iter()
-            .filter_map(|b| match b {
-                alonzo::TransactionBodyComponent::Certificates(c) => Some(c),
-                _ => None,
-            })
-            .flat_map(|c| c.iter())
-            .filter_map(|c| match c {
-                alonzo::Certificate::StakeDelegation(cred, pool) => Some((cred, pool)),
-                _ => None,
-            })
-            .map(|(cred, pool)| self.send_key_write(cred, pool, slot, output))
-            .collect()
-    }
-
-    pub fn reduce_block(
-        &mut self,
-        block: &MultiEraBlock,
+        block: &'b MultiEraBlock<'b>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let slot = block.slot();
 
-        block
-            .tx_iter()
-            .map(|tx| self.reduce_tx(slot, tx, output))
-            .collect()
+        for tx in block.txs() {
+            for cert in tx.certs() {
+                if let Some(cert) = cert.as_alonzo() {
+                    if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
+                        self.send_key_write(cred, pool, slot, output)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

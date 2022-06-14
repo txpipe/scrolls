@@ -1,7 +1,5 @@
-use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::{alonzo, byron, ToHash};
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{crosscut, model};
@@ -44,31 +42,21 @@ impl Reducer {
         Ok(())
     }
 
-    fn reduce_tx(
+    pub fn reduce_block<'b>(
         &mut self,
-        tx: &MultiEraTx,
+        block: &'b MultiEraBlock<'b>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let tx_hash = tx.hash();
+        for tx in block.txs().into_iter() {
+            let tx_hash = tx.hash();
 
-        tx.output_iter()
-            .enumerate()
-            .map(|(tx_idx, tx_output)| {
+            for tx_output in tx.outputs() {
                 let address = tx_output.address(&self.address_hrp);
-                self.send_set_add(&address, tx_hash, tx_idx, output)
-            })
-            .collect()
-    }
+                self.send_set_add(&address, tx_hash, 0, output)?;
+            }
+        }
 
-    pub fn reduce_block(
-        &mut self,
-        block: &MultiEraBlock,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        block
-            .tx_iter()
-            .map(|tx| self.reduce_tx(&tx, output))
-            .collect()
+        Ok(())
     }
 }
 
