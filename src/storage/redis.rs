@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 use gasket::{
     error::AsWorkError,
@@ -176,22 +176,23 @@ impl ReadPlugin {
                 .connection
                 .as_mut()
                 .unwrap()
-                .get(key)
-                .map(|v| StateData::KeyValue(v))
+                .get::<_, Option<String>>(key)
+                .map(|v| StateData::from(v))
                 .map_err(crate::Error::storage)?,
             model::StateQuery::LatestKeyValue(key) => self
                 .connection
                 .as_mut()
                 .unwrap()
-                .zrevrange(key, 0, 1)
-                .map(|v| StateData::KeyValue(v))
+                .zrevrange::<_, Vec<String>>(key, 0, 1)
+                .map(|v| v.first().cloned())
+                .map(|v| StateData::from(v))
                 .map_err(crate::Error::storage)?,
             model::StateQuery::SetMembers(key) => self
                 .connection
                 .as_mut()
                 .unwrap()
-                .get(key)
-                .map(|v| StateData::SetMembers(v))
+                .get::<_, Option<HashSet<String>>>(key)
+                .map(|v| StateData::from(v))
                 .map_err(crate::Error::storage)?,
         };
 

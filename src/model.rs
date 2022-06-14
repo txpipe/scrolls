@@ -5,8 +5,6 @@ use pallas::{
     network::miniprotocols::Point,
 };
 
-use crate::Error;
-
 #[derive(Debug)]
 pub enum ChainSyncCommand {
     RollForward(Point),
@@ -144,6 +142,25 @@ pub enum StateQuery {
 }
 
 pub enum StateData {
+    NotFound,
     KeyValue(Value),
     SetMembers(HashSet<Member>),
+}
+
+impl From<Option<Value>> for StateData {
+    fn from(maybe: Option<Value>) -> Self {
+        match maybe {
+            Some(x) => StateData::KeyValue(x),
+            None => StateData::NotFound,
+        }
+    }
+}
+
+impl From<Option<HashSet<Value>>> for StateData {
+    fn from(maybe: Option<HashSet<Value>>) -> Self {
+        match maybe {
+            Some(x) => StateData::SetMembers(x),
+            None => StateData::NotFound,
+        }
+    }
 }
