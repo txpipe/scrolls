@@ -1,5 +1,6 @@
 pub mod bootstrap;
 pub mod crosscut;
+pub mod enrich;
 pub mod model;
 pub mod reducers;
 pub mod sources;
