@@ -1,5 +1,5 @@
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::{byron, ToHash};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::model;
@@ -34,35 +34,19 @@ impl Reducer {
         Ok(())
     }
 
-    pub fn reduce_block(
+    pub fn reduce_block<'b>(
         &mut self,
-        block: &model::MultiEraBlock,
+        block: &'b MultiEraBlock<'b>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        match block {
-            model::MultiEraBlock::Byron(byron::Block::MainBlock(x)) => {
-                let hash = x.header.to_hash();
-                let slot = x.header.consensus_data.0.to_abs_slot();
+        let block_hash = block.hash();
+        let block_slot = block.slot();
 
-                x.body
-                    .tx_payload
-                    .iter()
-                    .map(|tx| tx.transaction.to_hash())
-                    .map(|tx| self.send_set_add(tx, slot, hash, output))
-                    .collect()
-            }
-            model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(x) => {
-                let slot = x.1.header.header_body.slot;
-                let hash = x.1.header.header_body.block_body_hash;
-
-                x.1.transaction_bodies
-                    .iter()
-                    .map(|tx| tx.to_hash())
-                    .map(|tx| self.send_set_add(tx, slot, hash, output))
-                    .collect()
-            }
+        for tx in &block.txs() {
+            self.send_set_add(tx.hash(), block_slot, block_hash, output)?;
         }
+
+        Ok(())
     }
 }
 

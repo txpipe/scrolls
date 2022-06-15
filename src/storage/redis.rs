@@ -13,7 +13,7 @@ use crate::{
     model::{self, StateData},
 };
 
-type FunnelPort = gasket::messaging::FunnelPort<model::CRDTCommand>;
+type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
@@ -35,11 +35,11 @@ impl Config {
 
 pub struct Bootstrapper {
     config: Config,
-    input: FunnelPort,
+    input: InputPort,
 }
 
 impl Bootstrapper {
-    pub fn borrow_input_port(&mut self) -> &'_ mut FunnelPort {
+    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort {
         &mut self.input
     }
 
@@ -64,7 +64,7 @@ impl Bootstrapper {
 pub struct Worker {
     config: Config,
     connection: Option<redis::Connection>,
-    input: FunnelPort,
+    input: InputPort,
 }
 
 impl gasket::runtime::Worker for Worker {

@@ -1,7 +1,7 @@
-use pallas::ledger::primitives::alonzo;
+use pallas::ledger::traverse::{Feature, MultiEraBlock};
 use serde::Deserialize;
 
-use crate::model;
+use crate::{crosscut, model};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -28,57 +28,22 @@ impl Reducer {
         Ok(())
     }
 
-    fn reduce_alonzo_compatible_tx(
-        &mut self,
-        tx: &alonzo::TransactionBody,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        let is_smart_contract_transaction = tx
-            .iter()
-            .filter_map(|b| match b {
-                alonzo::TransactionBodyComponent::Outputs(o) => Some(o),
-                _ => None,
-            })
-            .flat_map(|o| o.iter())
-            .enumerate()
-            .any(move |(_tx_idx, output)| {
-                fn get_bit_at(input: u8, n: u8) -> bool {
-                    if n < 32 {
-                        input & (1 << n) != 0
-                    } else {
-                        false
-                    }
-                }
-
-                // first byte of address is header
-                let first_byte_of_address = output.address.as_slice()[0];
-                // https://github.com/input-output-hk/cardano-ledger/blob/master/eras/alonzo/test-suite/cddl-files/alonzo.cddl#L135
-                let is_smart_contract_address = get_bit_at(first_byte_of_address, 4);
-
-                return is_smart_contract_address;
-            });
-
-        if is_smart_contract_transaction {
-            return self.increment_for_contract_address(output);
-        }
-
-        return Ok(());
-    }
-
     pub fn reduce_block(
         &mut self,
-        block: &model::MultiEraBlock,
+        block: &MultiEraBlock,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        match block {
-            model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(x) => {
-                x.1.transaction_bodies
-                    .iter()
-                    .map(|tx| self.reduce_alonzo_compatible_tx(tx, output))
-                    .collect()
+        if block.era().has_feature(Feature::SmartContracts) {
+            for tx in block.txs() {
+                for tx_out in tx.outputs().iter().filter_map(|x| x.as_alonzo()) {
+                    if crosscut::addresses::is_smart_contract(tx_out.address.as_slice()) {
+                        self.increment_for_contract_address(output)?;
+                    }
+                }
             }
         }
+
+        Ok(())
     }
 }
 

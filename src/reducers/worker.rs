@@ -1,4 +1,5 @@
 use gasket::{error::AsWorkError, runtime::WorkOutcome};
+use pallas::ledger::traverse::MultiEraBlock;
 
 use crate::{model, storage};
 
@@ -31,8 +32,8 @@ impl Worker {
         }
     }
 
-    fn reduce_block(&mut self, block: &[u8]) -> Result<(), gasket::error::Error> {
-        let block = model::parse_block_content(block).or_work_err()?;
+    fn reduce_block<'b>(&mut self, block: &'b [u8]) -> Result<(), gasket::error::Error> {
+        let block = MultiEraBlock::decode(block).or_work_err()?;
 
         self.output.send(gasket::messaging::Message::from(
             model::CRDTCommand::block_starting(&block),

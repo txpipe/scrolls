@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ops::Deref};
 
+use pallas::ledger::traverse::MultiEraBlock;
 use pallas::network::miniprotocols::{self, chainsync, Agent, Point};
 use pallas::network::multiplexer;
 
@@ -8,7 +9,6 @@ use gasket::{
     metrics::{Counter, Gauge},
 };
 
-use crate::model;
 use crate::{crosscut, model::ChainSyncCommandEx, sources::utils, storage};
 
 struct ChainObserver {
@@ -41,8 +41,8 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
     ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
         // parse the block and extract the point of the chain
         let cbor = Vec::from(content.deref());
-        let block = model::parse_block_content(&cbor)?;
-        let point = block.point()?;
+        let block = MultiEraBlock::decode(&cbor)?;
+        let point = Point::Specific(block.slot(), block.hash().to_vec());
 
         // store the block for later retrieval
         self.blocks.insert(point.clone(), cbor);
