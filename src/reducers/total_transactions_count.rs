@@ -34,7 +34,8 @@ impl Reducer {
         block: &MultiEraBlock,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        for tx in block.txs() {
+        for _tx in block.txs() {
+            // TODO apply filters using tx data
             self.increment_key(output)?;
         }
 

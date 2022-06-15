@@ -1,15 +1,8 @@
-use pallas::ledger::{
-    primitives::alonzo,
-    traverse::{Feature, MultiEraBlock},
-};
+use pallas::ledger::traverse::{Feature, MultiEraBlock};
 use serde::Deserialize;
 
-use crate::{
-    crosscut::{self, EpochCalculator},
-    model,
-};
+use crate::{crosscut, model};
 
-use core::slice::SlicePattern;
 use std::collections::HashSet;
 
 #[derive(Deserialize)]
@@ -20,26 +13,19 @@ pub struct Config {
 pub struct Reducer {
     config: Config,
     address_hrp: String,
-    shelley_known_slot: u64,
-    shelley_epoch_length: u64,
+    chain: crosscut::ChainWellKnownInfo,
 }
 
 impl Reducer {
-    fn increment_for_addresses(
+    fn increment_for_address(
         &mut self,
         address: &str,
-        slot: u64,
+        epoch: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let epoch_no = EpochCalculator::get_shelley_epoch_no_for_absolute_slot(
-            self.shelley_known_slot,
-            self.shelley_epoch_length,
-            slot,
-        );
-
         let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}.{}", prefix, address.to_string(), epoch_no),
-            None => format!("{}.{}", address.to_string(), epoch_no),
+            Some(prefix) => format!("{}.{}.{}", prefix, address.to_string(), epoch),
+            None => format!("{}.{}", address.to_string(), epoch),
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, 1);
@@ -54,7 +40,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::SmartContracts) {
-            let slot = block.slot();
+            let epoch = crosscut::epochs::block_epoch(&self.chain, block);
 
             for tx in block.txs() {
                 let addresses: HashSet<_> = tx
@@ -65,8 +51,8 @@ impl Reducer {
                     .filter_map(|x| x.to_bech32_address(&self.address_hrp).ok())
                     .collect();
 
-                for address in addresses {
-                    self.increment_for_addresses(address, slot, output)?;
+                for address in addresses.iter() {
+                    self.increment_for_address(address, epoch, output)?;
                 }
             }
         }
@@ -80,8 +66,7 @@ impl Config {
         let reducer = Reducer {
             config: self,
             address_hrp: chain.address_hrp.clone(),
-            shelley_known_slot: chain.shelley_known_slot.clone() as u64,
-            shelley_epoch_length: chain.shelley_epoch_length.clone() as u64,
+            chain: chain.clone(),
         };
 
         super::Reducer::TransactionsCountByContractAddressByEpoch(reducer)

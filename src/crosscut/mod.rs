@@ -1,6 +1,5 @@
 pub mod addresses;
 mod args;
-mod epoch_calculator;
+pub mod epochs;
 
 pub use args::*;
-pub use epoch_calculator::*;

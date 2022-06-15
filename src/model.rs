@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use pallas::{ledger::traverse::MultiEraBlock, network::miniprotocols::Point};
 
-use crate::Error;
-
 #[derive(Debug)]
 pub enum ChainSyncCommand {
     RollForward(Point),

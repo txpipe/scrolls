@@ -1,6 +1,4 @@
-use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::{alonzo, byron, ToHash};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
