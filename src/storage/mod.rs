@@ -1,6 +1,6 @@
 pub mod redis;
 
-use gasket::messaging::FunnelPort;
+use gasket::messaging::InputPort;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
@@ -28,7 +28,7 @@ pub enum Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn borrow_input_port(&mut self) -> &'_ mut FunnelPort<model::CRDTCommand> {
+    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::CRDTCommand> {
         match self {
             Bootstrapper::Redis(x) => x.borrow_input_port(),
         }

@@ -1,6 +1,5 @@
-use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::{alonzo, byron, ToHash};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{crosscut, model};
@@ -21,7 +20,7 @@ impl Reducer {
         &mut self,
         address: &str,
         tx_hash: Hash<32>,
-        tx_idx: usize,
+        output_idx: usize,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if let Some(addresses) = &self.config.filter {
@@ -35,7 +34,7 @@ impl Reducer {
             None => address.to_string(),
         };
 
-        let member = format!("{}:{}", tx_hash, tx_idx);
+        let member = format!("{}#{}", tx_hash, output_idx);
         let crdt = model::CRDTCommand::TwoPhaseSetAdd(key, member);
 
         output.send(gasket::messaging::Message::from(crdt))?;
@@ -43,67 +42,21 @@ impl Reducer {
         Ok(())
     }
 
-    fn reduce_byron_tx(
+    pub fn reduce_block<'b>(
         &mut self,
-        tx: &byron::TxPayload,
+        block: &'b MultiEraBlock<'b>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let tx_hash = tx.transaction.to_hash();
+        for tx in block.txs().into_iter() {
+            let tx_hash = tx.hash();
 
-        tx.transaction
-            .outputs
-            .iter()
-            .enumerate()
-            .map(move |(tx_idx, tx)| {
-                let address = tx.address.to_addr_string().or_work_err()?;
-                self.send_set_add(&address, tx_hash, tx_idx, output)
-            })
-            .collect()
-    }
-
-    fn reduce_alonzo_compatible_tx(
-        &mut self,
-        tx: &alonzo::TransactionBody,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        let tx_hash = tx.to_hash();
-
-        tx.iter()
-            .filter_map(|b| match b {
-                alonzo::TransactionBodyComponent::Outputs(o) => Some(o),
-                _ => None,
-            })
-            .flat_map(|o| o.iter())
-            .enumerate()
-            .map(move |(tx_idx, tx_output)| {
-                let address = tx_output
-                    .to_bech32_address(&self.address_hrp)
-                    .or_work_err()?;
-                self.send_set_add(&address, tx_hash, tx_idx, output)
-            })
-            .collect()
-    }
-
-    pub fn reduce_block(
-        &mut self,
-        block: &model::MultiEraBlock,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        match block {
-            model::MultiEraBlock::Byron(byron::Block::MainBlock(x)) => x
-                .body
-                .tx_payload
-                .iter()
-                .map(|tx| self.reduce_byron_tx(tx, output))
-                .collect(),
-            model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(x) => {
-                x.1.transaction_bodies
-                    .iter()
-                    .map(|tx| self.reduce_alonzo_compatible_tx(tx, output))
-                    .collect()
+            for tx_output in tx.outputs() {
+                let address = tx_output.address(&self.address_hrp);
+                self.send_set_add(&address, tx_hash, 0, output)?;
             }
         }
+
+        Ok(())
     }
 }
 

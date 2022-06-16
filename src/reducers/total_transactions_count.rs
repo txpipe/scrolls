@@ -1,4 +1,4 @@
-use pallas::ledger::primitives::byron;
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::model;
@@ -31,25 +31,15 @@ impl Reducer {
 
     pub fn reduce_block(
         &mut self,
-        block: &model::MultiEraBlock,
+        block: &MultiEraBlock,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        match block {
-            model::MultiEraBlock::Byron(byron::Block::MainBlock(x)) => x
-                .body
-                .tx_payload
-                .iter()
-                .map(|_tx| self.increment_key(output))
-                .collect(),
-
-            model::MultiEraBlock::Byron(_) => Ok(()),
-            model::MultiEraBlock::AlonzoCompatible(block) => block
-                .1
-                .transaction_bodies
-                .iter()
-                .map(|_tx| self.increment_key(output))
-                .collect(),
+        for _tx in block.txs() {
+            // TODO apply filters using tx data
+            self.increment_key(output)?;
         }
+
+        Ok(())
     }
 }
 
