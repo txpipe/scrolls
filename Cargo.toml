@@ -12,7 +12,7 @@ authors = ["Santiago Carmuega <santiago@carmuega.me>"]
 
 
 [dependencies]
-pallas = "0.11.0-alpha.1"
+pallas = "0.11.0-alpha.2"
 # pallas = { path = "../pallas/pallas" }
 hex = "0.4.3"
 net2 = "0.2.37"
@@ -31,6 +31,7 @@ prometheus_exporter = { version = "0.8.4", default-features = false }
 gasket = { git = "https://github.com/construkts/gasket-rs.git" }
 thiserror = "1.0.30"
 redis = "0.21.5"
+sled = "0.34.7"
 
 [features]
 unstable = []

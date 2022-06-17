@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use clap::ArgMatches;
-use scrolls::{bootstrap, crosscut, reducers, sources, storage};
+use scrolls::{bootstrap, crosscut, enrich, reducers, sources, storage};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -31,6 +31,7 @@ impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
 #[derive(Deserialize)]
 struct ConfigRoot {
     source: sources::Config,
+    enrich: enrich::Config,
     reducers: Vec<reducers::Config>,
     storage: storage::Config,
     intersect: crosscut::IntersectConfig,
@@ -78,13 +79,15 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let chain = config.chain.unwrap_or_default().into();
 
-    let storage = config.storage.plugin(&chain, &config.intersect);
+    let source = config.source.bootstrapper(&chain, &config.intersect);
+
+    let enrich = config.enrich.bootstrapper();
 
     let reducer = reducers::Bootstrapper::new(config.reducers, &chain);
 
-    let source = config.source.bootstrapper(&chain, &config.intersect);
+    let storage = config.storage.plugin(&chain, &config.intersect);
 
-    let pipeline = bootstrap::build(source, reducer, storage)?;
+    let pipeline = bootstrap::build(source, enrich, reducer, storage)?;
 
     loop {
         for (name, tether) in pipeline.tethers.iter() {

@@ -133,6 +133,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc32fast"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d"
+dependencies = [
+ "cfg-if 1.0.0",
+]
+
+[[package]]
 name = "crossbeam"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -271,6 +280,25 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
 ]
 
 [[package]]
@@ -566,9 +594,9 @@ dependencies = [
 
 [[package]]
 name = "pallas"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb4a6821aa417b88472c3bed38278c968a7ebc600be4ea14cc907971ca2fb790"
+checksum = "53380dcc3fa2f0445fcba9d4271395b0fddad2e74dafc6c13c02144354500db7"
 dependencies = [
  "pallas-codec",
  "pallas-crypto",
@@ -580,18 +608,18 @@ dependencies = [
 
 [[package]]
 name = "pallas-codec"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a966504180da5ac67f704e3c2d95596c2065a63c24b8ede3462b617e1a3e274b"
+checksum = "5eb7cdf63ff7a569dd6d427c681bb0fae320ee19ee808ccdbfd67b86bf4664e9"
 dependencies = [
  "minicbor 0.17.1",
 ]
 
 [[package]]
 name = "pallas-crypto"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3e23744565e070603ab0dcc9137e1f76256e8511371077c61b36985635b2c52"
+checksum = "5bd4198362e36939cd7f032c215a2b6bf435f11987d8b7602c408abc76eeb67c"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -602,9 +630,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-miniprotocols"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e846e444d341cf495f1d97ec596ae18df5b1ca76d13293308f7dc64dc385c66c"
+checksum = "c7a6fe48cc9520896162d27e482ba93962917f9fddf457c9d7c6e830c9493504"
 dependencies = [
  "hex",
  "itertools",
@@ -616,9 +644,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-multiplexer"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc514bc4d63c88c77b9aaadf0b2ab47133dd856c3afd318939606a2c26a8346f"
+checksum = "7d44037658984b5496bc990672e9b930665231bf35009ec37566240d82e1bf82"
 dependencies = [
  "byteorder",
  "hex",
@@ -630,9 +658,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-primitives"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fb1461122763788158153379039499c94ba6263ae62276e125974dac049bfce"
+checksum = "0d377e4b7f8d1998f95cf93d031fd03c7cb6e09b539bdbc8eda8c582775afa6d"
 dependencies = [
  "base58",
  "bech32",
@@ -646,9 +674,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-traverse"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88c650c07d43ef16b002812e138f7a44045566704db4e039fc765228a6c46455"
+checksum = "a07a0150f442b43e2cced2b9b98317f9bb2d3a2baf93c1402ba0c18606ceae38"
 dependencies = [
  "hex",
  "pallas-codec",
@@ -894,6 +922,7 @@ dependencies = [
  "redis",
  "serde",
  "serde_json",
+ "sled",
  "thiserror",
 ]
 
@@ -971,6 +1000,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "sled"
+version = "0.34.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f96b4737c2ce5987354855aed3797279def4ebf734436c6aa4552cf8e169935"
+dependencies = [
+ "crc32fast",
+ "crossbeam-epoch",
+ "crossbeam-utils",
+ "fs2",
+ "fxhash",
+ "libc",
+ "log",
+ "parking_lot 0.11.2",
 ]
 
 [[package]]

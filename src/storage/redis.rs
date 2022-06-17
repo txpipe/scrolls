@@ -1,17 +1,14 @@
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
 use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
 };
 
-use redis::{Commands, Connection};
+use redis::Commands;
 use serde::Deserialize;
 
-use crate::{
-    bootstrap, crosscut,
-    model::{self, StateData},
-};
+use crate::{bootstrap, crosscut, model};
 
 type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
 
@@ -43,11 +40,19 @@ impl Bootstrapper {
         &mut self.input
     }
 
-    pub fn build_read_plugin(&self) -> ReadPlugin {
-        ReadPlugin {
-            config: self.config.clone(),
-            connection: None,
-        }
+    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
+        let mut connection = redis::Client::open(self.config.connection_params.clone())
+            .and_then(|x| x.get_connection())
+            .map_err(crate::Error::storage)?;
+
+        let raw: Option<String> = connection.get("_cursor").map_err(crate::Error::storage)?;
+
+        let point = match raw {
+            Some(x) => Some(crosscut::PointArg::from_str(&x)?),
+            None => None,
+        };
+
+        Ok(point)
     }
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
@@ -87,6 +92,8 @@ impl gasket::runtime::Worker for Worker {
                     .or_work_err()?;
             }
             model::CRDTCommand::TwoPhaseSetAdd(key, value) => {
+                log::debug!("adding to 2-phase set [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
@@ -94,20 +101,44 @@ impl gasket::runtime::Worker for Worker {
                     .or_work_err()?;
             }
             model::CRDTCommand::TwoPhaseSetRemove(key, value) => {
+                log::debug!("removing from 2-phase set [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
                     .sadd(format!("{}.ts", key), value)
                     .or_work_err()?;
             }
-            model::CRDTCommand::LastWriteWins(key, value, timestamp) => {
+            model::CRDTCommand::SetAdd(key, value) => {
+                log::debug!("adding to set [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
-                    .zadd(key, value, timestamp)
+                    .sadd(key, value)
+                    .or_work_err()?;
+            }
+            model::CRDTCommand::SetRemove(key, value) => {
+                log::debug!("removing from set [{}], value [{}]", key, value);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .srem(key, value)
+                    .or_work_err()?;
+            }
+            model::CRDTCommand::LastWriteWins(key, value, ts) => {
+                log::debug!("last write for [{}], value [{}], slot [{}]", key, value, ts);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zadd(key, value, ts)
                     .or_work_err()?;
             }
             model::CRDTCommand::AnyWriteWins(key, value) => {
+                log::debug!("overwrite [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
@@ -115,6 +146,8 @@ impl gasket::runtime::Worker for Worker {
                     .or_work_err()?;
             }
             model::CRDTCommand::PNCounter(key, value) => {
+                log::debug!("increating counter [{}], by [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
@@ -148,70 +181,5 @@ impl gasket::runtime::Worker for Worker {
 
     fn teardown(&mut self) -> Result<(), gasket::error::Error> {
         Ok(())
-    }
-}
-
-pub struct ReadPlugin {
-    config: Config,
-    connection: Option<Connection>,
-}
-
-impl ReadPlugin {
-    pub fn bootstrap(&mut self) -> Result<(), crate::Error> {
-        let connection = redis::Client::open(self.config.connection_params.clone())
-            .and_then(|c| c.get_connection())
-            .map_err(crate::Error::storage)?;
-
-        self.connection = Some(connection);
-
-        Ok(())
-    }
-
-    pub fn read_state(
-        &mut self,
-        query: model::StateQuery,
-    ) -> Result<model::StateData, crate::Error> {
-        let value = match query {
-            model::StateQuery::KeyValue(key) => self
-                .connection
-                .as_mut()
-                .unwrap()
-                .get::<_, Option<String>>(key)
-                .map(|v| StateData::from(v))
-                .map_err(crate::Error::storage)?,
-            model::StateQuery::LatestKeyValue(key) => self
-                .connection
-                .as_mut()
-                .unwrap()
-                .zrevrange::<_, Vec<String>>(key, 0, 1)
-                .map(|v| v.first().cloned())
-                .map(|v| StateData::from(v))
-                .map_err(crate::Error::storage)?,
-            model::StateQuery::SetMembers(key) => self
-                .connection
-                .as_mut()
-                .unwrap()
-                .get::<_, Option<HashSet<String>>>(key)
-                .map(|v| StateData::from(v))
-                .map_err(crate::Error::storage)?,
-        };
-
-        Ok(value.into())
-    }
-
-    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
-        let raw: Option<String> = self
-            .connection
-            .as_mut()
-            .unwrap()
-            .get("_cursor")
-            .map_err(crate::Error::storage)?;
-
-        let point = match raw {
-            Some(x) => Some(crosscut::PointArg::from_str(&x)?),
-            None => None,
-        };
-
-        Ok(point)
     }
 }

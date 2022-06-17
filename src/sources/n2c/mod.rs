@@ -1,15 +1,12 @@
-pub mod chainsync;
+mod chainsync;
 mod transport;
 
+use serde::Deserialize;
 use std::time::Duration;
 
-use gasket::{error::AsWorkError, messaging::OutputPort, retries};
-
-use serde::Deserialize;
-
-use crate::{bootstrap::Pipeline, crosscut, model::ChainSyncCommandEx, storage};
-
 use self::transport::Transport;
+use crate::{bootstrap::Pipeline, crosscut, model::RawBlockPayload};
+use gasket::{error::AsWorkError, messaging::OutputPort, retries};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -35,7 +32,7 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    output: OutputPort<ChainSyncCommandEx>,
+    output: OutputPort<RawBlockPayload>,
 }
 
 impl Bootstrapper {
@@ -53,11 +50,11 @@ impl Bootstrapper {
         .map_err(crate::Error::source)
     }
 
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<RawBlockPayload> {
         &mut self.output
     }
 
-    pub fn spawn_stages(self, pipeline: &mut Pipeline, state: storage::ReadPlugin) {
+    pub fn spawn_stages(self, pipeline: &mut Pipeline, cursor: &Option<crosscut::PointArg>) {
         let transport = self
             .bootstrap_transport()
             .expect("transport should be connected after several retries");
@@ -70,7 +67,7 @@ impl Bootstrapper {
                     0,
                     self.chain,
                     self.intersect,
-                    state,
+                    cursor.clone(),
                     self.output,
                 ),
                 gasket::runtime::Policy::default(),

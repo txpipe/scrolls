@@ -2,9 +2,9 @@ use gasket::runtime::spawn_stage;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model, storage};
+use crate::{bootstrap, crosscut, model};
 
-type InputPort = gasket::messaging::InputPort<model::ChainSyncCommandEx>;
+type InputPort = gasket::messaging::InputPort<model::EnrichedBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
 pub mod point_by_tx;
@@ -96,8 +96,8 @@ impl Bootstrapper {
         &mut self.output
     }
 
-    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, state: storage::ReadPlugin) {
-        let worker = worker::Worker::new(self.reducers, state, self.input, self.output);
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
+        let worker = worker::Worker::new(self.reducers, self.input, self.output);
         pipeline.register_stage("reducers", spawn_stage(worker, Default::default()));
     }
 }
@@ -129,16 +129,16 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
-        state: &mut storage::ReadPlugin,
+        ctx: &model::BlockContext,
         output: &mut OutputPort,
     ) -> Result<(), gasket::error::Error> {
         match self {
-            Reducer::UtxoByAddress(x) => x.reduce_block(block, output),
+            Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
             Reducer::PointByTx(x) => x.reduce_block(block, output),
             Reducer::PoolByStake(x) => x.reduce_block(block, output),
 
             #[cfg(feature = "unstable")]
-            Reducer::AddressByTxo(x) => x.reduce_block(block, state, output),
+            Reducer::AddressByTxo(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
