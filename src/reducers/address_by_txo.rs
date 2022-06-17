@@ -45,7 +45,6 @@ impl Reducer {
     pub fn reduce_block(
         &mut self,
         block: &MultiEraBlock,
-        _state: &mut storage::ReadPlugin,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let slot = block.slot();

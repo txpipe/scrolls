@@ -34,42 +34,15 @@ impl Bootstrapper {
         }
     }
 
-    pub fn build_read_plugin(&self) -> ReadPlugin {
+    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
         match self {
-            Bootstrapper::Redis(x) => ReadPlugin::Redis(x.build_read_plugin()),
+            Bootstrapper::Redis(x) => x.read_cursor(),
         }
     }
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
         match self {
             Bootstrapper::Redis(x) => x.spawn_stages(pipeline),
-        }
-    }
-}
-
-pub enum ReadPlugin {
-    Redis(redis::ReadPlugin),
-}
-
-impl ReadPlugin {
-    pub fn bootstrap(&mut self) -> Result<(), crate::Error> {
-        match self {
-            ReadPlugin::Redis(x) => x.bootstrap(),
-        }
-    }
-
-    pub fn read_state(
-        &mut self,
-        query: model::StateQuery,
-    ) -> Result<model::StateData, crate::Error> {
-        match self {
-            ReadPlugin::Redis(x) => x.read_state(query),
-        }
-    }
-
-    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
-        match self {
-            ReadPlugin::Redis(x) => x.read_cursor(),
         }
     }
 }

@@ -9,7 +9,7 @@ use gasket::{
     metrics::{Counter, Gauge},
 };
 
-use crate::{crosscut, model::ChainSyncCommandEx, sources::utils, storage};
+use crate::{crosscut, model::RawBlockPayload, sources::utils};
 
 struct ChainObserver {
     min_depth: usize,
@@ -62,7 +62,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
                 .remove(&point)
                 .expect("required block not found in memory");
 
-            self.output.send(ChainSyncCommandEx::roll_forward(block))?;
+            self.output.send(RawBlockPayload::roll_forward(block))?;
             self.block_count.inc(1);
         }
 
@@ -85,7 +85,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
             chainsync::RollbackEffect::OutOfScope => {
                 log::debug!("rollback out of buffer scope, sending event down the pipeline");
                 self.output
-                    .send(ChainSyncCommandEx::roll_back(point.clone()))?;
+                    .send(RawBlockPayload::roll_back(point.clone()))?;
             }
         }
 
@@ -93,7 +93,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
     }
 }
 
-type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
+type OutputPort = gasket::messaging::OutputPort<RawBlockPayload>;
 type MyAgent = chainsync::BlockConsumer<ChainObserver>;
 
 pub struct Worker {
@@ -101,8 +101,8 @@ pub struct Worker {
     min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
+    cursor: crosscut::Cursor,
     //finalize_config: Option<FinalizeConfig>,
-    state: storage::ReadPlugin,
     agent: Option<MyAgent>,
     output: OutputPort,
     block_count: gasket::metrics::Counter,
@@ -115,7 +115,7 @@ impl Worker {
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
-        state: storage::ReadPlugin,
+        cursor: crosscut::Cursor,
         output: OutputPort,
     ) -> Self {
         Self {
@@ -123,7 +123,7 @@ impl Worker {
             min_depth,
             chain,
             intersect,
-            state,
+            cursor,
             output,
             agent: None,
             block_count: Default::default(),
@@ -141,12 +141,10 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        self.state.bootstrap().or_work_err()?;
-
         let known_points = utils::define_known_points(
             &self.chain,
             &self.intersect,
-            &mut self.state,
+            &self.cursor,
             &mut self.channel,
         )
         .or_work_err()?;

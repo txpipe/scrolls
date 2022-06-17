@@ -1,6 +1,5 @@
 pub mod blockfetch;
 pub mod chainsync;
-mod messages;
 mod transport;
 
 use std::time::Duration;
@@ -10,18 +9,33 @@ use gasket::{
     messaging::{InputPort, OutputPort},
     retries,
 };
-pub use messages::*;
 
+use pallas::network::miniprotocols::Point;
 use serde::Deserialize;
 
-use crate::{
-    bootstrap::Pipeline,
-    crosscut,
-    model::{ChainSyncCommand, ChainSyncCommandEx},
-    storage,
-};
+use crate::{bootstrap::Pipeline, crosscut, model::RawBlockPayload};
 
 use self::transport::Transport;
+
+#[derive(Debug)]
+pub enum ChainSyncInternalPayload {
+    RollForward(Point),
+    RollBack(Point),
+}
+
+impl ChainSyncInternalPayload {
+    pub fn roll_forward(point: Point) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::RollForward(point),
+        }
+    }
+
+    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::RollBack(point),
+        }
+    }
+}
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -47,7 +61,7 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    output: OutputPort<ChainSyncCommandEx>,
+    output: OutputPort<RawBlockPayload>,
 }
 
 impl Bootstrapper {
@@ -65,17 +79,17 @@ impl Bootstrapper {
         .map_err(crate::Error::source)
     }
 
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<RawBlockPayload> {
         &mut self.output
     }
 
-    pub fn spawn_stages(self, pipeline: &mut Pipeline, state: storage::ReadPlugin) {
+    pub fn spawn_stages(self, pipeline: &mut Pipeline, cursor: &Option<crosscut::PointArg>) {
         let transport = self
             .bootstrap_transport()
             .expect("transport should be connected after several retries");
 
-        let mut headers_out = OutputPort::<ChainSyncCommand>::default();
-        let mut headers_in = InputPort::<ChainSyncCommand>::default();
+        let mut headers_out = OutputPort::<ChainSyncInternalPayload>::default();
+        let mut headers_in = InputPort::<ChainSyncInternalPayload>::default();
         gasket::messaging::connect_ports(&mut headers_out, &mut headers_in, 10);
 
         pipeline.register_stage(
@@ -86,7 +100,7 @@ impl Bootstrapper {
                     0,
                     self.chain,
                     self.intersect,
-                    state,
+                    cursor.clone(),
                     headers_out,
                 ),
                 gasket::runtime::Policy::default(),

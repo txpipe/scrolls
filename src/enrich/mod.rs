@@ -12,7 +12,7 @@ pub enum Config {
 }
 
 impl Config {
-    pub fn Bootstrapper(self) -> Bootstrapper {
+    pub fn bootstrapper(self) -> Bootstrapper {
         match self {
             Config::Sled(c) => Bootstrapper::Sled(c.boostrapper()),
         }
@@ -24,13 +24,13 @@ pub enum Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::ChainSyncCommandEx> {
+    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::RawBlockPayload> {
         match self {
             Bootstrapper::Sled(x) => x.borrow_input_port(),
         }
     }
 
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::EnrichedBlockPayload> {
         match self {
             Bootstrapper::Sled(x) => x.borrow_output_port(),
         }

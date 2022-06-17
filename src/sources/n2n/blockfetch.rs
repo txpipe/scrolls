@@ -5,7 +5,8 @@ use pallas::network::{
 
 use gasket::{error::*, runtime::WorkOutcome};
 
-use crate::model::{ChainSyncCommand, ChainSyncCommandEx};
+use super::ChainSyncInternalPayload;
+use crate::model::RawBlockPayload;
 
 struct Observer<'a> {
     output: &'a mut OutputPort,
@@ -13,14 +14,14 @@ struct Observer<'a> {
 
 impl<'a> blockfetch::Observer for Observer<'a> {
     fn on_block_received(&mut self, body: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
-        self.output.send(ChainSyncCommandEx::roll_forward(body))?;
+        self.output.send(RawBlockPayload::roll_forward(body))?;
 
         Ok(())
     }
 }
 
-pub type InputPort = gasket::messaging::InputPort<ChainSyncCommand>;
-pub type OutputPort = gasket::messaging::OutputPort<ChainSyncCommandEx>;
+pub type InputPort = gasket::messaging::InputPort<ChainSyncInternalPayload>;
+pub type OutputPort = gasket::messaging::OutputPort<RawBlockPayload>;
 
 pub struct Worker {
     channel: multiplexer::StdChannelBuffer,
@@ -70,11 +71,11 @@ impl gasket::runtime::Worker for Worker {
         let input = self.input.recv()?;
 
         match input.payload {
-            ChainSyncCommand::RollForward(point) => {
+            ChainSyncInternalPayload::RollForward(point) => {
                 self.fetch_block(point).or_work_err()?;
             }
-            ChainSyncCommand::RollBack(point) => {
-                self.output.send(ChainSyncCommandEx::roll_back(point))?;
+            ChainSyncInternalPayload::RollBack(point) => {
+                self.output.send(RawBlockPayload::roll_back(point))?;
             }
         };
 

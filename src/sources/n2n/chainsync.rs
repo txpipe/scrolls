@@ -1,3 +1,5 @@
+use pallas::ledger::traverse::MultiEraHeader;
+use pallas::network::miniprotocols::chainsync::HeaderContent;
 use pallas::network::miniprotocols::{self, chainsync, Agent, Point};
 use pallas::network::multiplexer;
 
@@ -6,13 +8,22 @@ use gasket::{
     metrics::{Counter, Gauge},
 };
 
-use crate::{crosscut, model::ChainSyncCommand, sources::utils, storage};
+use super::ChainSyncInternalPayload;
+use crate::Error;
+use crate::{crosscut, sources::utils};
 
-use super::messages;
+fn to_traverse<'b>(header: &'b HeaderContent) -> Result<MultiEraHeader<'b>, Error> {
+    MultiEraHeader::decode(
+        header.variant,
+        header.byron_prefix.map(|x| x.0),
+        &header.cbor,
+    )
+    .map_err(Error::cbor)
+}
 
 struct ChainObserver {
     min_depth: usize,
-    output: gasket::messaging::OutputPort<ChainSyncCommand>,
+    output: gasket::messaging::OutputPort<ChainSyncInternalPayload>,
     chain_buffer: chainsync::RollbackBuffer,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
@@ -23,7 +34,7 @@ impl ChainObserver {
         min_depth: usize,
         block_count: Counter,
         chain_tip: Gauge,
-        output: gasket::messaging::OutputPort<ChainSyncCommand>,
+        output: gasket::messaging::OutputPort<ChainSyncInternalPayload>,
     ) -> Self {
         Self {
             min_depth,
@@ -42,8 +53,8 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
         tip: &chainsync::Tip,
     ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
         // parse the header and extract the point of the chain
-        let header = messages::MultiEraHeader::try_from(content)?;
-        let point = header.read_cursor()?;
+        let header = to_traverse(&content)?;
+        let point = Point::Specific(header.slot(), header.hash().to_vec());
 
         // track the new point in our memory buffer
         log::info!("rolling forward to point {:?}", point);
@@ -57,7 +68,7 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
         for point in ready {
             log::debug!("requesting block fetch for point {:?}", point);
             self.output
-                .send(ChainSyncCommand::roll_forward(point.clone()))?;
+                .send(ChainSyncInternalPayload::roll_forward(point.clone()))?;
             self.block_count.inc(1);
 
             // evaluate if we should finalize the thread according to config
@@ -86,7 +97,7 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
             chainsync::RollbackEffect::OutOfScope => {
                 log::debug!("rollback out of buffer scope, sending event down the pipeline");
                 self.output
-                    .send(ChainSyncCommand::roll_back(point.clone()))?;
+                    .send(ChainSyncInternalPayload::roll_back(point.clone()))?;
             }
         }
 
@@ -94,15 +105,15 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
     }
 }
 
-type OutputPort = gasket::messaging::OutputPort<ChainSyncCommand>;
+type OutputPort = gasket::messaging::OutputPort<ChainSyncInternalPayload>;
 
 pub struct Worker {
     channel: multiplexer::StdChannelBuffer,
     min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
+    cursor: Option<crosscut::PointArg>,
     //finalize_config: Option<FinalizeConfig>,
-    state: storage::ReadPlugin,
     agent: Option<chainsync::HeaderConsumer<ChainObserver>>,
     output: OutputPort,
     block_count: gasket::metrics::Counter,
@@ -115,7 +126,7 @@ impl Worker {
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
-        state: storage::ReadPlugin,
+        cursor: Option<crosscut::PointArg>,
         output: OutputPort,
     ) -> Self {
         Self {
@@ -123,7 +134,7 @@ impl Worker {
             min_depth,
             chain,
             intersect,
-            state,
+            cursor,
             output,
             agent: None,
             block_count: Default::default(),
@@ -141,12 +152,10 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        self.state.bootstrap().or_work_err()?;
-
         let known_points = utils::define_known_points(
             &self.chain,
             &self.intersect,
-            &mut self.state,
+            &self.cursor,
             &mut self.channel,
         )
         .or_work_err()?;

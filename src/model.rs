@@ -1,17 +1,23 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-use pallas::{ledger::traverse::MultiEraBlock, network::miniprotocols::Point};
+use pallas::{
+    crypto::hash::Hash,
+    ledger::traverse::{Era, MultiEraBlock, MultiEraInput, MultiEraTx},
+    network::miniprotocols::Point,
+};
 
-#[derive(Debug)]
-pub enum ChainSyncCommand {
-    RollForward(Point),
+use crate::Error;
+
+#[derive(Debug, Clone)]
+pub enum RawBlockPayload {
+    RollForward(Vec<u8>),
     RollBack(Point),
 }
 
-impl ChainSyncCommand {
-    pub fn roll_forward(point: Point) -> gasket::messaging::Message<Self> {
+impl RawBlockPayload {
+    pub fn roll_forward(block: Vec<u8>) -> gasket::messaging::Message<Self> {
         gasket::messaging::Message {
-            payload: Self::RollForward(point),
+            payload: Self::RollForward(block),
         }
     }
 
@@ -22,16 +28,38 @@ impl ChainSyncCommand {
     }
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct BlockContext {
+    ref_txs: HashMap<String, (Era, Vec<u8>)>,
+}
+
+impl BlockContext {
+    pub fn set_ref_tx(&mut self, hash: &Hash<32>, era: Era, cbor: Vec<u8>) {
+        self.ref_txs.insert(hash.to_string(), (era, cbor));
+    }
+
+    pub fn decode_ref_tx(&self, input: &MultiEraInput) -> Result<Option<MultiEraTx>, Error> {
+        if let Some(output_ref) = input.output_ref() {
+            if let Some((era, cbor)) = self.ref_txs.get(&output_ref.tx_id().to_string()) {
+                let tx = MultiEraTx::decode(*era, &cbor).map_err(crate::Error::cbor)?;
+                return Ok(Some(tx));
+            }
+        }
+
+        Ok(None)
+    }
+}
+
 #[derive(Debug, Clone)]
-pub enum ChainSyncCommandEx {
-    RollForward(Vec<u8>),
+pub enum EnrichedBlockPayload {
+    RollForward(Vec<u8>, BlockContext),
     RollBack(Point),
 }
 
-impl ChainSyncCommandEx {
-    pub fn roll_forward(block: Vec<u8>) -> gasket::messaging::Message<Self> {
+impl EnrichedBlockPayload {
+    pub fn roll_forward(block: Vec<u8>, ctx: BlockContext) -> gasket::messaging::Message<Self> {
         gasket::messaging::Message {
-            payload: Self::RollForward(block),
+            payload: Self::RollForward(block, ctx),
         }
     }
 

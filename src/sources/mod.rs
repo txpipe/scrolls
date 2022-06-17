@@ -1,7 +1,11 @@
 use gasket::messaging::OutputPort;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model, storage};
+use crate::{
+    bootstrap,
+    crosscut::{self, PointArg},
+    model,
+};
 
 #[cfg(target_family = "unix")]
 pub mod n2c;
@@ -37,17 +41,17 @@ pub enum Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::ChainSyncCommandEx> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::RawBlockPayload> {
         match self {
             Bootstrapper::N2N(p) => p.borrow_output_port(),
             Bootstrapper::N2C(p) => p.borrow_output_port(),
         }
     }
 
-    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, state: storage::ReadPlugin) {
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, cursor: &Option<PointArg>) {
         match self {
-            Bootstrapper::N2N(p) => p.spawn_stages(pipeline, state),
-            Bootstrapper::N2C(p) => p.spawn_stages(pipeline, state),
+            Bootstrapper::N2N(p) => p.spawn_stages(pipeline, cursor),
+            Bootstrapper::N2C(p) => p.spawn_stages(pipeline, cursor),
         }
     }
 }

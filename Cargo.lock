@@ -595,8 +595,6 @@ dependencies = [
 [[package]]
 name = "pallas"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb4a6821aa417b88472c3bed38278c968a7ebc600be4ea14cc907971ca2fb790"
 dependencies = [
  "pallas-codec",
  "pallas-crypto",
@@ -609,8 +607,6 @@ dependencies = [
 [[package]]
 name = "pallas-codec"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a966504180da5ac67f704e3c2d95596c2065a63c24b8ede3462b617e1a3e274b"
 dependencies = [
  "minicbor 0.17.1",
 ]
@@ -618,8 +614,6 @@ dependencies = [
 [[package]]
 name = "pallas-crypto"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3e23744565e070603ab0dcc9137e1f76256e8511371077c61b36985635b2c52"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -631,8 +625,6 @@ dependencies = [
 [[package]]
 name = "pallas-miniprotocols"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e846e444d341cf495f1d97ec596ae18df5b1ca76d13293308f7dc64dc385c66c"
 dependencies = [
  "hex",
  "itertools",
@@ -645,8 +637,6 @@ dependencies = [
 [[package]]
 name = "pallas-multiplexer"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc514bc4d63c88c77b9aaadf0b2ab47133dd856c3afd318939606a2c26a8346f"
 dependencies = [
  "byteorder",
  "hex",
@@ -659,8 +649,6 @@ dependencies = [
 [[package]]
 name = "pallas-primitives"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fb1461122763788158153379039499c94ba6263ae62276e125974dac049bfce"
 dependencies = [
  "base58",
  "bech32",
@@ -675,8 +663,6 @@ dependencies = [
 [[package]]
 name = "pallas-traverse"
 version = "0.11.0-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88c650c07d43ef16b002812e138f7a44045566704db4e039fc765228a6c46455"
 dependencies = [
  "hex",
  "pallas-codec",

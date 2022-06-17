@@ -45,14 +45,24 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
+        ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             let tx_hash = tx.hash();
 
-            for tx_output in tx.outputs() {
+            for inbound_tx in tx
+                .inputs()
+                .iter()
+                .filter_map(|i| ctx.decode_ref_tx(i).ok())
+                .flatten()
+            {
+                log::error!("{:?}", inbound_tx);
+            }
+
+            for (idx, tx_output) in tx.outputs().iter().enumerate() {
                 let address = tx_output.address(&self.address_hrp);
-                self.send_set_add(&address, tx_hash, 0, output)?;
+                self.send_set_add(&address, tx_hash, idx, output)?;
             }
         }
 
