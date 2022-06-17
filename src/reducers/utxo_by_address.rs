@@ -1,3 +1,5 @@
+use crosscut::policies::*;
+use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
@@ -8,6 +10,7 @@ use crate::{crosscut, model};
 pub struct Config {
     pub key_prefix: Option<String>,
     pub filter: Option<Vec<String>>,
+    pub policy: Option<ReducerPolicy>,
 }
 
 pub struct Reducer {
@@ -51,13 +54,21 @@ impl Reducer {
         for tx in block.txs().into_iter() {
             let tx_hash = tx.hash();
 
-            for inbound_tx in tx
-                .inputs()
-                .iter()
-                .filter_map(|i| ctx.decode_ref_tx(i).ok())
-                .flatten()
-            {
-                log::error!("{:?}", inbound_tx);
+            for input in tx.inputs().iter().filter_map(|i| i.output_ref()) {
+                let inbound_tx = ctx
+                    .find_ref_tx(input.tx_id())
+                    .apply_policy(&self.config.policy)
+                    .or_work_err()?;
+
+                if let Some(inbound_tx) = inbound_tx {
+                    let output = inbound_tx
+                        .output_at(input.tx_index() as usize)
+                        .ok_or(crate::Error::ledger("output index not found in tx"))
+                        .or_work_err()?;
+
+                    let address = output.address(&self.address_hrp);
+                    log::error!("{}", address);
+                }
             }
 
             for (idx, tx_output) in tx.outputs().iter().enumerate() {

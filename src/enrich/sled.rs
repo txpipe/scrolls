@@ -108,7 +108,7 @@ impl Worker {
                         let SledTxValue(era, cbor) =
                             ivec.try_into().map_err(crate::Error::storage)?;
                         let era = era.try_into().map_err(crate::Error::storage)?;
-                        ctx.set_ref_tx(tx_id, era, cbor);
+                        ctx.import_ref_tx(tx_id, era, cbor);
                     }
                 }
             }

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use pallas::{
     crypto::hash::Hash,
-    ledger::traverse::{Era, MultiEraBlock, MultiEraInput, MultiEraTx},
+    ledger::traverse::{Era, MultiEraBlock, MultiEraTx},
     network::miniprotocols::Point,
 };
 
@@ -34,19 +34,17 @@ pub struct BlockContext {
 }
 
 impl BlockContext {
-    pub fn set_ref_tx(&mut self, hash: &Hash<32>, era: Era, cbor: Vec<u8>) {
+    pub fn import_ref_tx(&mut self, hash: &Hash<32>, era: Era, cbor: Vec<u8>) {
         self.ref_txs.insert(hash.to_string(), (era, cbor));
     }
 
-    pub fn decode_ref_tx(&self, input: &MultiEraInput) -> Result<Option<MultiEraTx>, Error> {
-        if let Some(output_ref) = input.output_ref() {
-            if let Some((era, cbor)) = self.ref_txs.get(&output_ref.tx_id().to_string()) {
-                let tx = MultiEraTx::decode(*era, &cbor).map_err(crate::Error::cbor)?;
-                return Ok(Some(tx));
-            }
-        }
+    pub fn find_ref_tx(&self, hash: &Hash<32>) -> Result<MultiEraTx, Error> {
+        let (era, cbor) = self
+            .ref_txs
+            .get(&hash.to_string())
+            .ok_or_else(|| Error::missing_tx(hash))?;
 
-        Ok(None)
+        MultiEraTx::decode(*era, cbor).map_err(crate::Error::cbor)
     }
 }
 

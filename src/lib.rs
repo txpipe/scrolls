@@ -27,6 +27,9 @@ pub enum Error {
     #[error("ledger error: {0}")]
     LedgerError(String),
 
+    #[error("missing tx: {0}")]
+    MissingTx(String),
+
     #[error("source error: {0}")]
     SourceError(String),
 
@@ -50,23 +53,31 @@ impl Error {
     }
 
     pub fn network(error: impl Display) -> Error {
-        Error::NetworkError(format!("network error: {}", error))
+        Error::NetworkError(error.to_string())
     }
 
     pub fn cbor(error: impl Display) -> Error {
-        Error::CborError(format!("cbor error: {}", error))
+        Error::CborError(error.to_string())
     }
 
     pub fn ouroboros(error: impl Display) -> Error {
-        Error::OuroborosError(format!("ouroboros error: {}", error))
+        Error::OuroborosError(error.to_string())
+    }
+
+    pub fn ledger(error: impl Display) -> Error {
+        Error::LedgerError(error.to_string())
+    }
+
+    pub fn missing_tx(tx_id: impl Display) -> Error {
+        Error::MissingTx(tx_id.to_string())
     }
 
     pub fn source(error: impl Display) -> Error {
-        Error::SourceError(format!("source error: {}", error))
+        Error::SourceError(error.to_string())
     }
 
     pub fn storage(error: impl Display) -> Error {
-        Error::StorageError(format!("storage error: {}", error))
+        Error::StorageError(error.to_string())
     }
 
     pub fn custom(error: Box<dyn std::error::Error>) -> Error {
