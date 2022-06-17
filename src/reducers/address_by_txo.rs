@@ -2,7 +2,7 @@ use pallas::crypto::hash::Hash;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{crosscut, model, storage};
+use crate::{crosscut, model};
 
 #[derive(Deserialize)]
 pub struct Config {

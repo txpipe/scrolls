@@ -594,7 +594,9 @@ dependencies = [
 
 [[package]]
 name = "pallas"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53380dcc3fa2f0445fcba9d4271395b0fddad2e74dafc6c13c02144354500db7"
 dependencies = [
  "pallas-codec",
  "pallas-crypto",
@@ -606,14 +608,18 @@ dependencies = [
 
 [[package]]
 name = "pallas-codec"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5eb7cdf63ff7a569dd6d427c681bb0fae320ee19ee808ccdbfd67b86bf4664e9"
 dependencies = [
  "minicbor 0.17.1",
 ]
 
 [[package]]
 name = "pallas-crypto"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bd4198362e36939cd7f032c215a2b6bf435f11987d8b7602c408abc76eeb67c"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -624,7 +630,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-miniprotocols"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7a6fe48cc9520896162d27e482ba93962917f9fddf457c9d7c6e830c9493504"
 dependencies = [
  "hex",
  "itertools",
@@ -636,7 +644,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-multiplexer"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d44037658984b5496bc990672e9b930665231bf35009ec37566240d82e1bf82"
 dependencies = [
  "byteorder",
  "hex",
@@ -648,7 +658,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-primitives"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d377e4b7f8d1998f95cf93d031fd03c7cb6e09b539bdbc8eda8c582775afa6d"
 dependencies = [
  "base58",
  "bech32",
@@ -662,7 +674,9 @@ dependencies = [
 
 [[package]]
 name = "pallas-traverse"
-version = "0.11.0-alpha.1"
+version = "0.11.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a07a0150f442b43e2cced2b9b98317f9bb2d3a2baf93c1402ba0c18606ceae38"
 dependencies = [
  "hex",
  "pallas-codec",
