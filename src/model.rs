@@ -79,6 +79,8 @@ pub type Timestamp = u64;
 #[non_exhaustive]
 pub enum CRDTCommand {
     BlockStarting(Point),
+    SetAdd(Set, Member),
+    SetRemove(Set, Member),
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
@@ -95,6 +97,24 @@ impl CRDTCommand {
         let slot = block.slot();
         let point = Point::Specific(slot, hash.to_vec());
         CRDTCommand::BlockStarting(point)
+    }
+
+    pub fn set_add(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::SetAdd(key, member)
+    }
+
+    pub fn set_remove(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::SetRemove(key, member)
     }
 
     pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {

@@ -92,6 +92,8 @@ impl gasket::runtime::Worker for Worker {
                     .or_work_err()?;
             }
             model::CRDTCommand::TwoPhaseSetAdd(key, value) => {
+                log::debug!("adding to 2-phase set [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
@@ -99,20 +101,44 @@ impl gasket::runtime::Worker for Worker {
                     .or_work_err()?;
             }
             model::CRDTCommand::TwoPhaseSetRemove(key, value) => {
+                log::debug!("removing from 2-phase set [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
                     .sadd(format!("{}.ts", key), value)
                     .or_work_err()?;
             }
-            model::CRDTCommand::LastWriteWins(key, value, timestamp) => {
+            model::CRDTCommand::SetAdd(key, value) => {
+                log::debug!("adding to set [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
-                    .zadd(key, value, timestamp)
+                    .sadd(key, value)
+                    .or_work_err()?;
+            }
+            model::CRDTCommand::SetRemove(key, value) => {
+                log::debug!("removing from set [{}], value [{}]", key, value);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .srem(key, value)
+                    .or_work_err()?;
+            }
+            model::CRDTCommand::LastWriteWins(key, value, ts) => {
+                log::debug!("last write for [{}], value [{}], slot [{}]", key, value, ts);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zadd(key, value, ts)
                     .or_work_err()?;
             }
             model::CRDTCommand::AnyWriteWins(key, value) => {
+                log::debug!("overwrite [{}], value [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
@@ -120,6 +146,8 @@ impl gasket::runtime::Worker for Worker {
                     .or_work_err()?;
             }
             model::CRDTCommand::PNCounter(key, value) => {
+                log::debug!("increating counter [{}], by [{}]", key, value);
+
                 self.connection
                     .as_mut()
                     .unwrap()
