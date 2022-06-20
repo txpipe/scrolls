@@ -144,7 +144,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TransactionsCountByEpoch(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
-            Reducer::TransactionsCountByContractAddress(x) => x.reduce_block(block, output),
+            Reducer::TransactionsCountByContractAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TransactionsCountByContractAddressByEpoch(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
