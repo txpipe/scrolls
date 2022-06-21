@@ -141,6 +141,11 @@ This is an example configuration file:
 type = "N2N"
 address = "relays-new.cardano-mainnet.iohk.io:3001"
 
+# You can optionally enable enrichment (local db with transactions), this is needed for some reducers
+[enrich]
+type = "Sled"
+db_path = "/opt/scrolls/sled_db"
+
 # enable the "UTXO by Address" collection
 [[reducers]]
 type = "UtxoByAddress"
