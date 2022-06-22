@@ -1,7 +1,7 @@
 use crosscut::policies::*;
 use gasket::error::AsWorkError;
 use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
+use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
 use serde::Deserialize;
 
 use crate::{crosscut, model};
@@ -25,8 +25,6 @@ impl Reducer {
         input: &OutputRef,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let output_idx = input.tx_index();
-
         let inbound_tx = ctx
             .find_ref_tx(input.tx_id())
             .apply_policy(&self.config.policy)
@@ -56,23 +54,23 @@ impl Reducer {
             }
         }
 
-        let crdt = model::CRDTCommand::set_remove(
-            self.config.key_prefix.as_deref(),
-            &address,
-            format!("{}#{}", inbound_tx.hash(), output_idx),
-        );
+        let key = match &self.config.key_prefix {
+            Some(prefix) => prefix.to_string(),
+            None => "balance_by_address".to_string(),
+        };
 
-        output.send(crdt.into())
+        let crdt = model::CRDTCommand::PNCounter(key, output_tx.ada_amount() as i64);
+
+        output.send(gasket::messaging::Message::from(crdt))?;
+
+        Ok(())
     }
 
     fn process_outbound_txo(
         &mut self,
-        tx: &MultiEraTx,
         tx_output: &MultiEraOutput,
-        output_idx: usize,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let tx_hash = tx.hash();
         let address = tx_output.address(&self.address_hrp);
 
         if let Some(addresses) = &self.config.filter {
@@ -81,13 +79,16 @@ impl Reducer {
             }
         }
 
-        let crdt = model::CRDTCommand::set_add(
-            self.config.key_prefix.as_deref(),
-            &address,
-            format!("{}#{}", tx_hash, output_idx),
-        );
+        let key = match &self.config.key_prefix {
+            Some(prefix) => prefix.to_string(),
+            None => "balance_by_address".to_string(),
+        };
 
-        output.send(crdt.into())
+        let crdt = model::CRDTCommand::PNCounter(key, (-1) * tx_output.ada_amount() as i64);
+
+        output.send(gasket::messaging::Message::from(crdt))?;
+
+        Ok(())
     }
 
     pub fn reduce_block<'b>(
@@ -103,8 +104,8 @@ impl Reducer {
                     .or_work_err()?;
             }
 
-            for (idx, tx_output) in tx.outputs().iter().enumerate() {
-                self.process_outbound_txo(&tx, tx_output, idx, output)?;
+            for (_idx, tx_output) in tx.outputs().iter().enumerate() {
+                self.process_outbound_txo(tx_output, output)?;
             }
         }
 
@@ -119,6 +120,6 @@ impl Config {
             address_hrp: chain.address_hrp.clone(),
         };
 
-        super::Reducer::UtxoByAddress(reducer)
+        super::Reducer::BalanceByAddress(reducer)
     }
 }

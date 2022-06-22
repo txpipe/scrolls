@@ -13,7 +13,7 @@ pub struct Reducer {
 }
 
 impl Reducer {
-    fn increment_for_contract_address(
+    fn increment_for_address(
         &mut self,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -37,7 +37,7 @@ impl Reducer {
             for tx in block.txs() {
                 for tx_out in tx.outputs().iter().filter_map(|x| x.as_alonzo()) {
                     if crosscut::addresses::is_smart_contract(tx_out.address.as_slice()) {
-                        self.increment_for_contract_address(output)?;
+                        self.increment_for_address(output)?;
                     }
                 }
             }
