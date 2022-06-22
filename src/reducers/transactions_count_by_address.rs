@@ -47,7 +47,10 @@ impl Reducer {
 
         let inbound_tx = match inbound_tx {
             Some(x) => x,
-            None => return Result::Ok(None),
+            None => { 
+                log::error!("Didn't find inbound_tx, tx_id:{}", input.tx_id());
+                return Result::Ok(None)
+            },
         };
 
         let output_tx = inbound_tx
@@ -57,8 +60,11 @@ impl Reducer {
             .or_work_err()?;
 
         match output_tx {
-            Some(x) => Result::Ok(Some(x.address(&self.address_hrp))),
-            None => Result::Ok(None)
+            Some(x) => return Result::Ok(Some(x.address(&self.address_hrp))),
+            None => { 
+                log::error!("Output index not found, index:{}", input.tx_index());
+                return Result::Ok(None)
+             }
         }
     }
 
@@ -81,17 +87,18 @@ impl Reducer {
 
                     match maybe_input_address {
                         Ok(maybe_addr) => maybe_addr,
-                        Err(_) => None 
+                        Err(x) => {
+                            log::error!("Not found, tx_id:{}, index_at:{}, e:{}", output_ref.tx_id(), output_ref.tx_index(), x);
+                            None
+                        }
                     }
                 })
-                .filter(|x| crosscut::addresses::is_smart_contract(x.as_bytes()))
                 .collect();
 
                 let output_addresses: Vec<_> = tx
                     .outputs()
                     .iter()
                     .filter_map(|tx| tx.as_alonzo())
-                    .filter(|x| crosscut::addresses::is_smart_contract(x.address.as_slice()))
                     .filter_map(|x| x.to_bech32_address(&self.address_hrp).ok())
                     .collect();
 
@@ -115,6 +122,6 @@ impl Config {
             address_hrp: chain.address_hrp.clone(),
         };
 
-        super::Reducer::TransactionsCountByContractAddress(reducer)
+        super::Reducer::TransactionsCountByAddress(reducer)
     }
 }

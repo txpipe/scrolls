@@ -69,6 +69,6 @@ impl Config {
             chain: chain.clone(),
         };
 
-        super::Reducer::TransactionsCountByContractAddressByEpoch(reducer)
+        super::Reducer::TransactionsCountByAddressByEpoch(reducer)
     }
 }
