@@ -12,3 +12,6 @@ daemon.toml
 
 # Mac Files
 .DS_Store
+
+# Nix build results
+result
