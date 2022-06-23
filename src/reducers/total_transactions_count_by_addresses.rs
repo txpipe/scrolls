@@ -13,13 +13,13 @@ pub struct Reducer {
 }
 
 impl Reducer {
-    fn increment_for_contract_address(
+    fn increment_for_address(
         &mut self,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
             Some(prefix) => prefix.to_string(),
-            None => "total_transactions_count_by_contract_addresses".to_string(),
+            None => "total_transactions_count_by_addresses".to_string(),
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, 1);
@@ -37,7 +37,7 @@ impl Reducer {
             for tx in block.txs() {
                 for tx_out in tx.outputs().iter().filter_map(|x| x.as_alonzo()) {
                     if crosscut::addresses::is_smart_contract(tx_out.address.as_slice()) {
-                        self.increment_for_contract_address(output)?;
+                        self.increment_for_address(output)?;
                     }
                 }
             }
@@ -50,6 +50,6 @@ impl Reducer {
 impl Config {
     pub fn plugin(self) -> super::Reducer {
         let reducer = Reducer { config: self };
-        super::Reducer::TotalTransactionsCountByContractAddresses(reducer)
+        super::Reducer::TotalTransactionsCountByAddresses(reducer)
     }
 }

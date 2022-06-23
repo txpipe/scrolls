@@ -27,6 +27,7 @@ impl<T> AppliesPolicy for Result<T, crate::Error> {
         match self {
             Ok(t) => Ok(Some(t)),
             Err(err) => {
+
                 if matches!(policy, None) {
                     return Err(err);
                 }
@@ -39,15 +40,15 @@ impl<T> AppliesPolicy for Result<T, crate::Error> {
 
                 match &err {
                     crate::Error::MissingTx(_) if policy.skip_missing_data.unwrap_or(false) => {
-                        log::warn!("{}", err);
+                        log::warn!("missing tx:{}", err);
                         Ok(None)
                     }
                     crate::Error::CborError(_) if policy.skip_cbor_errors.unwrap_or(false) => {
-                        log::warn!("{}", err);
+                        log::warn!("cbor error:{}", err);
                         Ok(None)
                     }
                     crate::Error::LedgerError(_) if policy.skip_ledger_errors.unwrap_or(false) => {
-                        log::warn!("{}", err);
+                        log::warn!("ledger error:{}", err);
                         Ok(None)
                     }
                     _ => Err(err),
