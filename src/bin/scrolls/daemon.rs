@@ -31,7 +31,7 @@ impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
 #[derive(Deserialize)]
 struct ConfigRoot {
     source: sources::Config,
-    enrich: enrich::Config,
+    enrich: Option<enrich::Config>,
     reducers: Vec<reducers::Config>,
     storage: storage::Config,
     intersect: crosscut::IntersectConfig,
@@ -81,7 +81,7 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let source = config.source.bootstrapper(&chain, &config.intersect);
 
-    let enrich = config.enrich.bootstrapper();
+    let enrich = config.enrich.unwrap_or_default().bootstrapper();
 
     let reducer = reducers::Bootstrapper::new(config.reducers, &chain);
 

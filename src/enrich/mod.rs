@@ -13,6 +13,12 @@ pub enum Config {
     Sled(sled::Config),
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self::Skip
+    }
+}
+
 impl Config {
     pub fn bootstrapper(self) -> Bootstrapper {
         match self {
