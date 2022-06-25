@@ -1,20 +1,18 @@
 use std::collections::HashSet;
 
-use crosscut::policies::*;
-use gasket::error::AsWorkError;
 use pallas::ledger::traverse::{Feature, MultiEraBlock, OutputRef};
 use serde::Deserialize;
 
-use crate::{crosscut, model};
+use crate::{crosscut, model, prelude::*};
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub policy: Option<ReducerPolicy>,
 }
 
 pub struct Reducer {
     config: Config,
+    policy: crosscut::policies::RuntimePolicy,
     address_hrp: String,
 }
 
@@ -38,33 +36,33 @@ impl Reducer {
     fn find_address_from_output_ref(
         &mut self,
         ctx: &model::BlockContext,
-        input: &OutputRef
+        input: &OutputRef,
     ) -> Result<Option<String>, gasket::error::Error> {
         let inbound_tx = ctx
-        .find_ref_tx(input.tx_id())
-        .apply_policy(&self.config.policy)
-        .or_work_err()?;
+            .find_ref_tx(input.tx_id())
+            .apply_policy(&self.policy)
+            .or_work_err()?;
 
         let inbound_tx = match inbound_tx {
             Some(x) => x,
-            None => { 
+            None => {
                 log::error!("Didn't find inbound_tx, tx_id:{}", input.tx_id());
-                return Result::Ok(None)
-            },
+                return Result::Ok(None);
+            }
         };
 
         let output_tx = inbound_tx
             .output_at(input.tx_index() as usize)
             .ok_or(crate::Error::ledger("output index not found in tx"))
-            .apply_policy(&self.config.policy)
+            .apply_policy(&self.policy)
             .or_work_err()?;
 
         match output_tx {
             Some(x) => return Result::Ok(Some(x.address(&self.address_hrp))),
-            None => { 
+            None => {
                 log::error!("Output index not found, index:{}", input.tx_index());
-                return Result::Ok(None)
-             }
+                return Result::Ok(None);
+            }
         }
     }
 
@@ -76,24 +74,29 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::SmartContracts) {
             for tx in block.txs() {
-
                 let input_addresses: Vec<_> = tx
-                .inputs()
-                .iter()
-                .filter_map(|multi_era_input| { 
-                    let output_ref = multi_era_input.output_ref().unwrap();
+                    .inputs()
+                    .iter()
+                    .filter_map(|multi_era_input| {
+                        let output_ref = multi_era_input.output_ref().unwrap();
 
-                    let maybe_input_address = self.find_address_from_output_ref(ctx, &output_ref);
+                        let maybe_input_address =
+                            self.find_address_from_output_ref(ctx, &output_ref);
 
-                    match maybe_input_address {
-                        Ok(maybe_addr) => maybe_addr,
-                        Err(x) => {
-                            log::error!("Not found, tx_id:{}, index_at:{}, e:{}", output_ref.tx_id(), output_ref.tx_index(), x);
-                            None
+                        match maybe_input_address {
+                            Ok(maybe_addr) => maybe_addr,
+                            Err(x) => {
+                                log::error!(
+                                    "Not found, tx_id:{}, index_at:{}, e:{}",
+                                    output_ref.tx_id(),
+                                    output_ref.tx_index(),
+                                    x
+                                );
+                                None
+                            }
                         }
-                    }
-                })
-                .collect();
+                    })
+                    .collect();
 
                 let output_addresses: Vec<_> = tx
                     .outputs()
@@ -103,7 +106,8 @@ impl Reducer {
                     .collect();
 
                 let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
-                let all_addresses_deduped: HashSet<String> = HashSet::from_iter(all_addresses.iter().cloned());
+                let all_addresses_deduped: HashSet<String> =
+                    HashSet::from_iter(all_addresses.iter().cloned());
 
                 for address in all_addresses_deduped.iter() {
                     self.increment_for_address(address, output)?;
@@ -116,9 +120,14 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
+    pub fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> super::Reducer {
         let reducer = Reducer {
             config: self,
+            policy: policy.clone(),
             address_hrp: chain.address_hrp.clone(),
         };
 

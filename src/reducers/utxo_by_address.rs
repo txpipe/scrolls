@@ -1,20 +1,18 @@
-use crosscut::policies::*;
-use gasket::error::AsWorkError;
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
 
-use crate::{crosscut, model};
+use crate::{crosscut, model, prelude::*};
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
     pub filter: Option<Vec<String>>,
-    pub policy: Option<ReducerPolicy>,
 }
 
 pub struct Reducer {
     config: Config,
+    policy: crosscut::policies::RuntimePolicy,
     address_hrp: String,
 }
 
@@ -29,7 +27,7 @@ impl Reducer {
 
         let inbound_tx = ctx
             .find_ref_tx(input.tx_id())
-            .apply_policy(&self.config.policy)
+            .apply_policy(&self.policy)
             .or_work_err()?;
 
         let inbound_tx = match inbound_tx {
@@ -40,7 +38,7 @@ impl Reducer {
         let output_tx = inbound_tx
             .output_at(input.tx_index() as usize)
             .ok_or(crate::Error::ledger("output index not found in tx"))
-            .apply_policy(&self.config.policy)
+            .apply_policy(&self.policy)
             .or_work_err()?;
 
         let output_tx = match output_tx {
@@ -97,7 +95,6 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-
             for input in tx.inputs().iter().filter_map(|i| i.output_ref()) {
                 self.process_inbound_txo(&ctx, &input, output)
                     .or_work_err()?;
@@ -113,9 +110,14 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
+    pub fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> super::Reducer {
         let reducer = Reducer {
             config: self,
+            policy: policy.clone(),
             address_hrp: chain.address_hrp.clone(),
         };
 

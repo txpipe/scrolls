@@ -36,6 +36,7 @@ struct ConfigRoot {
     storage: storage::Config,
     intersect: crosscut::IntersectConfig,
     chain: Option<ChainConfig>,
+    policy: Option<crosscut::policies::RuntimePolicy>,
 }
 
 impl ConfigRoot {
@@ -78,12 +79,13 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
         .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
 
     let chain = config.chain.unwrap_or_default().into();
+    let policy = config.policy.unwrap_or_default().into();
 
     let source = config.source.bootstrapper(&chain, &config.intersect);
 
     let enrich = config.enrich.unwrap_or_default().bootstrapper();
 
-    let reducer = reducers::Bootstrapper::new(config.reducers, &chain);
+    let reducer = reducers::Bootstrapper::new(config.reducers, &chain, &policy);
 
     let storage = config.storage.plugin(&chain, &config.intersect);
 

@@ -15,6 +15,8 @@ mod worker;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
+pub mod balance_by_address;
+#[cfg(feature = "unstable")]
 pub mod total_transactions_count;
 #[cfg(feature = "unstable")]
 pub mod total_transactions_count_by_addresses;
@@ -24,8 +26,6 @@ pub mod transactions_count_by_address;
 pub mod transactions_count_by_address_by_epoch;
 #[cfg(feature = "unstable")]
 pub mod transactions_count_by_epoch;
-#[cfg(feature = "unstable")]
-pub mod balance_by_address;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -43,23 +43,21 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TransactionsCountByAddress(transactions_count_by_address::Config),
     #[cfg(feature = "unstable")]
-    TransactionsCountByAddressByEpoch(
-        transactions_count_by_address_by_epoch::Config,
-    ),
+    TransactionsCountByAddressByEpoch(transactions_count_by_address_by_epoch::Config),
     #[cfg(feature = "unstable")]
-    TotalTransactionsCountByAddresses(
-        total_transactions_count_by_addresses::Config,
-    ),
+    TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Config),
     #[cfg(feature = "unstable")]
-    BalanceByAddress(
-        balance_by_address::Config,
-    ),
+    BalanceByAddress(balance_by_address::Config),
 }
 
 impl Config {
-    fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> Reducer {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> Reducer {
         match self {
-            Config::UtxoByAddress(c) => c.plugin(chain),
+            Config::UtxoByAddress(c) => c.plugin(chain, policy),
             Config::PointByTx(c) => c.plugin(),
             Config::PoolByStake(c) => c.plugin(),
 
@@ -70,13 +68,13 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TransactionsCountByEpoch(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByAddress(c) => c.plugin(chain),
+            Config::TransactionsCountByAddress(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByAddressByEpoch(c) => c.plugin(chain),
+            Config::TransactionsCountByAddressByEpoch(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TotalTransactionsCountByAddresses(c) => c.plugin(),
             #[cfg(feature = "unstable")]
-            Config::BalanceByAddress(c) => c.plugin(chain),
+            Config::BalanceByAddress(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -88,9 +86,16 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn new(configs: Vec<Config>, chain: &crosscut::ChainWellKnownInfo) -> Self {
+    pub fn new(
+        configs: Vec<Config>,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> Self {
         Self {
-            reducers: configs.into_iter().map(|x| x.plugin(&chain)).collect(),
+            reducers: configs
+                .into_iter()
+                .map(|x| x.plugin(chain, policy))
+                .collect(),
             input: Default::default(),
             output: Default::default(),
         }
@@ -124,17 +129,11 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TransactionsCountByAddress(transactions_count_by_address::Reducer),
     #[cfg(feature = "unstable")]
-    TransactionsCountByAddressByEpoch(
-        transactions_count_by_address_by_epoch::Reducer,
-    ),
+    TransactionsCountByAddressByEpoch(transactions_count_by_address_by_epoch::Reducer),
     #[cfg(feature = "unstable")]
-    TotalTransactionsCountByAddresses(
-        total_transactions_count_by_addresses::Reducer,
-    ),
+    TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Reducer),
     #[cfg(feature = "unstable")]
-    BalanceByAddress(
-        balance_by_address::Reducer,
-    ),
+    BalanceByAddress(balance_by_address::Reducer),
 }
 
 impl Reducer {
