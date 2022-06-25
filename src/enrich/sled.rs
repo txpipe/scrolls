@@ -153,6 +153,8 @@ impl gasket::runtime::Worker for Worker {
 
                 self.output
                     .send(model::EnrichedBlockPayload::roll_forward(cbor, ctx))?;
+
+                self.blocks_counter.inc(1);
             }
             model::RawBlockPayload::RollBack(x) => {
                 self.output
