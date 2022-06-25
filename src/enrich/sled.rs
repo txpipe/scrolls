@@ -51,6 +51,10 @@ impl Bootstrapper {
             db: None,
             input: self.input,
             output: self.output,
+            inserts_counter: Default::default(),
+            matches_counter: Default::default(),
+            mismatches_counter: Default::default(),
+            blocks_counter: Default::default(),
         };
 
         pipeline.register_stage("enrich-sled", spawn_stage(worker, Default::default()));
@@ -62,6 +66,10 @@ pub struct Worker {
     db: Option<sled::Db>,
     input: InputPort,
     output: OutputPort,
+    inserts_counter: gasket::metrics::Counter,
+    matches_counter: gasket::metrics::Counter,
+    mismatches_counter: gasket::metrics::Counter,
+    blocks_counter: gasket::metrics::Counter,
 }
 
 struct SledTxValue(u16, Vec<u8>);
@@ -99,6 +107,7 @@ impl Worker {
             let body = tx.encode().map_err(crate::Error::cbor)?;
             let value: IVec = SledTxValue(era, body).try_into()?;
             db.insert(hash, value).map_err(crate::Error::storage)?;
+            self.inserts_counter.inc(1);
 
             for input in tx.inputs() {
                 if let Some(tx_ref) = input.output_ref() {
@@ -109,6 +118,9 @@ impl Worker {
                             ivec.try_into().map_err(crate::Error::storage)?;
                         let era = era.try_into().map_err(crate::Error::storage)?;
                         ctx.import_ref_tx(tx_id, era, cbor);
+                        self.matches_counter.inc(1);
+                    } else {
+                        self.mismatches_counter.inc(1);
                     }
                 }
             }
@@ -120,7 +132,12 @@ impl Worker {
 
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new().build()
+        gasket::metrics::Builder::new()
+            .with_counter("inserts", &self.inserts_counter)
+            .with_counter("matches", &self.matches_counter)
+            .with_counter("mismatches", &self.mismatches_counter)
+            .with_counter("blocks", &self.blocks_counter)
+            .build()
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
@@ -136,6 +153,8 @@ impl gasket::runtime::Worker for Worker {
 
                 self.output
                     .send(model::EnrichedBlockPayload::roll_forward(cbor, ctx))?;
+
+                self.blocks_counter.inc(1);
             }
             model::RawBlockPayload::RollBack(x) => {
                 self.output
