@@ -2,6 +2,7 @@ use clap::Command;
 use std::process;
 
 mod daemon;
+mod monitor;
 
 fn main() {
     let args = Command::new("app")
