@@ -26,6 +26,8 @@ pub mod transactions_count_by_address;
 pub mod transactions_count_by_address_by_epoch;
 #[cfg(feature = "unstable")]
 pub mod transactions_count_by_epoch;
+#[cfg(feature = "unstable")]
+pub mod transactions_count_by_script_hash;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -48,6 +50,8 @@ pub enum Config {
     TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Config),
     #[cfg(feature = "unstable")]
     BalanceByAddress(balance_by_address::Config),
+    #[cfg(feature = "unstable")]
+    TransactionsCountByScriptHash(transactions_count_by_script_hash::Config),
 }
 
 impl Config {
@@ -75,6 +79,8 @@ impl Config {
             Config::TotalTransactionsCountByAddresses(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TransactionsCountByScriptHash(c) => c.plugin(),
         }
     }
 }
@@ -134,6 +140,8 @@ pub enum Reducer {
     TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Reducer),
     #[cfg(feature = "unstable")]
     BalanceByAddress(balance_by_address::Reducer),
+    #[cfg(feature = "unstable")]
+    TransactionsCountByScriptHash(transactions_count_by_script_hash::Reducer),
 }
 
 impl Reducer {
@@ -162,6 +170,8 @@ impl Reducer {
             Reducer::TotalTransactionsCountByAddresses(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TransactionsCountByScriptHash(x) => x.reduce_block(block, output),
         }
     }
 }
