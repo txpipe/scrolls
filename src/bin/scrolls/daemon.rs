@@ -1,8 +1,8 @@
-use std::time::Duration;
-
 use clap::ArgMatches;
 use scrolls::{bootstrap, crosscut, enrich, reducers, sources, storage};
 use serde::Deserialize;
+
+use crate::monitor;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -83,7 +83,7 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let source = config.source.bootstrapper(&chain, &config.intersect);
 
-    let enrich = config.enrich.unwrap_or_default().bootstrapper();
+    let enrich = config.enrich.unwrap_or_default().bootstrapper(&policy);
 
     let reducer = reducers::Bootstrapper::new(config.reducers, &chain, &policy);
 
@@ -91,39 +91,9 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let pipeline = bootstrap::build(source, enrich, reducer, storage)?;
 
-    loop {
-        for (name, tether) in pipeline.tethers.iter() {
-            match tether.check_state() {
-                gasket::runtime::TetherState::Dropped => log::warn!("{} stage dropped", name),
-                gasket::runtime::TetherState::Blocked(x) => {
-                    log::warn!("{} stage blocked, state: {:?}", name, x);
-                }
-                gasket::runtime::TetherState::Alive(x) => {
-                    log::info!("{} stage alive, state: {:?}", name, x);
-                }
-            }
+    monitor::monitor_while_alive(pipeline);
 
-            match tether.read_metrics() {
-                Ok(readings) => {
-                    for (key, value) in readings {
-                        log::info!("stage {}, metric {}: {:?}", name, key, value);
-                    }
-                }
-                Err(err) => {
-                    println!("couldn't read metrics");
-                    dbg!(err);
-                }
-            }
-        }
-
-        std::thread::sleep(Duration::from_secs(5));
-    }
-
-    //for (name, tether) in tethers {
-    //    log::warn!("{}", name);
-    //    tether.dismiss_stage().expect("stage stops");
-    //    tether.join_stage();
-    //}
+    Ok(())
 }
 
 /// Creates the clap definition for this sub-command
