@@ -52,7 +52,7 @@ impl Worker {
         };
 
         let agent = blockfetch::BatchClient::initial((point.clone(), point), observer);
-        run_agent(agent, &mut self.channel).or_work_err()?;
+        run_agent(agent, &mut self.channel).or_restart()?;
 
         self.block_count.inc(1);
 
@@ -68,11 +68,11 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let input = self.input.recv()?;
+        let input = self.input.recv_or_idle()?;
 
         match input.payload {
             ChainSyncInternalPayload::RollForward(point) => {
-                self.fetch_block(point).or_work_err()?;
+                self.fetch_block(point)?;
             }
             ChainSyncInternalPayload::RollBack(point) => {
                 self.output.send(RawBlockPayload::roll_back(point))?;

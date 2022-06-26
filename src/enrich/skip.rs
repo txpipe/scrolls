@@ -52,7 +52,7 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv()?;
+        let msg = self.input.recv_or_idle()?;
 
         match msg.payload {
             model::RawBlockPayload::RollForward(cbor) => {

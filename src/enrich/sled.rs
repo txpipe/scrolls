@@ -8,8 +8,9 @@ use serde::Deserialize;
 use sled::IVec;
 
 use crate::{
-    bootstrap,
+    bootstrap, crosscut,
     model::{self, BlockContext},
+    prelude::AppliesPolicy,
 };
 
 type InputPort = gasket::messaging::InputPort<model::RawBlockPayload>;
@@ -21,9 +22,10 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn boostrapper(self) -> Bootstrapper {
+    pub fn boostrapper(self, policy: &crosscut::policies::RuntimePolicy) -> Bootstrapper {
         Bootstrapper {
             config: self,
+            policy: policy.clone(),
             input: Default::default(),
             output: Default::default(),
         }
@@ -32,6 +34,7 @@ impl Config {
 
 pub struct Bootstrapper {
     config: Config,
+    policy: crosscut::policies::RuntimePolicy,
     input: InputPort,
     output: OutputPort,
 }
@@ -47,7 +50,8 @@ impl Bootstrapper {
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
         let worker = Worker {
-            config: self.config.clone(),
+            config: self.config,
+            policy: self.policy,
             db: None,
             input: self.input,
             output: self.output,
@@ -63,6 +67,7 @@ impl Bootstrapper {
 
 pub struct Worker {
     config: Config,
+    policy: crosscut::policies::RuntimePolicy,
     db: Option<sled::Db>,
     input: InputPort,
     output: OutputPort,
@@ -141,15 +146,21 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv()?;
+        let msg = self.input.recv_or_idle()?;
 
         match msg.payload {
             model::RawBlockPayload::RollForward(cbor) => {
                 let block = MultiEraBlock::decode(&cbor)
                     .map_err(crate::Error::cbor)
-                    .or_work_err()?;
+                    .apply_policy(&self.policy)
+                    .or_panic()?;
 
-                let ctx = self.track_block_txs(&block).or_work_err()?;
+                let block = match block {
+                    Some(x) => x,
+                    None => return Ok(gasket::runtime::WorkOutcome::Partial),
+                };
+
+                let ctx = self.track_block_txs(&block).or_restart()?;
 
                 self.output
                     .send(model::EnrichedBlockPayload::roll_forward(cbor, ctx))?;
@@ -166,7 +177,7 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        let db = sled::open(&self.config.db_path).or_work_err()?;
+        let db = sled::open(&self.config.db_path).or_retry()?;
         self.db = Some(db);
 
         Ok(())
@@ -175,7 +186,7 @@ impl gasket::runtime::Worker for Worker {
     fn teardown(&mut self) -> Result<(), gasket::error::Error> {
         match &self.db {
             Some(db) => {
-                db.flush().or_work_err()?;
+                db.flush().or_panic()?;
                 Ok(())
             }
             None => Ok(()),

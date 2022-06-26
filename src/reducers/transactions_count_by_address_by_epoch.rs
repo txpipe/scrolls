@@ -43,7 +43,7 @@ impl Reducer {
         let inbound_tx = ctx
             .find_ref_tx(input.tx_id())
             .apply_policy(&self.policy)
-            .or_work_err()?;
+            .or_panic()?;
 
         let inbound_tx = match inbound_tx {
             Some(x) => x,
@@ -57,7 +57,7 @@ impl Reducer {
             .output_at(input.tx_index() as usize)
             .ok_or(crate::Error::ledger("output index not found in tx"))
             .apply_policy(&self.policy)
-            .or_work_err()?;
+            .or_panic()?;
 
         match output_tx {
             Some(x) => return Result::Ok(Some(x.address(&self.address_hrp))),
