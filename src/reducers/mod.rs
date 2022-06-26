@@ -89,6 +89,7 @@ pub struct Bootstrapper {
     input: InputPort,
     output: OutputPort,
     reducers: Vec<Reducer>,
+    policy: crosscut::policies::RuntimePolicy,
 }
 
 impl Bootstrapper {
@@ -104,6 +105,7 @@ impl Bootstrapper {
                 .collect(),
             input: Default::default(),
             output: Default::default(),
+            policy: policy.clone(),
         }
     }
 
@@ -116,7 +118,7 @@ impl Bootstrapper {
     }
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
-        let worker = worker::Worker::new(self.reducers, self.input, self.output);
+        let worker = worker::Worker::new(self.reducers, self.input, self.output, self.policy);
         pipeline.register_stage("reducers", spawn_stage(worker, Default::default()));
     }
 }

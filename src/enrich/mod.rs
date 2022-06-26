@@ -4,7 +4,7 @@ pub mod sled;
 use gasket::messaging::{InputPort, OutputPort};
 use serde::Deserialize;
 
-use crate::{bootstrap, model};
+use crate::{bootstrap, crosscut, model};
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -20,10 +20,10 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn bootstrapper(self) -> Bootstrapper {
+    pub fn bootstrapper(self, policy: &crosscut::policies::RuntimePolicy) -> Bootstrapper {
         match self {
             Config::Skip => Bootstrapper::Skip(skip::Bootstrapper::default()),
-            Config::Sled(c) => Bootstrapper::Sled(c.boostrapper()),
+            Config::Sled(c) => Bootstrapper::Sled(c.boostrapper(policy)),
         }
     }
 }

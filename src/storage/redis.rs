@@ -78,7 +78,7 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv()?;
+        let msg = self.input.recv_or_idle()?;
 
         match msg.payload {
             model::CRDTCommand::BlockStarting(_) => {
@@ -89,7 +89,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .sadd(key, value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::TwoPhaseSetAdd(key, value) => {
                 log::debug!("adding to 2-phase set [{}], value [{}]", key, value);
@@ -98,7 +98,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .sadd(key, value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::TwoPhaseSetRemove(key, value) => {
                 log::debug!("removing from 2-phase set [{}], value [{}]", key, value);
@@ -107,7 +107,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .sadd(format!("{}.ts", key), value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::SetAdd(key, value) => {
                 log::debug!("adding to set [{}], value [{}]", key, value);
@@ -116,7 +116,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .sadd(key, value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::SetRemove(key, value) => {
                 log::debug!("removing from set [{}], value [{}]", key, value);
@@ -125,7 +125,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .srem(key, value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::LastWriteWins(key, value, ts) => {
                 log::debug!("last write for [{}], value [{}], slot [{}]", key, value, ts);
@@ -134,7 +134,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .zadd(key, value, ts)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::AnyWriteWins(key, value) => {
                 log::debug!("overwrite [{}], value [{}]", key, value);
@@ -143,16 +143,16 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .set(key, value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::PNCounter(key, value) => {
-                log::debug!("increating counter [{}], by [{}]", key, value);
+                log::debug!("increasing counter [{}], by [{}]", key, value);
 
                 self.connection
                     .as_mut()
                     .unwrap()
                     .incr(key, value)
-                    .or_work_err()?;
+                    .or_restart()?;
             }
             model::CRDTCommand::BlockFinished(point) => {
                 let cursor_str = crosscut::PointArg::from(point).to_string();
@@ -161,7 +161,7 @@ impl gasket::runtime::Worker for Worker {
                     .as_mut()
                     .unwrap()
                     .set("_cursor", &cursor_str)
-                    .or_work_err()?;
+                    .or_restart()?;
 
                 log::info!("new cursor saved to redis {}", &cursor_str)
             }
@@ -171,10 +171,10 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        let client = redis::Client::open(self.config.connection_params.clone()).or_work_err()?;
-        let connection = client.get_connection().or_work_err()?;
-
-        self.connection = Some(connection);
+        self.connection = redis::Client::open(self.config.connection_params.clone())
+            .and_then(|c| c.get_connection())
+            .or_retry()?
+            .into();
 
         Ok(())
     }

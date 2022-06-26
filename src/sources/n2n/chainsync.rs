@@ -158,7 +158,7 @@ impl gasket::runtime::Worker for Worker {
             &self.cursor,
             &mut self.channel,
         )
-        .or_work_err()?;
+        .or_retry()?;
 
         log::warn!("{:?}", known_points);
 
@@ -172,7 +172,7 @@ impl gasket::runtime::Worker for Worker {
             ),
         )
         .apply_start()
-        .or_work_err()?;
+        .or_retry()?;
 
         self.agent = Some(agent);
 
@@ -182,7 +182,7 @@ impl gasket::runtime::Worker for Worker {
     fn work(&mut self) -> gasket::runtime::WorkResult {
         let agent = self.agent.take().unwrap();
 
-        let agent = miniprotocols::run_agent_step(agent, &mut self.channel).or_work_err()?;
+        let agent = miniprotocols::run_agent_step(agent, &mut self.channel).or_restart()?;
 
         let is_done = agent.is_done();
 

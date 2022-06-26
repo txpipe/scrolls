@@ -67,7 +67,7 @@ pub struct Bootstrapper {
 impl Bootstrapper {
     fn bootstrap_transport(&self) -> Result<Transport, crate::Error> {
         gasket::retries::retry_operation(
-            || Transport::setup(&self.config.address, self.chain.magic).or_work_err(),
+            || Transport::setup(&self.config.address, self.chain.magic).or_retry(),
             &retries::Policy {
                 max_retries: 5,
                 backoff_factor: 2,

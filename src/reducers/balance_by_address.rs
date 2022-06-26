@@ -26,7 +26,7 @@ impl Reducer {
         let inbound_tx = ctx
             .find_ref_tx(input.tx_id())
             .apply_policy(&self.policy)
-            .or_work_err()?;
+            .or_panic()?;
 
         let inbound_tx = match inbound_tx {
             Some(x) => x,
@@ -37,7 +37,7 @@ impl Reducer {
             .output_at(input.tx_index() as usize)
             .ok_or(crate::Error::ledger("output index not found in tx"))
             .apply_policy(&self.policy)
-            .or_work_err()?;
+            .or_panic()?;
 
         let output_tx = match output_tx {
             Some(x) => x,
@@ -97,8 +97,7 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             for input in tx.inputs().iter().filter_map(|i| i.output_ref()) {
-                self.process_inbound_txo(&ctx, &input, output)
-                    .or_work_err()?;
+                self.process_inbound_txo(&ctx, &input, output)?;
             }
 
             for (_idx, tx_output) in tx.outputs().iter().enumerate() {

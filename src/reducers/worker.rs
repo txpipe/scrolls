@@ -1,7 +1,6 @@
-use gasket::{error::AsWorkError, runtime::WorkOutcome};
 use pallas::ledger::traverse::MultiEraBlock;
 
-use crate::model;
+use crate::{crosscut, model, prelude::*};
 
 use super::Reducer;
 
@@ -12,15 +11,22 @@ pub struct Worker {
     input: InputPort,
     output: OutputPort,
     reducers: Vec<Reducer>,
+    policy: crosscut::policies::RuntimePolicy,
     ops_count: gasket::metrics::Counter,
 }
 
 impl Worker {
-    pub fn new(reducers: Vec<Reducer>, input: InputPort, output: OutputPort) -> Self {
+    pub fn new(
+        reducers: Vec<Reducer>,
+        input: InputPort,
+        output: OutputPort,
+        policy: crosscut::policies::RuntimePolicy,
+    ) -> Self {
         Worker {
             reducers,
             input,
             output,
+            policy,
             ops_count: Default::default(),
         }
     }
@@ -30,7 +36,15 @@ impl Worker {
         block: &'b [u8],
         ctx: &model::BlockContext,
     ) -> Result<(), gasket::error::Error> {
-        let block = MultiEraBlock::decode(block).or_work_err()?;
+        let block = MultiEraBlock::decode(block)
+            .map_err(crate::Error::cbor)
+            .apply_policy(&self.policy)
+            .or_panic()?;
+
+        let block = match block {
+            Some(x) => x,
+            None => return Ok(()),
+        };
 
         self.output.send(gasket::messaging::Message::from(
             model::CRDTCommand::block_starting(&block),
@@ -57,7 +71,7 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv()?;
+        let msg = self.input.recv_or_idle()?;
 
         match msg.payload {
             model::EnrichedBlockPayload::RollForward(block, ctx) => {
@@ -68,6 +82,6 @@ impl gasket::runtime::Worker for Worker {
             }
         }
 
-        Ok(WorkOutcome::Partial)
+        Ok(gasket::runtime::WorkOutcome::Partial)
     }
 }
