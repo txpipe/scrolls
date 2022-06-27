@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
@@ -61,7 +63,16 @@ impl Bootstrapper {
             blocks_counter: Default::default(),
         };
 
-        pipeline.register_stage("enrich-sled", spawn_stage(worker, Default::default()));
+        pipeline.register_stage(
+            "enrich-sled",
+            spawn_stage(
+                worker,
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(5)),
+                    ..Default::default()
+                },
+            ),
+        );
     }
 }
 

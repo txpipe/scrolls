@@ -146,7 +146,7 @@ impl Worker {
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
-            .with_counter("block_count", &self.block_count)
+            .with_counter("received_blocks", &self.block_count)
             .with_gauge("chain_tip", &self.chain_tip)
             .build()
     }

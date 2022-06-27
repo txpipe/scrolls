@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gasket::runtime::spawn_stage;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
@@ -119,7 +121,16 @@ impl Bootstrapper {
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
         let worker = worker::Worker::new(self.reducers, self.input, self.output, self.policy);
-        pipeline.register_stage("reducers", spawn_stage(worker, Default::default()));
+        pipeline.register_stage(
+            "reducers",
+            spawn_stage(
+                worker,
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(5)),
+                    ..Default::default()
+                },
+            ),
+        );
     }
 }
 

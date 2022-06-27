@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use gasket::{
     error::AsWorkError,
@@ -63,7 +63,16 @@ impl Bootstrapper {
             ops_count: Default::default(),
         };
 
-        pipeline.register_stage("redis", spawn_stage(worker, Default::default()));
+        pipeline.register_stage(
+            "redis",
+            spawn_stage(
+                worker,
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(5)),
+                    ..Default::default()
+                },
+            ),
+        );
     }
 }
 

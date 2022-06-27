@@ -70,7 +70,10 @@ impl Bootstrapper {
                     cursor.clone(),
                     self.output,
                 ),
-                gasket::runtime::Policy::default(),
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(5)),
+                    ..Default::default()
+                },
             ),
         );
     }

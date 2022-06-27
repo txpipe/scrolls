@@ -115,7 +115,7 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
 
     while !should_stop(&pipeline) {
         console::refresh(&args.console, &pipeline);
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(1500));
     }
 
     log::info!("Scrolls is stopping...");

@@ -24,7 +24,7 @@ impl Default for Mode {
 
 struct TuiConsole {
     chainsync_progress: indicatif::ProgressBar,
-    source_block_count: indicatif::ProgressBar,
+    received_blocks: indicatif::ProgressBar,
     reducer_ops_count: indicatif::ProgressBar,
     storage_ops_count: indicatif::ProgressBar,
     enrich_inserts: indicatif::ProgressBar,
@@ -41,7 +41,10 @@ impl TuiConsole {
         container.add(
             indicatif::ProgressBar::new_spinner().with_style(
                 indicatif::ProgressStyle::default_spinner()
-                    .template(&format!("{{spinner}} {} {{pos}} | {{per_sec}}", name))
+                    .template(&format!(
+                        "{{spinner}} {:<20} {{msg:<20}} {{pos:>8}} | {{per_sec}}",
+                        name
+                    ))
                     .unwrap(),
             ),
         )
@@ -54,11 +57,11 @@ impl TuiConsole {
             chainsync_progress: container.add(
                 indicatif::ProgressBar::new(0).with_style(
                     indicatif::ProgressStyle::default_bar()
-                        .template("chainsync progress: {bar} {pos}/{len} {eta}\n{msg}")
+                        .template("chainsync progress: {bar} {pos}/{len} eta: {eta}\n{msg}")
                         .unwrap(),
                 ),
             ),
-            source_block_count: Self::build_counter_spinner("received blocks", &container),
+            received_blocks: Self::build_counter_spinner("received blocks", &container),
             enrich_inserts: Self::build_counter_spinner("enrich inserts", &container),
             enrich_matches: Self::build_counter_spinner("enrich matches", &container),
             enrich_mismatches: Self::build_counter_spinner("enrich mismatches", &container),
@@ -70,36 +73,55 @@ impl TuiConsole {
 
     fn refresh(&self, pipeline: &Pipeline) {
         for (stage, tether) in pipeline.tethers.iter() {
+            let state = match tether.check_state() {
+                gasket::runtime::TetherState::Dropped => "dropped!",
+                gasket::runtime::TetherState::Blocked(_) => "blocked!",
+                gasket::runtime::TetherState::Alive(x) => match x {
+                    gasket::runtime::StageState::Bootstrap => "bootstrapping...",
+                    gasket::runtime::StageState::Working => "working...",
+                    gasket::runtime::StageState::Idle => "idle...",
+                    gasket::runtime::StageState::StandBy => "stand-by...",
+                    gasket::runtime::StageState::Teardown => "tearing down...",
+                },
+            };
+
             match tether.read_metrics() {
                 Ok(readings) => {
                     for (key, value) in readings {
                         match (*stage, key, value) {
                             (_, "chain_tip", Reading::Gauge(x)) => {
-                                self.chainsync_progress.set_length(x as u64)
+                                self.chainsync_progress.set_length(x as u64);
                             }
                             (_, "last_block", Reading::Gauge(x)) => {
-                                self.chainsync_progress.set_position(x as u64)
+                                self.chainsync_progress.set_position(x as u64);
                             }
-                            ("n2n-headers", "block_count", Reading::Count(x)) => {
-                                self.source_block_count.set_position(x)
+                            (_, "received_blocks", Reading::Count(x)) => {
+                                self.received_blocks.set_position(x);
+                                self.received_blocks.set_message(state);
                             }
                             ("reducers", "ops_count", Reading::Count(x)) => {
-                                self.reducer_ops_count.set_position(x)
+                                self.reducer_ops_count.set_position(x);
+                                self.reducer_ops_count.set_message(state);
                             }
                             (_, "storage_ops", Reading::Count(x)) => {
-                                self.storage_ops_count.set_position(x)
+                                self.storage_ops_count.set_position(x);
+                                self.storage_ops_count.set_message(state);
                             }
                             (_, "enrich_inserts", Reading::Count(x)) => {
-                                self.enrich_inserts.set_position(x)
+                                self.enrich_inserts.set_position(x);
+                                self.enrich_inserts.set_message(state);
                             }
                             (_, "enrich_matches", Reading::Count(x)) => {
-                                self.enrich_matches.set_position(x)
+                                self.enrich_matches.set_position(x);
+                                self.enrich_matches.set_message(state);
                             }
                             (_, "enrich_mismatches", Reading::Count(x)) => {
-                                self.enrich_mismatches.set_position(x)
+                                self.enrich_mismatches.set_position(x);
+                                self.enrich_mismatches.set_message(state);
                             }
                             (_, "enrich_blocks", Reading::Count(x)) => {
-                                self.enrich_blocks.set_position(x)
+                                self.enrich_blocks.set_position(x);
+                                self.enrich_blocks.set_message(state);
                             }
                             _ => (),
                         }

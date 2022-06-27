@@ -16,7 +16,7 @@ struct ChainObserver {
     output: OutputPort,
     chain_buffer: chainsync::RollbackBuffer,
     blocks: HashMap<Point, Vec<u8>>,
-    block_count: gasket::metrics::Counter,
+    block_count: Counter,
     chain_tip: Gauge,
 }
 
@@ -135,7 +135,7 @@ impl Worker {
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
-            .with_counter("block_count", &self.block_count)
+            .with_counter("received_blocks", &self.block_count)
             .with_gauge("chain_tip", &self.chain_tip)
             .build()
     }

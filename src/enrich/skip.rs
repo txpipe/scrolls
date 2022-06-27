@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gasket::runtime::{spawn_stage, WorkOutcome};
 
 use crate::{
@@ -37,7 +39,16 @@ impl Bootstrapper {
             output: self.output,
         };
 
-        pipeline.register_stage("enrich-skip", spawn_stage(worker, Default::default()));
+        pipeline.register_stage(
+            "enrich-skip",
+            spawn_stage(
+                worker,
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(5)),
+                    ..Default::default()
+                },
+            ),
+        );
     }
 }
 
