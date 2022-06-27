@@ -48,7 +48,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
         self.blocks.insert(point.clone(), cbor);
 
         // track the new point in our memory buffer
-        log::info!("rolling forward to point {:?}", point);
+        log::debug!("rolling forward to point {:?}", point);
         self.chain_buffer.roll_forward(point);
 
         // see if we have points that already reached certain depth
@@ -76,7 +76,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
         &mut self,
         point: &Point,
     ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
-        log::info!("rolling block to point {:?}", point);
+        log::debug!("rolling block to point {:?}", point);
 
         match self.chain_buffer.roll_back(point) {
             chainsync::RollbackEffect::Handled => {

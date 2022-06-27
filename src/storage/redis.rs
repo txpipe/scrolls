@@ -60,6 +60,7 @@ impl Bootstrapper {
             config: self.config.clone(),
             connection: None,
             input: self.input,
+            ops_count: Default::default(),
         };
 
         pipeline.register_stage("redis", spawn_stage(worker, Default::default()));
@@ -69,12 +70,15 @@ impl Bootstrapper {
 pub struct Worker {
     config: Config,
     connection: Option<redis::Connection>,
+    ops_count: gasket::metrics::Counter,
     input: InputPort,
 }
 
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new().build()
+        gasket::metrics::Builder::new()
+            .with_counter("storage_ops", &self.ops_count)
+            .build()
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
@@ -166,6 +170,8 @@ impl gasket::runtime::Worker for Worker {
                 log::info!("new cursor saved to redis {}", &cursor_str)
             }
         };
+
+        self.ops_count.inc(1);
 
         Ok(WorkOutcome::Partial)
     }
