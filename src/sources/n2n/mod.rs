@@ -104,7 +104,7 @@ impl Bootstrapper {
                     headers_out,
                 ),
                 gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(120)),
+                    tick_timeout: Some(Duration::from_secs(600)),
                     ..Default::default()
                 },
             ),
@@ -115,7 +115,7 @@ impl Bootstrapper {
             gasket::runtime::spawn_stage(
                 self::blockfetch::Worker::new(transport.channel3, headers_in, self.output),
                 gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(120)),
+                    tick_timeout: Some(Duration::from_secs(600)),
                     ..Default::default()
                 },
             ),
