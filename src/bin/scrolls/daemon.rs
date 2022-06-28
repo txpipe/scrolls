@@ -1,8 +1,9 @@
-use clap::ArgMatches;
+use clap::{self, Parser};
 use scrolls::{bootstrap, crosscut, enrich, reducers, sources, storage};
 use serde::Deserialize;
+use std::time::Duration;
 
-use crate::monitor;
+use crate::console;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -40,7 +41,7 @@ struct ConfigRoot {
 }
 
 impl ConfigRoot {
-    pub fn new(explicit_file: Option<String>) -> Result<Self, config::ConfigError> {
+    pub fn new(explicit_file: &Option<std::path::PathBuf>) -> Result<Self, config::ConfigError> {
         let mut s = config::Config::builder();
 
         // our base config will always be in /etc/scrolls
@@ -50,8 +51,8 @@ impl ConfigRoot {
         s = s.add_source(config::File::with_name("scrolls.toml").required(false));
 
         // if an explicit file was passed, then we load it as mandatory
-        if let Some(explicit) = explicit_file {
-            s = s.add_source(config::File::with_name(&explicit).required(true));
+        if let Some(explicit) = explicit_file.as_ref().and_then(|x| x.to_str()) {
+            s = s.add_source(config::File::with_name(explicit).required(true));
         }
 
         // finally, we use env vars to make some last-step overrides
@@ -61,21 +62,40 @@ impl ConfigRoot {
     }
 }
 
-pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
-    env_logger::init();
+fn should_stop(pipeline: &bootstrap::Pipeline) -> bool {
+    pipeline
+        .tethers
+        .iter()
+        .any(|(_, tether)| match tether.check_state() {
+            gasket::runtime::TetherState::Alive(x) => match x {
+                gasket::runtime::StageState::StandBy => true,
+                _ => false,
+            },
+            _ => true,
+        })
+}
 
-    let explicit_config = match args.is_present("config") {
-        true => {
-            let config_file_path = args
-                .value_of_t("config")
-                .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
+fn shutdown(pipeline: bootstrap::Pipeline) {
+    for (name, tether) in pipeline.tethers {
+        let state = tether.check_state();
+        log::warn!("dismissing stage: {} with state {:?}", name, state);
+        tether.dismiss_stage().expect("stage stops");
 
-            Some(config_file_path)
-        }
-        false => None,
-    };
+        // Can't join the stage because there's a risk of deadlock, usually
+        // because a stage gets stuck sending into a port which depends on a
+        // different stage not yet dismissed. The solution is to either create a
+        // DAG of dependencies and dismiss in the correct order, or implement a
+        // 2-phase teardown where ports are disconnected and flushed
+        // before joining the stage.
 
-    let config = ConfigRoot::new(explicit_config)
+        //tether.join_stage();
+    }
+}
+
+pub fn run(args: &Args) -> Result<(), scrolls::Error> {
+    console::initialize(&args.console);
+
+    let config = ConfigRoot::new(&args.config)
         .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
 
     let chain = config.chain.unwrap_or_default().into();
@@ -91,17 +111,28 @@ pub fn run(args: &ArgMatches) -> Result<(), scrolls::Error> {
 
     let pipeline = bootstrap::build(source, enrich, reducer, storage)?;
 
-    monitor::monitor_while_alive(pipeline);
+    log::info!("scrolls is running...");
+
+    while !should_stop(&pipeline) {
+        console::refresh(&args.console, &pipeline);
+        std::thread::sleep(Duration::from_millis(1500));
+    }
+
+    log::info!("Scrolls is stopping...");
+
+    shutdown(pipeline);
 
     Ok(())
 }
 
-/// Creates the clap definition for this sub-command
-pub(crate) fn command_definition<'a>() -> clap::Command<'a> {
-    clap::Command::new("daemon").arg(
-        clap::Arg::new("config")
-            .long("config")
-            .takes_value(true)
-            .help("config file to load by the daemon"),
-    )
+#[derive(clap::Args)]
+#[clap(author, version, about, long_about = None)]
+pub struct Args {
+    #[clap(long, value_parser)]
+    //#[clap(description = "config file to load by the daemon")]
+    config: Option<std::path::PathBuf>,
+
+    #[clap(long, value_parser)]
+    //#[clap(description = "type of progress to display")],
+    console: Option<console::Mode>,
 }

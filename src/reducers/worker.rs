@@ -13,6 +13,7 @@ pub struct Worker {
     reducers: Vec<Reducer>,
     policy: crosscut::policies::RuntimePolicy,
     ops_count: gasket::metrics::Counter,
+    last_block: gasket::metrics::Gauge,
 }
 
 impl Worker {
@@ -28,6 +29,7 @@ impl Worker {
             output,
             policy,
             ops_count: Default::default(),
+            last_block: Default::default(),
         }
     }
 
@@ -45,6 +47,8 @@ impl Worker {
             Some(x) => x,
             None => return Ok(()),
         };
+
+        self.last_block.set(block.number() as i64);
 
         self.output.send(gasket::messaging::Message::from(
             model::CRDTCommand::block_starting(&block),
@@ -67,6 +71,7 @@ impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
             .with_counter("ops_count", &self.ops_count)
+            .with_gauge("last_block", &self.last_block)
             .build()
     }
 

@@ -103,7 +103,10 @@ impl Bootstrapper {
                     cursor.clone(),
                     headers_out,
                 ),
-                gasket::runtime::Policy::default(),
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(120)),
+                    ..Default::default()
+                },
             ),
         );
 
@@ -111,7 +114,10 @@ impl Bootstrapper {
             "n2n-blocks",
             gasket::runtime::spawn_stage(
                 self::blockfetch::Worker::new(transport.channel3, headers_in, self.output),
-                gasket::runtime::Policy::default(),
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(120)),
+                    ..Default::default()
+                },
             ),
         );
     }

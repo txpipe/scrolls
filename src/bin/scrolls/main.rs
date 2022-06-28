@@ -1,21 +1,22 @@
-use clap::Command;
+use clap::Parser;
 use std::process;
 
+mod console;
 mod daemon;
-mod monitor;
+
+#[derive(Parser)]
+#[clap(name = "Scrolls")]
+#[clap(bin_name = "scrolls")]
+#[clap(author, version, about, long_about = None)]
+enum Scrolls {
+    Daemon(daemon::Args),
+}
 
 fn main() {
-    let args = Command::new("app")
-        .name("scrolls")
-        .about("cardano cache")
-        .version(env!("CARGO_PKG_VERSION"))
-        .subcommand(daemon::command_definition())
-        .arg_required_else_help(true)
-        .get_matches();
+    let args = Scrolls::parse();
 
-    let result = match args.subcommand() {
-        Some(("daemon", args)) => daemon::run(args),
-        _ => Err(scrolls::Error::ConfigError("nothing to do".to_string())),
+    let result = match args {
+        Scrolls::Daemon(x) => daemon::run(&x),
     };
 
     if let Err(err) = &result {

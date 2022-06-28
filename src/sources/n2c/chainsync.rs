@@ -16,7 +16,7 @@ struct ChainObserver {
     output: OutputPort,
     chain_buffer: chainsync::RollbackBuffer,
     blocks: HashMap<Point, Vec<u8>>,
-    block_count: gasket::metrics::Counter,
+    block_count: Counter,
     chain_tip: Gauge,
 }
 
@@ -48,7 +48,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
         self.blocks.insert(point.clone(), cbor);
 
         // track the new point in our memory buffer
-        log::info!("rolling forward to point {:?}", point);
+        log::debug!("rolling forward to point {:?}", point);
         self.chain_buffer.roll_forward(point);
 
         // see if we have points that already reached certain depth
@@ -76,7 +76,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
         &mut self,
         point: &Point,
     ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
-        log::info!("rolling block to point {:?}", point);
+        log::debug!("rolling block to point {:?}", point);
 
         match self.chain_buffer.roll_back(point) {
             chainsync::RollbackEffect::Handled => {
@@ -135,7 +135,7 @@ impl Worker {
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
-            .with_counter("block_count", &self.block_count)
+            .with_counter("received_blocks", &self.block_count)
             .with_gauge("chain_tip", &self.chain_tip)
             .build()
     }

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
@@ -61,7 +63,16 @@ impl Bootstrapper {
             blocks_counter: Default::default(),
         };
 
-        pipeline.register_stage("enrich-sled", spawn_stage(worker, Default::default()));
+        pipeline.register_stage(
+            "enrich-sled",
+            spawn_stage(
+                worker,
+                gasket::runtime::Policy {
+                    tick_timeout: Some(Duration::from_secs(120)),
+                    ..Default::default()
+                },
+            ),
+        );
     }
 }
 
@@ -138,10 +149,10 @@ impl Worker {
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
-            .with_counter("inserts", &self.inserts_counter)
-            .with_counter("matches", &self.matches_counter)
-            .with_counter("mismatches", &self.mismatches_counter)
-            .with_counter("blocks", &self.blocks_counter)
+            .with_counter("enrich_inserts", &self.inserts_counter)
+            .with_counter("enrich_matches", &self.matches_counter)
+            .with_counter("enrich_mismatches", &self.mismatches_counter)
+            .with_counter("enrich_blocks", &self.blocks_counter)
             .build()
     }
 
