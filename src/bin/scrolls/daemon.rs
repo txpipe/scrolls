@@ -1,4 +1,4 @@
-use clap::{self, Parser};
+use clap;
 use scrolls::{bootstrap, crosscut, enrich, reducers, sources, storage};
 use serde::Deserialize;
 use std::time::Duration;
