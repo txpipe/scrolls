@@ -71,7 +71,7 @@ impl Bootstrapper {
                     self.output,
                 ),
                 gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(120)),
+                    tick_timeout: Some(Duration::from_secs(600)),
                     ..Default::default()
                 },
             ),
