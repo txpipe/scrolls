@@ -68,7 +68,7 @@ impl Bootstrapper {
             spawn_stage(
                 worker,
                 gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(5)),
+                    tick_timeout: Some(Duration::from_secs(120)),
                     ..Default::default()
                 },
             ),
