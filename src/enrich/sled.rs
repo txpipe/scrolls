@@ -5,7 +5,11 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 
-use pallas::{codec::minicbor, ledger::traverse::MultiEraBlock};
+use pallas::{
+    codec::minicbor,
+    ledger::traverse::{Era, MultiEraBlock, MultiEraTx},
+};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use sled::IVec;
 
@@ -111,38 +115,75 @@ impl TryFrom<IVec> for SledTxValue {
     }
 }
 
+#[inline]
+fn insert_new_txs(db: &sled::Db, txs: &[MultiEraTx]) -> Result<(), crate::Error> {
+    let mut insert_batch = sled::Batch::default();
+
+    for tx in txs.iter() {
+        let key: IVec = tx.hash().to_vec().into();
+
+        let era = tx.era().into();
+        let body = tx.encode().map_err(crate::Error::cbor)?;
+        let value: IVec = SledTxValue(era, body).try_into()?;
+
+        insert_batch.insert(key, value)
+    }
+
+    db.apply_batch(insert_batch)
+        .map_err(crate::Error::storage)?;
+
+    Ok(())
+}
+
 impl Worker {
-    fn track_block_txs(&self, block: &MultiEraBlock) -> Result<BlockContext, crate::Error> {
-        let db = self.db.as_ref().unwrap();
+    #[inline]
+    fn fetch_referenced_txs(
+        &self,
+        db: &sled::Db,
+        txs: &[MultiEraTx],
+    ) -> Result<BlockContext, crate::Error> {
         let mut ctx = BlockContext::default();
 
-        for tx in &block.txs() {
-            let hash = tx.hash();
+        let inputs: Vec<_> = txs
+            .iter()
+            .flat_map(|tx| tx.inputs())
+            .filter_map(|input| input.output_ref().map(|r| r.tx_id().clone()))
+            .collect();
 
-            let era = tx.era().into();
-            let body = tx.encode().map_err(crate::Error::cbor)?;
-            let value: IVec = SledTxValue(era, body).try_into()?;
-            db.insert(hash, value).map_err(crate::Error::storage)?;
-            self.inserts_counter.inc(1);
-
-            for input in tx.inputs() {
-                if let Some(tx_ref) = input.output_ref() {
-                    let tx_id = tx_ref.tx_id();
-
-                    if let Some(ivec) = db.get(tx_id).map_err(crate::Error::storage)? {
-                        let SledTxValue(era, cbor) =
-                            ivec.try_into().map_err(crate::Error::storage)?;
-                        let era = era.try_into().map_err(crate::Error::storage)?;
-                        ctx.import_ref_tx(tx_id, era, cbor);
-                        self.matches_counter.inc(1);
-                    } else {
-                        self.mismatches_counter.inc(1);
-                    }
+        let matches: Result<Vec<_>, crate::Error> = inputs
+            .par_iter()
+            .map(|tx_id| {
+                if let Some(ivec) = db.get(tx_id).map_err(crate::Error::storage)? {
+                    let SledTxValue(era, cbor) = ivec.try_into().map_err(crate::Error::storage)?;
+                    let era: Era = era.try_into().map_err(crate::Error::storage)?;
+                    Ok(Some((tx_id, era, cbor)))
+                } else {
+                    Ok(None)
                 }
+            })
+            .collect();
+
+        for m in matches? {
+            if let Some((tx_id, era, cbor)) = m {
+                ctx.import_ref_tx(tx_id, era, cbor);
+                self.matches_counter.inc(1);
+            } else {
+                self.mismatches_counter.inc(1);
             }
         }
 
         Ok(ctx)
+    }
+
+    fn track_block_txs(&self, block: &MultiEraBlock) -> Result<BlockContext, crate::Error> {
+        let db = self.db.as_ref().unwrap();
+
+        let txs = block.txs();
+
+        insert_new_txs(db, &txs)?;
+        self.inserts_counter.inc(txs.len() as u64);
+
+        self.fetch_referenced_txs(&db, &txs)
     }
 }
 
