@@ -55,7 +55,7 @@ impl<T> AppliesPolicy for Result<T, crate::Error> {
 
                 // apply specific actions for each type of error
                 match &err {
-                    crate::Error::MissingTx(_) => handle_error(err, &policy.missing_data),
+                    crate::Error::MissingUtxo(_) => handle_error(err, &policy.missing_data),
                     crate::Error::CborError(_) => handle_error(err, &policy.cbor_errors),
                     crate::Error::LedgerError(_) => handle_error(err, &policy.ledger_errors),
                     _ => Err(err),

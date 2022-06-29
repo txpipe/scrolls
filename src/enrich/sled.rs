@@ -7,7 +7,7 @@ use gasket::{
 
 use pallas::{
     codec::minicbor,
-    ledger::traverse::{Era, MultiEraBlock, MultiEraTx},
+    ledger::traverse::{Era, MultiEraBlock, MultiEraTx, OutputRef},
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
@@ -116,56 +116,73 @@ impl TryFrom<IVec> for SledTxValue {
 }
 
 #[inline]
-fn insert_new_txs(db: &sled::Db, txs: &[MultiEraTx]) -> Result<(), crate::Error> {
-    let mut insert_batch = sled::Batch::default();
-
-    for tx in txs.iter() {
-        let key: IVec = tx.hash().to_vec().into();
-
-        let era = tx.era().into();
-        let body = tx.encode().map_err(crate::Error::cbor)?;
-        let value: IVec = SledTxValue(era, body).try_into()?;
-
-        insert_batch.insert(key, value)
+fn fetch_referenced_utxo<'a>(
+    db: &sled::Db,
+    utxo_ref: &OutputRef,
+) -> Result<Option<(OutputRef, Era, Vec<u8>)>, crate::Error> {
+    if let Some(ivec) = db
+        .get(utxo_ref.to_string())
+        .map_err(crate::Error::storage)?
+    {
+        let SledTxValue(era, cbor) = ivec.try_into().map_err(crate::Error::storage)?;
+        let era: Era = era.try_into().map_err(crate::Error::storage)?;
+        Ok(Some((utxo_ref.clone(), era, cbor)))
+    } else {
+        Ok(None)
     }
-
-    db.apply_batch(insert_batch)
-        .map_err(crate::Error::storage)?;
-
-    Ok(())
 }
 
 impl Worker {
     #[inline]
-    fn fetch_referenced_txs(
+    fn batch_insert_new_utxos(
+        &self,
+        db: &sled::Db,
+        txs: &[MultiEraTx],
+    ) -> Result<(), crate::Error> {
+        let mut insert_batch = sled::Batch::default();
+
+        for tx in txs.iter() {
+            for (idx, output) in tx.outputs().iter().enumerate() {
+                let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
+
+                let era = tx.era().into();
+                let body = output.encode().map_err(crate::Error::cbor)?;
+                let value: IVec = SledTxValue(era, body).try_into()?;
+
+                insert_batch.insert(key, value)
+            }
+        }
+
+        db.apply_batch(insert_batch)
+            .map_err(crate::Error::storage)?;
+
+        self.inserts_counter.inc(txs.len() as u64);
+
+        Ok(())
+    }
+
+    #[inline]
+    fn par_fetch_referenced_utxos(
         &self,
         db: &sled::Db,
         txs: &[MultiEraTx],
     ) -> Result<BlockContext, crate::Error> {
         let mut ctx = BlockContext::default();
 
-        let inputs: Vec<_> = txs
+        let utxo_refs: Vec<_> = txs
             .iter()
             .flat_map(|tx| tx.inputs())
-            .filter_map(|input| input.output_ref().map(|r| r.tx_id().clone()))
+            .filter_map(|input| input.output_ref().map(|x| x.clone()))
             .collect();
 
-        let matches: Result<Vec<_>, crate::Error> = inputs
+        let matches: Result<Vec<_>, crate::Error> = utxo_refs
             .par_iter()
-            .map(|tx_id| {
-                if let Some(ivec) = db.get(tx_id).map_err(crate::Error::storage)? {
-                    let SledTxValue(era, cbor) = ivec.try_into().map_err(crate::Error::storage)?;
-                    let era: Era = era.try_into().map_err(crate::Error::storage)?;
-                    Ok(Some((tx_id, era, cbor)))
-                } else {
-                    Ok(None)
-                }
-            })
+            .map(|utxo_ref| fetch_referenced_utxo(db, utxo_ref))
             .collect();
 
         for m in matches? {
-            if let Some((tx_id, era, cbor)) = m {
-                ctx.import_ref_tx(tx_id, era, cbor);
+            if let Some((key, era, cbor)) = m {
+                ctx.import_ref_output(&key, era, cbor);
                 self.matches_counter.inc(1);
             } else {
                 self.mismatches_counter.inc(1);
@@ -173,17 +190,6 @@ impl Worker {
         }
 
         Ok(ctx)
-    }
-
-    fn track_block_txs(&self, block: &MultiEraBlock) -> Result<BlockContext, crate::Error> {
-        let db = self.db.as_ref().unwrap();
-
-        let txs = block.txs();
-
-        insert_new_txs(db, &txs)?;
-        self.inserts_counter.inc(txs.len() as u64);
-
-        self.fetch_referenced_txs(&db, &txs)
     }
 }
 
@@ -212,7 +218,15 @@ impl gasket::runtime::Worker for Worker {
                     None => return Ok(gasket::runtime::WorkOutcome::Partial),
                 };
 
-                let ctx = self.track_block_txs(&block).or_restart()?;
+                let db = self.db.as_ref().unwrap();
+
+                let txs = block.txs();
+
+                // first we insert new utxo found in this block
+                self.batch_insert_new_utxos(db, &txs).or_restart()?;
+
+                // then we fetch referenced utxo in this block
+                let ctx = self.par_fetch_referenced_utxos(db, &txs).or_restart()?;
 
                 self.output
                     .send(model::EnrichedBlockPayload::roll_forward(cbor, ctx))?;

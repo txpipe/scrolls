@@ -23,30 +23,14 @@ impl Reducer {
         input: &OutputRef,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let output_idx = input.tx_index();
+        let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
 
-        let inbound_tx = ctx
-            .find_ref_tx(input.tx_id())
-            .apply_policy(&self.policy)
-            .or_panic()?;
-
-        let inbound_tx = match inbound_tx {
+        let utxo = match utxo {
             Some(x) => x,
             None => return Ok(()),
         };
 
-        let output_tx = inbound_tx
-            .output_at(input.tx_index() as usize)
-            .ok_or(crate::Error::ledger("output index not found in tx"))
-            .apply_policy(&self.policy)
-            .or_panic()?;
-
-        let output_tx = match output_tx {
-            Some(x) => x,
-            None => return Ok(()),
-        };
-
-        let address = output_tx.address(&self.address_hrp);
+        let address = utxo.address(&self.address_hrp);
 
         if let Some(addresses) = &self.config.filter {
             if let Err(_) = addresses.binary_search(&address.to_string()) {
@@ -57,7 +41,7 @@ impl Reducer {
         let crdt = model::CRDTCommand::set_remove(
             self.config.key_prefix.as_deref(),
             &address,
-            format!("{}#{}", inbound_tx.hash(), output_idx),
+            input.to_string(),
         );
 
         output.send(crdt.into())

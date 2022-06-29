@@ -626,7 +626,7 @@ checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
 [[package]]
 name = "pallas"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "pallas-addresses",
  "pallas-codec",
@@ -640,7 +640,7 @@ dependencies = [
 [[package]]
 name = "pallas-addresses"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "base58",
  "bech32 0.8.1",
@@ -653,7 +653,7 @@ dependencies = [
 [[package]]
 name = "pallas-codec"
 version = "0.11.0-beta.0"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "minicbor 0.17.1",
 ]
@@ -661,7 +661,7 @@ dependencies = [
 [[package]]
 name = "pallas-crypto"
 version = "0.11.0-beta.0"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -673,7 +673,7 @@ dependencies = [
 [[package]]
 name = "pallas-miniprotocols"
 version = "0.11.0-beta.0"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "hex",
  "itertools",
@@ -686,7 +686,7 @@ dependencies = [
 [[package]]
 name = "pallas-multiplexer"
 version = "0.11.0-beta.0"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "byteorder",
  "hex",
@@ -699,7 +699,7 @@ dependencies = [
 [[package]]
 name = "pallas-primitives"
 version = "0.11.0-beta.0"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "base58",
  "bech32 0.9.0",
@@ -714,7 +714,7 @@ dependencies = [
 [[package]]
 name = "pallas-traverse"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/txpipe/pallas.git#c7227c02346cc00aaeab831f5dd22863b520ead7"
+source = "git+https://github.com/txpipe/pallas.git#98f71289b5d2b533eff2f64098d0cf973386236d"
 dependencies = [
  "hex",
  "pallas-codec",

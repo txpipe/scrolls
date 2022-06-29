@@ -38,26 +38,9 @@ impl Reducer {
         ctx: &model::BlockContext,
         input: &OutputRef,
     ) -> Result<Option<String>, gasket::error::Error> {
-        let inbound_tx = ctx
-            .find_ref_tx(input.tx_id())
-            .apply_policy(&self.policy)
-            .or_panic()?;
+        let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
 
-        let inbound_tx = match inbound_tx {
-            Some(x) => x,
-            None => {
-                log::error!("Didn't find inbound_tx, tx_id:{}", input.tx_id());
-                return Result::Ok(None);
-            }
-        };
-
-        let output_tx = inbound_tx
-            .output_at(input.tx_index() as usize)
-            .ok_or(crate::Error::ledger("output index not found in tx"))
-            .apply_policy(&self.policy)
-            .or_panic()?;
-
-        match output_tx {
+        match utxo {
             Some(x) => return Result::Ok(Some(x.address(&self.address_hrp))),
             None => {
                 log::error!("Output index not found, index:{}", input.tx_index());
