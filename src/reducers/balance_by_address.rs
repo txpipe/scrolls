@@ -39,8 +39,8 @@ impl Reducer {
         }
 
         let key = match &self.config.key_prefix {
-            Some(prefix) => prefix.to_string(),
-            None => "balance_by_address".to_string(),
+            Some(prefix) => format!("{}.{}", prefix, address),
+            None => format!("{}.{}", "balance_by_address".to_string(), address)
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, utxo.ada_amount() as i64);
