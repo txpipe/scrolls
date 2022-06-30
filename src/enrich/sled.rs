@@ -62,6 +62,7 @@ impl Bootstrapper {
             input: self.input,
             output: self.output,
             inserts_counter: Default::default(),
+            remove_counter: Default::default(),
             matches_counter: Default::default(),
             mismatches_counter: Default::default(),
             blocks_counter: Default::default(),
@@ -87,6 +88,7 @@ pub struct Worker {
     input: InputPort,
     output: OutputPort,
     inserts_counter: gasket::metrics::Counter,
+    remove_counter: gasket::metrics::Counter,
     matches_counter: gasket::metrics::Counter,
     mismatches_counter: gasket::metrics::Counter,
     blocks_counter: gasket::metrics::Counter,
@@ -172,7 +174,7 @@ impl Worker {
         let utxo_refs: Vec<_> = txs
             .iter()
             .flat_map(|tx| tx.inputs())
-            .filter_map(|input| input.output_ref().map(|x| x.clone()))
+            .filter_map(|input| input.output_ref())
             .collect();
 
         let matches: Result<Vec<_>, crate::Error> = utxo_refs
@@ -191,12 +193,28 @@ impl Worker {
 
         Ok(ctx)
     }
+
+    fn remove_consumed_utxos(&self, db: &sled::Db, keys: Vec<String>) -> Result<(), crate::Error> {
+        let mut remove_batch = sled::Batch::default();
+
+        for key in keys.iter() {
+            remove_batch.remove(key.as_bytes());
+        }
+
+        db.apply_batch(remove_batch)
+            .map_err(crate::Error::storage)?;
+
+        self.remove_counter.inc(keys.len() as u64);
+
+        Ok(())
+    }
 }
 
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
             .with_counter("enrich_inserts", &self.inserts_counter)
+            .with_counter("enrich_removes", &self.remove_counter)
             .with_counter("enrich_matches", &self.matches_counter)
             .with_counter("enrich_mismatches", &self.mismatches_counter)
             .with_counter("enrich_blocks", &self.blocks_counter)
@@ -228,8 +246,13 @@ impl gasket::runtime::Worker for Worker {
                 // then we fetch referenced utxo in this block
                 let ctx = self.par_fetch_referenced_utxos(db, &txs).or_restart()?;
 
+                // TODO: refactor removal as a concern of the last stage
+                let keys = ctx.get_all_keys();
+
                 self.output
                     .send(model::EnrichedBlockPayload::roll_forward(cbor, ctx))?;
+
+                self.remove_consumed_utxos(db, keys).or_restart()?;
 
                 self.blocks_counter.inc(1);
             }
