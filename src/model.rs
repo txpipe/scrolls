@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use pallas::{
-    crypto::hash::Hash,
-    ledger::traverse::{Era, MultiEraBlock, MultiEraTx},
+    ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, OutputRef},
     network::miniprotocols::Point,
 };
 
@@ -30,21 +29,21 @@ impl RawBlockPayload {
 
 #[derive(Default, Debug, Clone)]
 pub struct BlockContext {
-    ref_txs: HashMap<String, (Era, Vec<u8>)>,
+    utxos: HashMap<String, (Era, Vec<u8>)>,
 }
 
 impl BlockContext {
-    pub fn import_ref_tx(&mut self, hash: &Hash<32>, era: Era, cbor: Vec<u8>) {
-        self.ref_txs.insert(hash.to_string(), (era, cbor));
+    pub fn import_ref_output(&mut self, key: &OutputRef, era: Era, cbor: Vec<u8>) {
+        self.utxos.insert(key.to_string(), (era, cbor));
     }
 
-    pub fn find_ref_tx(&self, hash: &Hash<32>) -> Result<MultiEraTx, Error> {
+    pub fn find_utxo(&self, key: &OutputRef) -> Result<MultiEraOutput, Error> {
         let (era, cbor) = self
-            .ref_txs
-            .get(&hash.to_string())
-            .ok_or_else(|| Error::missing_tx(hash))?;
+            .utxos
+            .get(&key.to_string())
+            .ok_or_else(|| Error::missing_utxo(key))?;
 
-        MultiEraTx::decode(*era, cbor).map_err(crate::Error::cbor)
+        MultiEraOutput::decode(*era, cbor).map_err(crate::Error::cbor)
     }
 }
 

@@ -28,8 +28,8 @@ pub enum Error {
     #[error("ledger error: {0}")]
     LedgerError(String),
 
-    #[error("missing tx: {0}")]
-    MissingTx(String),
+    #[error("missing utxo: {0}")]
+    MissingUtxo(String),
 
     #[error("source error: {0}")]
     SourceError(String),
@@ -69,8 +69,8 @@ impl Error {
         Error::LedgerError(error.to_string())
     }
 
-    pub fn missing_tx(tx_id: impl Display) -> Error {
-        Error::MissingTx(tx_id.to_string())
+    pub fn missing_utxo(utxo_key: impl Display) -> Error {
+        Error::MissingUtxo(utxo_key.to_string())
     }
 
     pub fn source(error: impl Display) -> Error {
