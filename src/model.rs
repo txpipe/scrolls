@@ -45,6 +45,10 @@ impl BlockContext {
 
         MultiEraOutput::decode(*era, cbor).map_err(crate::Error::cbor)
     }
+
+    pub fn get_all_keys(&self) -> Vec<String> {
+        self.utxos.keys().map(|x| x.clone()).collect()
+    }
 }
 
 #[derive(Debug, Clone)]
