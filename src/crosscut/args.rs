@@ -158,7 +158,7 @@ pub struct ChainWellKnownInfo {
     pub shelley_known_slot: u64,
     pub shelley_known_hash: String,
     pub shelley_known_time: u64,
-    pub address_hrp: String,
+    pub address_network_id: u8,
     pub adahandle_policy: String,
 }
 
@@ -179,7 +179,7 @@ impl ChainWellKnownInfo {
             shelley_known_hash: "aa83acbf5904c0edfe4d79b3689d3d00fcfc553cf360fd2229b98d464c28e9de"
                 .to_string(),
             shelley_known_time: 1596059091,
-            address_hrp: "addr".to_string(),
+            address_network_id: 1,
             adahandle_policy: "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
                 .to_string(),
         }
@@ -201,7 +201,7 @@ impl ChainWellKnownInfo {
             shelley_known_hash: "02b1c561715da9e540411123a6135ee319b02f60b9a11a603d3305556c04329f"
                 .to_string(),
             shelley_known_time: 1595967616,
-            address_hrp: "addr_test".to_string(),
+            address_network_id: 0,
             adahandle_policy: "8d18d786e92776c824607fd8e193ec535c79dc61ea2405ddf3b09fe3"
                 .to_string(),
         }
