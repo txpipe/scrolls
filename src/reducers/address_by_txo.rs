@@ -1,8 +1,9 @@
+use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{crosscut, model};
+use crate::model;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -12,7 +13,6 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    address_hrp: String,
 }
 
 impl Reducer {
@@ -53,7 +53,7 @@ impl Reducer {
             let tx_hash = tx.hash();
 
             for (output_idx, tx_out) in tx.outputs().iter().enumerate() {
-                let address = tx_out.address(&self.address_hrp);
+                let address = tx_out.to_address().and_then(|x| x.to_bech32()).or_panic()?;
 
                 self.send_set_add(slot, &address, tx_hash, output_idx, output)?;
             }
@@ -64,11 +64,8 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, chain: &crosscut::ChainWellKnownInfo) -> super::Reducer {
-        let reducer = Reducer {
-            config: self,
-            address_hrp: chain.address_hrp.clone(),
-        };
+    pub fn plugin(self) -> super::Reducer {
+        let reducer = Reducer { config: self };
 
         super::Reducer::AddressByTxo(reducer)
     }

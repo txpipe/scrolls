@@ -13,7 +13,6 @@ pub struct Config {
 pub struct Reducer {
     config: Config,
     policy: crosscut::policies::RuntimePolicy,
-    address_hrp: String,
 }
 
 impl Reducer {
@@ -30,10 +29,10 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let address = utxo.address(&self.address_hrp);
+        let address = utxo.to_address().and_then(|x| x.to_bech32()).or_panic()?;
 
         if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address.to_string()) {
+            if let Err(_) = addresses.binary_search(&address) {
                 return Ok(());
             }
         }
@@ -55,10 +54,13 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        let address = tx_output.address(&self.address_hrp);
+        let address = tx_output
+            .to_address()
+            .and_then(|x| x.to_bech32())
+            .or_panic()?;
 
         if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address.to_string()) {
+            if let Err(_) = addresses.binary_search(&address) {
                 return Ok(());
             }
         }
@@ -93,15 +95,10 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> super::Reducer {
+    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             policy: policy.clone(),
-            address_hrp: chain.address_hrp.clone(),
         };
 
         super::Reducer::UtxoByAddress(reducer)

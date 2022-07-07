@@ -63,26 +63,26 @@ impl Config {
         policy: &crosscut::policies::RuntimePolicy,
     ) -> Reducer {
         match self {
-            Config::UtxoByAddress(c) => c.plugin(chain, policy),
+            Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
             Config::PoolByStake(c) => c.plugin(),
 
             #[cfg(feature = "unstable")]
-            Config::AddressByTxo(c) => c.plugin(chain),
+            Config::AddressByTxo(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::TotalTransactionsCount(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::TransactionsCountByEpoch(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByAddress(c) => c.plugin(chain, policy),
+            Config::TransactionsCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TransactionsCountByAddressByEpoch(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TotalTransactionsCountByAddresses(c) => c.plugin(),
             #[cfg(feature = "unstable")]
-            Config::BalanceByAddress(c) => c.plugin(chain, policy),
+            Config::BalanceByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByScriptHash(c) => c.plugin(),
+            Config::TransactionsCountByScriptHash(c) => c.plugin(chain),
         }
     }
 }

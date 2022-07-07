@@ -13,7 +13,6 @@ pub struct Config {
 pub struct Reducer {
     config: Config,
     policy: crosscut::policies::RuntimePolicy,
-    address_hrp: String,
 }
 
 impl Reducer {
@@ -40,13 +39,17 @@ impl Reducer {
     ) -> Result<Option<String>, gasket::error::Error> {
         let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
 
-        match utxo {
-            Some(x) => return Result::Ok(Some(x.address(&self.address_hrp))),
+        let utxo = match utxo {
+            Some(x) => x,
             None => {
                 log::error!("Output index not found, index:{}", input.tx_index());
                 return Result::Ok(None);
             }
-        }
+        };
+
+        let address = utxo.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+
+        Ok(Some(address))
     }
 
     pub fn reduce_block(
@@ -84,8 +87,8 @@ impl Reducer {
                 let output_addresses: Vec<_> = tx
                     .outputs()
                     .iter()
-                    .filter_map(|tx| tx.as_alonzo())
-                    .filter_map(|x| x.to_bech32_address(&self.address_hrp).ok())
+                    .filter_map(|tx| tx.to_address().ok())
+                    .filter_map(|addr| addr.to_bech32().ok())
                     .collect();
 
                 let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
@@ -103,15 +106,10 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> super::Reducer {
+    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             policy: policy.clone(),
-            address_hrp: chain.address_hrp.clone(),
         };
 
         super::Reducer::TransactionsCountByAddress(reducer)
