@@ -29,21 +29,27 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let address = utxo.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+        let address = utxo.to_address().and_then(|x| x.to_bech32()).ok();
 
-        if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address) {
-                return Ok(());
-            }
+        match address {
+            Some(addr) => {
+                if let Some(addresses) = &self.config.filter {
+                    if let Err(_) = addresses.binary_search(&addr) {
+                        return Ok(());
+                    }
+                }
+
+                let crdt = model::CRDTCommand::set_remove(
+                    self.config.key_prefix.as_deref(),
+                    &addr,
+                    input.to_string(),
+                );
+        
+                output.send(crdt.into())
+            },
+            None => Ok(())
         }
 
-        let crdt = model::CRDTCommand::set_remove(
-            self.config.key_prefix.as_deref(),
-            &address,
-            input.to_string(),
-        );
-
-        output.send(crdt.into())
     }
 
     fn process_outbound_txo(
@@ -54,24 +60,30 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
+
         let address = tx_output
             .to_address()
             .and_then(|x| x.to_bech32())
-            .or_panic()?;
+            .ok();
 
-        if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address) {
-                return Ok(());
-            }
+        match address {
+            Some(addr) => {
+                if let Some(addresses) = &self.config.filter {
+                    if let Err(_) = addresses.binary_search(&addr) {
+                        return Ok(());
+                    }
+                }
+        
+                let crdt = model::CRDTCommand::set_add(
+                    self.config.key_prefix.as_deref(),
+                    &addr,
+                    format!("{}#{}", tx_hash, output_idx),
+                );
+        
+                output.send(crdt.into())
+            },
+            None => Ok(())
         }
-
-        let crdt = model::CRDTCommand::set_add(
-            self.config.key_prefix.as_deref(),
-            &address,
-            format!("{}#{}", tx_hash, output_idx),
-        );
-
-        output.send(crdt.into())
     }
 
     pub fn reduce_block<'b>(

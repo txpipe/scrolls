@@ -1,9 +1,9 @@
+use std::collections::HashSet;
+
 use pallas::ledger::traverse::{Feature, MultiEraBlock, OutputRef};
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};
-
-use std::collections::HashSet;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -12,7 +12,6 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    chain: crosscut::ChainWellKnownInfo,
     policy: crosscut::policies::RuntimePolicy,
 }
 
@@ -20,12 +19,11 @@ impl Reducer {
     fn increment_for_address(
         &mut self,
         address: &str,
-        epoch_no: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}.{}", prefix, epoch_no, address.to_string()),
-            None => format!("{}.{}", address.to_string(), epoch_no),
+            Some(prefix) => format!("{}.{}", prefix, address.to_string()),
+            None => format!("{}", address.to_string()),
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, 1);
@@ -49,9 +47,18 @@ impl Reducer {
             }
         };
 
-        let address = utxo.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+        let is_script_address = utxo.to_address().map_or(false, |x| x.has_script());
 
-        Ok(Some(address))
+        if !is_script_address {
+            return Ok(None);
+        }
+
+        let address = utxo.to_address().and_then(|x| x.to_bech32()).ok();
+
+        return match address {
+            Some(address) => Ok(Some(address)),
+            None => Ok(None),
+        }
     }
 
     pub fn reduce_block(
@@ -61,8 +68,6 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::SmartContracts) {
-            let epoch_no = crosscut::epochs::block_epoch(&self.chain, block);
-
             for tx in block.txs() {
                 let input_addresses: Vec<_> = tx
                     .inputs()
@@ -91,8 +96,10 @@ impl Reducer {
                 let output_addresses: Vec<_> = tx
                     .outputs()
                     .iter()
-                    .filter_map(|x| x.to_address().ok())
-                    .filter_map(|x| x.to_bech32().ok())
+                    // allow only smart contract addresses 
+                    .filter(|p| p.to_address().map_or(false, |a| a.has_script()))
+                    .filter_map(|tx| tx.to_address().ok())
+                    .filter_map(|addr| addr.to_bech32().ok())
                     .collect();
 
                 let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
@@ -100,7 +107,7 @@ impl Reducer {
                     HashSet::from_iter(all_addresses.iter().cloned());
 
                 for address in all_addresses_deduped.iter() {
-                    self.increment_for_address(address, epoch_no, output)?;
+                    self.increment_for_address(address, output)?;
                 }
             }
         }
@@ -110,17 +117,12 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> super::Reducer {
+    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
         let reducer = Reducer {
             config: self,
-            chain: chain.clone(),
             policy: policy.clone(),
         };
 
-        super::Reducer::TransactionsCountByAddressByEpoch(reducer)
+        super::Reducer::TransactionsCountByContractAddress(reducer)
     }
 }
