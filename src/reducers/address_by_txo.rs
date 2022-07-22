@@ -1,4 +1,3 @@
-use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
@@ -53,9 +52,14 @@ impl Reducer {
             let tx_hash = tx.hash();
 
             for (output_idx, tx_out) in tx.outputs().iter().enumerate() {
-                let address = tx_out.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+                let address = tx_out.to_address().and_then(|x| x.to_bech32()).ok();
 
-                self.send_set_add(slot, &address, tx_hash, output_idx, output)?;
+                match address {
+                    Some(addr) => {
+                        self.send_set_add(slot, &addr, tx_hash, output_idx, output)?;
+                    },
+                    None => return Ok(()),
+                }
             }
         }
 

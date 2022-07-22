@@ -17,15 +17,15 @@ mod worker;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
-pub mod balance_by_address;
+pub mod balance_by_contract_address;
 #[cfg(feature = "unstable")]
 pub mod total_transactions_count;
 #[cfg(feature = "unstable")]
-pub mod total_transactions_count_by_addresses;
+pub mod total_transactions_count_by_contract_addresses;
 #[cfg(feature = "unstable")]
-pub mod transactions_count_by_address;
+pub mod transactions_count_by_contract_address;
 #[cfg(feature = "unstable")]
-pub mod transactions_count_by_address_by_epoch;
+pub mod transactions_count_by_contract_address_by_epoch;
 #[cfg(feature = "unstable")]
 pub mod transactions_count_by_epoch;
 #[cfg(feature = "unstable")]
@@ -45,13 +45,13 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TransactionsCountByEpoch(transactions_count_by_epoch::Config),
     #[cfg(feature = "unstable")]
-    TransactionsCountByAddress(transactions_count_by_address::Config),
+    TransactionsCountByContractAddress(transactions_count_by_contract_address::Config),
     #[cfg(feature = "unstable")]
-    TransactionsCountByAddressByEpoch(transactions_count_by_address_by_epoch::Config),
+    TransactionsCountByContractAddressByEpoch(transactions_count_by_contract_address_by_epoch::Config),
     #[cfg(feature = "unstable")]
-    TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Config),
+    TotalTransactionsCountByContractAddresses(total_transactions_count_by_contract_addresses::Config),
     #[cfg(feature = "unstable")]
-    BalanceByAddress(balance_by_address::Config),
+    BalanceByContractAddress(balance_by_contract_address::Config),
     #[cfg(feature = "unstable")]
     TransactionsCountByScriptHash(transactions_count_by_script_hash::Config),
 }
@@ -74,13 +74,13 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TransactionsCountByEpoch(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByAddress(c) => c.plugin(policy),
+            Config::TransactionsCountByContractAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByAddressByEpoch(c) => c.plugin(chain, policy),
+            Config::TransactionsCountByContractAddressByEpoch(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
-            Config::TotalTransactionsCountByAddresses(c) => c.plugin(),
+            Config::TotalTransactionsCountByContractAddresses(c) => c.plugin(),
             #[cfg(feature = "unstable")]
-            Config::BalanceByAddress(c) => c.plugin(policy),
+            Config::BalanceByContractAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TransactionsCountByScriptHash(c) => c.plugin(chain),
         }
@@ -146,13 +146,13 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TransactionsCountByEpoch(transactions_count_by_epoch::Reducer),
     #[cfg(feature = "unstable")]
-    TransactionsCountByAddress(transactions_count_by_address::Reducer),
+    TransactionsCountByContractAddress(transactions_count_by_contract_address::Reducer),
     #[cfg(feature = "unstable")]
-    TransactionsCountByAddressByEpoch(transactions_count_by_address_by_epoch::Reducer),
+    TransactionsCountByContractAddressByEpoch(transactions_count_by_contract_address_by_epoch::Reducer),
     #[cfg(feature = "unstable")]
-    TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Reducer),
+    TotalTransactionsCountByContractAddresses(total_transactions_count_by_contract_addresses::Reducer),
     #[cfg(feature = "unstable")]
-    BalanceByAddress(balance_by_address::Reducer),
+    BalanceByContractAddress(balance_by_contract_address::Reducer),
     #[cfg(feature = "unstable")]
     TransactionsCountByScriptHash(transactions_count_by_script_hash::Reducer),
 }
@@ -176,13 +176,13 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TransactionsCountByEpoch(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
-            Reducer::TransactionsCountByAddress(x) => x.reduce_block(block, ctx, output),
+            Reducer::TransactionsCountByContractAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::TransactionsCountByAddressByEpoch(x) => x.reduce_block(block, ctx, output),
+            Reducer::TransactionsCountByContractAddressByEpoch(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::TotalTransactionsCountByAddresses(x) => x.reduce_block(block, output),
+            Reducer::TotalTransactionsCountByContractAddresses(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
-            Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
+            Reducer::BalanceByContractAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TransactionsCountByScriptHash(x) => x.reduce_block(block, output),
         }
