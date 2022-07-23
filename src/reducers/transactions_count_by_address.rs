@@ -42,12 +42,12 @@ impl Reducer {
         let utxo = match utxo {
             Some(x) => x,
             None => {
-                log::error!("Output index not found, index:{}", input.tx_index());
+                log::error!("Output index not found, index:{}", input.index());
                 return Result::Ok(None);
             }
         };
 
-        let address = utxo.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+        let address = utxo.address().map(|x| x.to_string()).or_panic()?;
 
         Ok(Some(address))
     }
@@ -64,7 +64,7 @@ impl Reducer {
                     .inputs()
                     .iter()
                     .filter_map(|multi_era_input| {
-                        let output_ref = multi_era_input.output_ref().unwrap();
+                        let output_ref = multi_era_input.output_ref();
 
                         let maybe_input_address =
                             self.find_address_from_output_ref(ctx, &output_ref);
@@ -74,8 +74,8 @@ impl Reducer {
                             Err(x) => {
                                 log::error!(
                                     "Not found, tx_id:{}, index_at:{}, e:{}",
-                                    output_ref.tx_id(),
-                                    output_ref.tx_index(),
+                                    output_ref.hash(),
+                                    output_ref.index(),
                                     x
                                 );
                                 None
@@ -87,8 +87,8 @@ impl Reducer {
                 let output_addresses: Vec<_> = tx
                     .outputs()
                     .iter()
-                    .filter_map(|tx| tx.to_address().ok())
-                    .filter_map(|addr| addr.to_bech32().ok())
+                    .filter_map(|tx| tx.address().ok())
+                    .map(|addr| addr.to_string())
                     .collect();
 
                 let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();

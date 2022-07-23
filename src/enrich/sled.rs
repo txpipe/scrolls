@@ -174,7 +174,7 @@ impl Worker {
         let utxo_refs: Vec<_> = txs
             .iter()
             .flat_map(|tx| tx.inputs())
-            .filter_map(|input| input.output_ref())
+            .map(|input| input.output_ref())
             .collect();
 
         let matches: Result<Vec<_>, crate::Error> = utxo_refs

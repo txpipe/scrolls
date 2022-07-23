@@ -1,7 +1,7 @@
 use pallas::ledger::traverse::{Feature, MultiEraBlock};
 use serde::Deserialize;
 
-use crate::{crosscut, model};
+use crate::model;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -35,8 +35,8 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::SmartContracts) {
             for tx in block.txs() {
-                for tx_out in tx.outputs().iter().filter_map(|x| x.as_alonzo()) {
-                    if crosscut::addresses::is_smart_contract(tx_out.address.as_slice()) {
+                for addr in tx.outputs().iter().filter_map(|x| x.address().ok()) {
+                    if addr.has_script() {
                         self.increment_for_address(output)?;
                     }
                 }
