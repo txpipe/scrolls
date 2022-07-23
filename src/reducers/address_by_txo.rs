@@ -53,7 +53,7 @@ impl Reducer {
             let tx_hash = tx.hash();
 
             for (output_idx, tx_out) in tx.outputs().iter().enumerate() {
-                let address = tx_out.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+                let address = tx_out.address().map(|x| x.to_string()).or_panic()?;
 
                 self.send_set_add(slot, &address, tx_hash, output_idx, output)?;
             }

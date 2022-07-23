@@ -29,7 +29,7 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let address = utxo.to_address().and_then(|x| x.to_bech32()).or_panic()?;
+        let address = utxo.address().map(|x| x.to_string()).or_panic()?;
 
         if let Some(addresses) = &self.config.filter {
             if let Err(_) = addresses.binary_search(&address) {
@@ -54,10 +54,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        let address = tx_output
-            .to_address()
-            .and_then(|x| x.to_bech32())
-            .or_panic()?;
+        let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
 
         if let Some(addresses) = &self.config.filter {
             if let Err(_) = addresses.binary_search(&address) {
@@ -81,7 +78,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            for input in tx.inputs().iter().filter_map(|i| i.output_ref()) {
+            for input in tx.inputs().iter().map(|i| i.output_ref()) {
                 self.process_inbound_txo(&ctx, &input, output)?;
             }
 
