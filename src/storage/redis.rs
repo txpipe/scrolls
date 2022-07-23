@@ -5,12 +5,24 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 
-use redis::Commands;
+use redis::{Commands, ToRedisArgs};
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
 
 type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
+
+impl ToRedisArgs for model::Value {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        match self {
+            model::Value::String(x) => x.write_redis_args(out),
+            model::Value::Cbor(x) => x.write_redis_args(out),
+        }
+    }
+}
 
 #[derive(Deserialize, Clone)]
 pub struct Config {
@@ -141,7 +153,7 @@ impl gasket::runtime::Worker for Worker {
                     .or_restart()?;
             }
             model::CRDTCommand::LastWriteWins(key, value, ts) => {
-                log::debug!("last write for [{}], value [{}], slot [{}]", key, value, ts);
+                log::debug!("last write for [{}], slot [{}]", key, ts);
 
                 self.connection
                     .as_mut()
@@ -150,7 +162,7 @@ impl gasket::runtime::Worker for Worker {
                     .or_restart()?;
             }
             model::CRDTCommand::AnyWriteWins(key, value) => {
-                log::debug!("overwrite [{}], value [{}]", key, value);
+                log::debug!("overwrite [{}]", key);
 
                 self.connection
                     .as_mut()
