@@ -22,19 +22,19 @@ impl Reducer {
         slot: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let hash = match cred {
+        let key = match cred {
             StakeCredential::AddrKeyhash(x) => x.to_string(),
             StakeCredential::Scripthash(x) => x.to_string(),
         };
 
-        let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}", prefix, hash),
-            None => hash.to_string(),
-        };
-
         let value = pool.to_string();
 
-        let crdt = model::CRDTCommand::LastWriteWins(key, value, slot);
+        let crdt = model::CRDTCommand::last_write_wins(
+            self.config.key_prefix.as_deref(),
+            &key,
+            value,
+            slot,
+        );
 
         output.send(gasket::messaging::Message::from(crdt))?;
 

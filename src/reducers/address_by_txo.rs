@@ -16,7 +16,7 @@ pub struct Reducer {
 }
 
 impl Reducer {
-    fn send_set_add(
+    fn send(
         &mut self,
         slot: u64,
         address: &str,
@@ -30,12 +30,12 @@ impl Reducer {
             }
         }
 
-        let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}#{}", prefix, tx_hash, output_idx),
-            None => format!("{}#{}", tx_hash, output_idx),
-        };
-
-        let crdt = model::CRDTCommand::LastWriteWins(key, address.to_string(), slot);
+        let crdt = model::CRDTCommand::last_write_wins(
+            self.config.key_prefix.as_deref(),
+            &format!("{}#{}", tx_hash, output_idx),
+            address.to_string(),
+            slot,
+        );
 
         output.send(gasket::messaging::Message::from(crdt))?;
 
@@ -55,7 +55,7 @@ impl Reducer {
             for (output_idx, tx_out) in tx.outputs().iter().enumerate() {
                 let address = tx_out.address().map(|x| x.to_string()).or_panic()?;
 
-                self.send_set_add(slot, &address, tx_hash, output_idx, output)?;
+                self.send(slot, &address, tx_hash, output_idx, output)?;
             }
         }
 
@@ -66,7 +66,6 @@ impl Reducer {
 impl Config {
     pub fn plugin(self) -> super::Reducer {
         let reducer = Reducer { config: self };
-
         super::Reducer::AddressByTxo(reducer)
     }
 }
