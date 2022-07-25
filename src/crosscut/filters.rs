@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::prelude::*;
 use crate::{crosscut, model};
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Default)]
 pub struct AddressPattern {
     pub exact: Option<String>,
     pub payment: Option<String>,
@@ -154,5 +154,69 @@ pub fn eval_predicate(
         Predicate::InputAsset(_) => todo!(),
         Predicate::OutputAsset(_) => todo!(),
         Predicate::Block(_) => todo!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pallas::ledger::traverse::MultiEraBlock;
+
+    use crate::{crosscut::policies::RuntimePolicy, model::BlockContext};
+
+    use super::{eval_predicate, AddressPattern, Predicate};
+
+    fn test_predicate_in_block(predicate: &Predicate, match_txs: &[usize]) {
+        let cbor = include_str!("../../assets/test.block");
+        let bytes = hex::decode(cbor).unwrap();
+        let block = MultiEraBlock::decode(&bytes).unwrap();
+        let ctx = BlockContext::default();
+        let policy = RuntimePolicy::default();
+
+        let idxs: Vec<_> = block
+            .txs()
+            .iter()
+            .enumerate()
+            .filter(|(_, tx)| eval_predicate(predicate, &block, tx, &ctx, &policy).unwrap())
+            .map(|(idx, _)| idx)
+            .collect();
+
+        assert_eq!(idxs, match_txs);
+    }
+
+    #[test]
+    fn payment_to_exact_address() {
+        let x = Predicate::PaymentTo(AddressPattern {
+            exact: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
+            ..Default::default()
+        });
+
+        test_predicate_in_block(&x, &[0]);
+    }
+
+    #[test]
+    fn payment_to_script_address() {
+        let x = Predicate::PaymentTo(AddressPattern {
+            is_script: Some(true),
+            ..Default::default()
+        });
+
+        test_predicate_in_block(&x, &[]);
+    }
+
+    #[test]
+    fn any_of() {
+        let a = Predicate::PaymentTo(AddressPattern {
+            exact: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
+            ..Default::default()
+        });
+
+        let b = Predicate::PaymentTo(AddressPattern {
+            is_script: Some(true),
+            ..Default::default()
+        });
+
+        let x = Predicate::AnyOf(vec![a, b]);
+
+        test_predicate_in_block(&x, &[0]);
     }
 }
