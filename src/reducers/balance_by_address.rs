@@ -7,7 +7,7 @@ use crate::{crosscut, model, prelude::*};
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub filter: Option<Vec<String>>,
+    pub filter: Option<crosscut::filters::Predicate>,
 }
 
 pub struct Reducer {
@@ -31,12 +31,6 @@ impl Reducer {
 
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
 
-        if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address.to_string()) {
-                return Ok(());
-            }
-        }
-
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, address),
             None => format!("{}.{}", "balance_by_address".to_string(), address),
@@ -55,12 +49,6 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
-
-        if let Some(addresses) = &self.config.filter {
-            if let Err(_) = addresses.binary_search(&address) {
-                return Ok(());
-            }
-        }
 
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, address),
@@ -81,12 +69,14 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            for input in tx.inputs().iter().map(|i| i.output_ref()) {
-                self.process_inbound_txo(&ctx, &input, output)?;
-            }
+            if filter_matches!(self, block, &tx, ctx) {
+                for input in tx.inputs().iter().map(|i| i.output_ref()) {
+                    self.process_inbound_txo(&ctx, &input, output)?;
+                }
 
-            for (_idx, tx_output) in tx.outputs().iter().enumerate() {
-                self.process_outbound_txo(tx_output, output)?;
+                for (_idx, tx_output) in tx.outputs().iter().enumerate() {
+                    self.process_outbound_txo(tx_output, output)?;
+                }
             }
         }
 

@@ -9,6 +9,7 @@ use crate::{bootstrap, crosscut, model};
 type InputPort = gasket::messaging::InputPort<model::EnrichedBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
+pub mod macros;
 pub mod point_by_tx;
 pub mod pool_by_stake;
 pub mod utxo_by_address;
