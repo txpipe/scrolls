@@ -85,11 +85,11 @@ impl gasket::runtime::Worker for Worker {
             model::CRDTCommand::SetRemove(key, value) => {
                 log::debug!("removing from set [{}], value [{}]", key, value);
             }
-            model::CRDTCommand::LastWriteWins(key, value, ts) => {
-                log::debug!("last write for [{}], value [{}], slot [{}]", key, value, ts);
+            model::CRDTCommand::LastWriteWins(key, _, ts) => {
+                log::debug!("last write for [{}], slot [{}]", key, ts);
             }
-            model::CRDTCommand::AnyWriteWins(key, value) => {
-                log::debug!("overwrite [{}], value [{}]", key, value);
+            model::CRDTCommand::AnyWriteWins(key, _) => {
+                log::debug!("overwrite [{}]", key);
             }
             model::CRDTCommand::PNCounter(key, value) => {
                 log::debug!("increasing counter [{}], by [{}]", key, value);
