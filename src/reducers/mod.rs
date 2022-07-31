@@ -69,7 +69,7 @@ impl Config {
             Config::PoolByStake(c) => c.plugin(),
 
             #[cfg(feature = "unstable")]
-            Config::AddressByTxo(c) => c.plugin(),
+            Config::AddressByTxo(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TotalTransactionsCount(c) => c.plugin(),
             #[cfg(feature = "unstable")]
@@ -171,7 +171,7 @@ impl Reducer {
             Reducer::PoolByStake(x) => x.reduce_block(block, output),
 
             #[cfg(feature = "unstable")]
-            Reducer::AddressByTxo(x) => x.reduce_block(block, output),
+            Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]

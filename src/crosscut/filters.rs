@@ -48,17 +48,18 @@ pub struct AssetPattern {
 
 #[derive(Deserialize, Clone)]
 pub struct BlockPattern {
-    pub slot_before: u64,
-    pub slot_after: u64,
+    pub slot_before: Option<u64>,
+    pub slot_after: Option<u64>,
 }
 
 #[derive(Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
 pub enum Predicate {
     AllOf(Vec<Predicate>),
     AnyOf(Vec<Predicate>),
     Not(Box<Predicate>),
-    PaymentTo(AddressPattern),
-    PaymentFrom(AddressPattern),
+    InputAddress(AddressPattern),
+    OutputAddress(AddressPattern),
     WithdrawalTo(AddressPattern),
     InputAsset(AssetPattern),
     OutputAsset(AssetPattern),
@@ -148,8 +149,8 @@ pub fn eval_predicate(
         Predicate::Not(x) => eval_predicate(x, block, tx, ctx, policy).map(|x| !x),
         Predicate::AnyOf(x) => eval_any_of(x, block, tx, ctx, policy),
         Predicate::AllOf(x) => eval_all_of(x, block, tx, ctx, policy),
-        Predicate::PaymentTo(x) => eval_payment_to(tx, x),
-        Predicate::PaymentFrom(x) => eval_payment_from(tx, ctx, x, policy),
+        Predicate::OutputAddress(x) => eval_payment_to(tx, x),
+        Predicate::InputAddress(x) => eval_payment_from(tx, ctx, x, policy),
         Predicate::WithdrawalTo(_) => todo!(),
         Predicate::InputAsset(_) => todo!(),
         Predicate::OutputAsset(_) => todo!(),
@@ -165,7 +166,7 @@ mod tests {
 
     use super::{eval_predicate, AddressPattern, Predicate};
 
-    fn test_predicate_in_block(predicate: &Predicate, match_txs: &[usize]) {
+    fn test_predicate_in_block(predicate: &Predicate, expected_txs: &[usize]) {
         let cbor = include_str!("../../assets/test.block");
         let bytes = hex::decode(cbor).unwrap();
         let block = MultiEraBlock::decode(&bytes).unwrap();
@@ -180,12 +181,12 @@ mod tests {
             .map(|(idx, _)| idx)
             .collect();
 
-        assert_eq!(idxs, match_txs);
+        assert_eq!(idxs, expected_txs);
     }
 
     #[test]
     fn payment_to_exact_address() {
-        let x = Predicate::PaymentTo(AddressPattern {
+        let x = Predicate::OutputAddress(AddressPattern {
             exact: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
             ..Default::default()
         });
@@ -195,7 +196,7 @@ mod tests {
 
     #[test]
     fn payment_to_script_address() {
-        let x = Predicate::PaymentTo(AddressPattern {
+        let x = Predicate::OutputAddress(AddressPattern {
             is_script: Some(true),
             ..Default::default()
         });
@@ -205,12 +206,12 @@ mod tests {
 
     #[test]
     fn any_of() {
-        let a = Predicate::PaymentTo(AddressPattern {
+        let a = Predicate::OutputAddress(AddressPattern {
             exact: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
             ..Default::default()
         });
 
-        let b = Predicate::PaymentTo(AddressPattern {
+        let b = Predicate::OutputAddress(AddressPattern {
             is_script: Some(true),
             ..Default::default()
         });
