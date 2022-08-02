@@ -29,9 +29,12 @@ pub mod transactions_count_by_address_by_epoch;
 #[cfg(feature = "unstable")]
 pub mod transactions_count_by_epoch;
 #[cfg(feature = "unstable")]
-pub mod transactions_count_by_script_hash;
-#[cfg(feature = "unstable")]
 pub mod tx_by_hash;
+#[cfg(feature = "unstable")]
+pub mod transactions_count_by_address_hash;
+
+#[cfg(feature = "unstable")]
+pub mod transactions_count_by_native_token_policy_id;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -57,7 +60,9 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
-    TransactionsCountByScriptHash(transactions_count_by_script_hash::Config),
+    TransactionsCountByAddressHash(transactions_count_by_address_hash::Config),
+    #[cfg(feature = "unstable")]
+    TransactionsCountByNativeTokenPolicyId(transactions_count_by_native_token_policy_id::Config),
 }
 
 impl Config {
@@ -88,7 +93,9 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TxByHash(c) => c.plugin(),
             #[cfg(feature = "unstable")]
-            Config::TransactionsCountByScriptHash(c) => c.plugin(chain),
+            Config::TransactionsCountByAddressHash(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::TransactionsCountByNativeTokenPolicyId(c) => c.plugin(),
         }
     }
 }
@@ -162,7 +169,9 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TxByHash(tx_by_hash::Reducer),
     #[cfg(feature = "unstable")]
-    TransactionsCountByScriptHash(transactions_count_by_script_hash::Reducer),
+    TransactionsCountByAddressHash(transactions_count_by_address_hash::Reducer),
+    #[cfg(feature = "unstable")]
+    TransactionsCountByNativeTokenPolicyId(transactions_count_by_native_token_policy_id::Reducer),
 }
 
 impl Reducer {
@@ -194,7 +203,9 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TxByHash(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
-            Reducer::TransactionsCountByScriptHash(x) => x.reduce_block(block, output),
+            Reducer::TransactionsCountByAddressHash(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TransactionsCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
         }
     }
 }
