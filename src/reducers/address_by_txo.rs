@@ -26,12 +26,12 @@ impl Reducer {
         output_idx: usize,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}#{}", prefix, tx_hash, output_idx),
-            None => format!("{}#{}", tx_hash, output_idx),
-        };
-
-        let crdt = model::CRDTCommand::LastWriteWins(key, address.to_string(), slot);
+        let crdt = model::CRDTCommand::last_write_wins(
+            self.config.key_prefix.as_deref(),
+            &format!("{}#{}", tx_hash, output_idx),
+            address.to_string(),
+            slot,
+        );
 
         output.send(gasket::messaging::Message::from(crdt))?;
 

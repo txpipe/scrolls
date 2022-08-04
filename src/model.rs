@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::HashMap, fmt::Debug};
 
 use pallas::{
     ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, OutputRef},
@@ -74,9 +74,26 @@ impl EnrichedBlockPayload {
 pub type Set = String;
 pub type Member = String;
 pub type Key = String;
-pub type Value = String;
 pub type Delta = i64;
 pub type Timestamp = u64;
+
+#[derive(Debug)]
+pub enum Value {
+    String(String),
+    Cbor(Vec<u8>),
+}
+
+impl From<String> for Value {
+    fn from(x: String) -> Self {
+        Value::String(x)
+    }
+}
+
+impl From<Vec<u8>> for Value {
+    fn from(x: Vec<u8>) -> Self {
+        Value::Cbor(x)
+    }
+}
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -120,40 +137,40 @@ impl CRDTCommand {
         CRDTCommand::SetRemove(key, member)
     }
 
+    pub fn any_write_wins<K, V>(prefix: Option<&str>, key: K, value: V) -> CRDTCommand
+    where
+        K: ToString,
+        V: Into<Value>,
+    {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key.to_string()),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::AnyWriteWins(key, value.into())
+    }
+
+    pub fn last_write_wins<V>(
+        prefix: Option<&str>,
+        key: &str,
+        value: V,
+        ts: Timestamp,
+    ) -> CRDTCommand
+    where
+        V: Into<Value>,
+    {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::LastWriteWins(key, value.into(), ts)
+    }
+
     pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {
         let hash = block.hash();
         let slot = block.slot();
         let point = Point::Specific(slot, hash.to_vec());
         CRDTCommand::BlockFinished(point)
-    }
-}
-
-pub enum StateQuery {
-    KeyValue(Key),
-    LatestKeyValue(Key),
-    SetMembers(Set),
-}
-
-pub enum StateData {
-    NotFound,
-    KeyValue(Value),
-    SetMembers(HashSet<Member>),
-}
-
-impl From<Option<Value>> for StateData {
-    fn from(maybe: Option<Value>) -> Self {
-        match maybe {
-            Some(x) => StateData::KeyValue(x),
-            None => StateData::NotFound,
-        }
-    }
-}
-
-impl From<Option<HashSet<Value>>> for StateData {
-    fn from(maybe: Option<HashSet<Value>>) -> Self {
-        match maybe {
-            Some(x) => StateData::SetMembers(x),
-            None => StateData::NotFound,
-        }
     }
 }
