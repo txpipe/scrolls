@@ -66,7 +66,7 @@ fn should_stop(pipeline: &bootstrap::Pipeline) -> bool {
     pipeline
         .tethers
         .iter()
-        .any(|(_, tether)| match tether.check_state() {
+        .any(|tether| match tether.check_state() {
             gasket::runtime::TetherState::Alive(x) => match x {
                 gasket::runtime::StageState::StandBy => true,
                 _ => false,
@@ -76,9 +76,9 @@ fn should_stop(pipeline: &bootstrap::Pipeline) -> bool {
 }
 
 fn shutdown(pipeline: bootstrap::Pipeline) {
-    for (name, tether) in pipeline.tethers {
+    for tether in pipeline.tethers {
         let state = tether.check_state();
-        log::warn!("dismissing stage: {} with state {:?}", name, state);
+        log::warn!("dismissing stage: {} with state {:?}", tether.name(), state);
         tether.dismiss_stage().expect("stage stops");
 
         // Can't join the stage because there's a risk of deadlock, usually

@@ -2,10 +2,8 @@ use crate::{enrich, reducers, sources, storage};
 
 use gasket::{messaging::connect_ports, runtime::Tether};
 
-type NamedTether = (&'static str, Tether);
-
 pub struct Pipeline {
-    pub tethers: Vec<NamedTether>,
+    pub tethers: Vec<Tether>,
 }
 
 impl Pipeline {
@@ -15,8 +13,8 @@ impl Pipeline {
         }
     }
 
-    pub fn register_stage(&mut self, name: &'static str, tether: Tether) {
-        self.tethers.push((name, tether));
+    pub fn register_stage(&mut self, tether: Tether) {
+        self.tethers.push(tether);
     }
 }
 

@@ -135,13 +135,13 @@ impl Bootstrapper {
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
         let worker = worker::Worker::new(self.reducers, self.input, self.output, self.policy);
         pipeline.register_stage(
-            "reducers",
             spawn_stage(
                 worker,
                 gasket::runtime::Policy {
                     tick_timeout: Some(Duration::from_secs(600)),
                     ..Default::default()
                 },
+                Some("reducers"),
             ),
         );
     }
