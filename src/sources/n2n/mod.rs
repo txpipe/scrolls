@@ -79,6 +79,12 @@ impl Bootstrapper {
             ),
             gasket::runtime::Policy {
                 tick_timeout: Some(Duration::from_secs(600)),
+                bootstrap_retry: gasket::retries::Policy {
+                    max_retries: 20,
+                    backoff_factor: 2,
+                    backoff_unit: Duration::from_secs(1),
+                    max_backoff: Duration::from_secs(60),
+                },
                 ..Default::default()
             },
             Some("n2n-headers"),
@@ -93,6 +99,12 @@ impl Bootstrapper {
             ),
             gasket::runtime::Policy {
                 tick_timeout: Some(Duration::from_secs(600)),
+                bootstrap_retry: gasket::retries::Policy {
+                    max_retries: 20,
+                    backoff_factor: 2,
+                    backoff_unit: Duration::from_secs(1),
+                    max_backoff: Duration::from_secs(60),
+                },
                 ..Default::default()
             },
             Some("n2n-blocks"),
