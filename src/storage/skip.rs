@@ -39,13 +39,13 @@ impl Bootstrapper {
         };
 
         pipeline.register_stage(
-            "skip",
             spawn_stage(
                 worker,
                 gasket::runtime::Policy {
                     tick_timeout: Some(Duration::from_secs(5)),
                     ..Default::default()
                 },
+                Some("skip")
             ),
         );
     }

@@ -74,7 +74,7 @@ impl TuiConsole {
     }
 
     fn refresh(&self, pipeline: &Pipeline) {
-        for (stage, tether) in pipeline.tethers.iter() {
+        for tether in pipeline.tethers.iter() {
             let state = match tether.check_state() {
                 gasket::runtime::TetherState::Dropped => "dropped!",
                 gasket::runtime::TetherState::Blocked(_) => "blocked!",
@@ -90,7 +90,7 @@ impl TuiConsole {
             match tether.read_metrics() {
                 Ok(readings) => {
                     for (key, value) in readings {
-                        match (*stage, key, value) {
+                        match (tether.name(), key, value) {
                             (_, "chain_tip", Reading::Gauge(x)) => {
                                 self.chainsync_progress.set_length(x as u64);
                             }
@@ -173,24 +173,24 @@ impl PlainConsole {
             return;
         }
 
-        for (stage, tether) in pipeline.tethers.iter() {
+        for tether in pipeline.tethers.iter() {
             match tether.check_state() {
                 gasket::runtime::TetherState::Dropped => {
-                    log::error!("[{}] stage tether has been dropped", stage);
+                    log::error!("[{}] stage tether has been dropped", tether.name());
                 }
                 gasket::runtime::TetherState::Blocked(_) => {
-                    log::warn!("[{}] stage tehter is blocked or not reporting state", stage);
+                    log::warn!("[{}] stage tehter is blocked or not reporting state", tether.name());
                 }
                 gasket::runtime::TetherState::Alive(state) => {
-                    log::debug!("[{}] stage is alive with state: {:?}", stage, state);
+                    log::debug!("[{}] stage is alive with state: {:?}", tether.name(), state);
                     match tether.read_metrics() {
                         Ok(readings) => {
                             for (key, value) in readings {
-                                log::debug!("[{}] metric `{}` = {:?}", stage, key, value);
+                                log::debug!("[{}] metric `{}` = {:?}", tether.name(), key, value);
                             }
                         }
                         Err(err) => {
-                            log::error!("[{}] error reading metrics: {}", stage, err)
+                            log::error!("[{}] error reading metrics: {}", tether.name(), err)
                         }
                     }
                 }
