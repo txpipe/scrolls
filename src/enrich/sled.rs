@@ -69,13 +69,13 @@ impl Bootstrapper {
         };
 
         pipeline.register_stage(
-            "enrich-sled",
             spawn_stage(
                 worker,
                 gasket::runtime::Policy {
                     tick_timeout: Some(Duration::from_secs(600)),
                     ..Default::default()
                 },
+                Some("enrich-sled"),
             ),
         );
     }

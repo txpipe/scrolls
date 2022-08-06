@@ -2,7 +2,6 @@ use std::{collections::HashMap, ops::Deref};
 
 use pallas::ledger::traverse::MultiEraBlock;
 use pallas::network::miniprotocols::{self, chainsync, Agent, Point};
-use pallas::network::multiplexer;
 
 use gasket::{
     error::AsWorkError,
@@ -10,6 +9,8 @@ use gasket::{
 };
 
 use crate::{crosscut, model::RawBlockPayload, sources::utils};
+
+use super::transport::Transport;
 
 struct ChainObserver {
     min_depth: usize,
@@ -97,13 +98,14 @@ type OutputPort = gasket::messaging::OutputPort<RawBlockPayload>;
 type MyAgent = chainsync::BlockConsumer<ChainObserver>;
 
 pub struct Worker {
-    channel: multiplexer::StdChannelBuffer,
+    socket: String,
     min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
     cursor: crosscut::Cursor,
     //finalize_config: Option<FinalizeConfig>,
     agent: Option<MyAgent>,
+    transport: Option<Transport>,
     output: OutputPort,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
@@ -111,7 +113,7 @@ pub struct Worker {
 
 impl Worker {
     pub fn new(
-        channel: multiplexer::StdChannelBuffer,
+        socket: String,
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
@@ -119,13 +121,14 @@ impl Worker {
         output: OutputPort,
     ) -> Self {
         Self {
-            channel,
+            socket,
             min_depth,
             chain,
             intersect,
             cursor,
             output,
             agent: None,
+            transport: None,
             block_count: Default::default(),
             chain_tip: Default::default(),
         }
@@ -141,11 +144,13 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
+        let mut transport = Transport::setup(&self.socket, self.chain.magic).or_retry()?;
+
         let known_points = utils::define_known_points(
             &self.chain,
             &self.intersect,
             &self.cursor,
-            &mut self.channel,
+            &mut transport.channel5,
         )
         .or_retry()?;
 
@@ -162,18 +167,21 @@ impl gasket::runtime::Worker for Worker {
         .or_retry()?;
 
         self.agent = Some(agent);
+        self.transport = Some(transport);
 
         Ok(())
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
         let agent = self.agent.take().unwrap();
+        let mut transport = self.transport.take().unwrap();
 
-        let agent = miniprotocols::run_agent_step(agent, &mut self.channel).or_restart()?;
+        let agent = miniprotocols::run_agent_step(agent, &mut transport.channel5).or_restart()?;
 
         let is_done = agent.is_done();
 
         self.agent = Some(agent);
+        self.transport = Some(transport);
 
         match is_done {
             true => Ok(gasket::runtime::WorkOutcome::Done),
