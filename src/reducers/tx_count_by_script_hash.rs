@@ -23,7 +23,11 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, address.to_string()),
-            None => format!("{}", address.to_string()),
+            None => format!(
+                "{}.{}",
+                "transaction_count_by_address_hash".to_string(),
+                address.to_string()
+            ),
         };
 
         let crdt = model::CRDTCommand::PNCounter(key, 1);
@@ -53,7 +57,7 @@ impl Reducer {
             return Ok(None);
         }
 
-        let address = utxo.address().map(|x| x.to_string()).or_panic()?;
+        let address = utxo.address().map(|x| x.to_hex()).or_panic()?;
 
         Ok(Some(address))
     }
@@ -93,9 +97,8 @@ impl Reducer {
                 let output_addresses: Vec<_> = tx
                     .outputs()
                     .iter()
-                    .filter(|p| p.address().map_or(false, |a| a.has_script()))
                     .filter_map(|tx| tx.address().ok())
-                    .map(|addr| addr.to_string())
+                    .map(|addr| addr.to_hex())
                     .collect();
 
                 let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
@@ -119,6 +122,6 @@ impl Config {
             policy: policy.clone(),
         };
 
-        super::Reducer::TransactionsCountByAddress(reducer)
+        super::Reducer::TxCountByScriptHash(reducer)
     }
 }
