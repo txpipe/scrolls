@@ -4,7 +4,8 @@ mod transport;
 use serde::Deserialize;
 use std::time::Duration;
 
-use crate::{bootstrap::Pipeline, crosscut, model::RawBlockPayload};
+use crate::{bootstrap, crosscut, model, storage};
+
 use gasket::messaging::OutputPort;
 
 #[derive(Deserialize)]
@@ -31,22 +32,22 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    output: OutputPort<RawBlockPayload>,
+    output: OutputPort<model::RawBlockPayload>,
 }
 
 impl Bootstrapper {
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<RawBlockPayload> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::RawBlockPayload> {
         &mut self.output
     }
 
-    pub fn spawn_stages(self, pipeline: &mut Pipeline, cursor: &Option<crosscut::PointArg>) {
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, cursor: storage::Cursor) {
         pipeline.register_stage(gasket::runtime::spawn_stage(
             self::chainsync::Worker::new(
                 self.config.path.clone(),
                 0,
                 self.chain,
                 self.intersect,
-                cursor.clone(),
+                cursor,
                 self.output,
             ),
             gasket::runtime::Policy {

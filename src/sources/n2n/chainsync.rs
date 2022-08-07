@@ -9,8 +9,8 @@ use gasket::{
 
 use super::ChainSyncInternalPayload;
 use crate::sources::n2n::transport::Transport;
-use crate::Error;
 use crate::{crosscut, sources::utils};
+use crate::{storage, Error};
 
 fn to_traverse<'b>(header: &'b HeaderContent) -> Result<MultiEraHeader<'b>, Error> {
     MultiEraHeader::decode(
@@ -112,7 +112,7 @@ pub struct Worker {
     min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
-    cursor: Option<crosscut::PointArg>,
+    cursor: storage::Cursor,
     //finalize_config: Option<FinalizeConfig>,
     agent: Option<chainsync::HeaderConsumer<ChainObserver>>,
     transport: Option<Transport>,
@@ -127,7 +127,7 @@ impl Worker {
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
-        cursor: Option<crosscut::PointArg>,
+        cursor: storage::Cursor,
         output: OutputPort,
     ) -> Self {
         Self {
@@ -156,10 +156,10 @@ impl gasket::runtime::Worker for Worker {
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
         let mut transport = Transport::setup(&self.address, self.chain.magic).or_retry()?;
 
-        let known_points = utils::define_known_points(
+        let known_points = utils::define_chainsync_start(
             &self.chain,
             &self.intersect,
-            &self.cursor,
+            &mut self.cursor,
             &mut transport.channel2,
         )
         .or_retry()?;

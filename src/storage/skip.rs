@@ -1,4 +1,7 @@
-use std::time::Duration;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use gasket::runtime::{spawn_stage, WorkOutcome};
 
@@ -15,12 +18,14 @@ impl Config {
     pub fn boostrapper(self) -> Bootstrapper {
         Bootstrapper {
             input: Default::default(),
+            last_point: Arc::new(Mutex::new(None)),
         }
     }
 }
 
 pub struct Bootstrapper {
     input: InputPort,
+    last_point: Arc<Mutex<Option<crosscut::PointArg>>>,
 }
 
 impl Bootstrapper {
@@ -28,32 +33,45 @@ impl Bootstrapper {
         &mut self.input
     }
 
-    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
-        Ok(None)
+    pub fn build_cursor(&mut self) -> Cursor {
+        Cursor {
+            last_point: self.last_point.clone(),
+        }
     }
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
         let worker = Worker {
             input: self.input,
             ops_count: Default::default(),
+            last_point: self.last_point.clone(),
         };
 
-        pipeline.register_stage(
-            spawn_stage(
-                worker,
-                gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(5)),
-                    ..Default::default()
-                },
-                Some("skip")
-            ),
-        );
+        pipeline.register_stage(spawn_stage(
+            worker,
+            gasket::runtime::Policy {
+                tick_timeout: Some(Duration::from_secs(5)),
+                ..Default::default()
+            },
+            Some("skip"),
+        ));
+    }
+}
+
+pub struct Cursor {
+    last_point: Arc<Mutex<Option<crosscut::PointArg>>>,
+}
+
+impl Cursor {
+    pub fn last_point(&self) -> Result<Option<crosscut::PointArg>, crate::Error> {
+        let value = self.last_point.lock().unwrap();
+        Ok(value.clone())
     }
 }
 
 pub struct Worker {
     ops_count: gasket::metrics::Counter,
     input: InputPort,
+    last_point: Arc<Mutex<Option<crosscut::PointArg>>>,
 }
 
 impl gasket::runtime::Worker for Worker {
@@ -96,6 +114,8 @@ impl gasket::runtime::Worker for Worker {
             }
             model::CRDTCommand::BlockFinished(point) => {
                 log::debug!("block finished {:?}", point);
+                let mut last_point = self.last_point.lock().unwrap();
+                *last_point = Some(crosscut::PointArg::from(point));
             }
         };
 

@@ -3,7 +3,7 @@ use pallas::network::{
     multiplexer::StdChannelBuffer,
 };
 
-use crate::crosscut;
+use crate::{crosscut, storage};
 
 pub fn find_end_of_chain(
     chain: &crosscut::ChainWellKnownInfo,
@@ -24,18 +24,18 @@ pub fn find_end_of_chain(
     }
 }
 
-pub fn define_known_points(
+pub fn define_chainsync_start(
     chain: &crosscut::ChainWellKnownInfo,
     intersect: &crosscut::IntersectConfig,
-    cursor: &crosscut::Cursor,
+    cursor: &mut storage::Cursor,
     channel: &mut StdChannelBuffer,
 ) -> Result<Option<Vec<Point>>, crate::Error> {
-    match cursor {
+    match cursor.last_point()? {
         Some(x) => {
             log::info!("found existing cursor in storage plugin: {:?}", x);
             return Ok(Some(vec![x.clone().try_into()?]));
         }
-        None => log::debug!("no cursor found in storage plugin"),
+        None => log::info!("no cursor found in storage plugin"),
     };
 
     match &intersect {

@@ -4,7 +4,11 @@ pub mod skip;
 use gasket::messaging::InputPort;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model};
+use crate::{
+    bootstrap,
+    crosscut::{self, PointArg},
+    model,
+};
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -39,10 +43,10 @@ impl Bootstrapper {
         }
     }
 
-    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
+    pub fn build_cursor(&mut self) -> Cursor {
         match self {
-            Bootstrapper::Redis(x) => x.read_cursor(),
-            Bootstrapper::Skip(x) => x.read_cursor(),
+            Bootstrapper::Redis(x) => Cursor::Redis(x.build_cursor()),
+            Bootstrapper::Skip(x) => Cursor::Skip(x.build_cursor()),
         }
     }
 
@@ -50,6 +54,20 @@ impl Bootstrapper {
         match self {
             Bootstrapper::Redis(x) => x.spawn_stages(pipeline),
             Bootstrapper::Skip(x) => x.spawn_stages(pipeline),
+        }
+    }
+}
+
+pub enum Cursor {
+    Redis(redis::Cursor),
+    Skip(skip::Cursor),
+}
+
+impl Cursor {
+    pub fn last_point(&mut self) -> Result<Option<PointArg>, crate::Error> {
+        match self {
+            Cursor::Redis(x) => x.last_point(),
+            Cursor::Skip(x) => x.last_point(),
         }
     }
 }
