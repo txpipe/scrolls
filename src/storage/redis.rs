@@ -70,6 +70,12 @@ impl Bootstrapper {
             worker,
             gasket::runtime::Policy {
                 tick_timeout: Some(Duration::from_secs(600)),
+                bootstrap_retry: gasket::retries::Policy {
+                    max_retries: 20,
+                    backoff_unit: Duration::from_secs(1),
+                    backoff_factor: 2,
+                    max_backoff: Duration::from_secs(60),
+                },
                 ..Default::default()
             },
             Some("redis"),
