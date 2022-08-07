@@ -9,6 +9,7 @@ use crate::{bootstrap, crosscut, model};
 type InputPort = gasket::messaging::InputPort<model::EnrichedBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
+pub mod macros;
 pub mod point_by_tx;
 pub mod pool_by_stake;
 pub mod utxo_by_address;
@@ -77,7 +78,7 @@ impl Config {
             Config::PoolByStake(c) => c.plugin(),
 
             #[cfg(feature = "unstable")]
-            Config::AddressByTxo(c) => c.plugin(),
+            Config::AddressByTxo(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TotalTransactionsCount(c) => c.plugin(),
             #[cfg(feature = "unstable")]
@@ -187,7 +188,7 @@ impl Reducer {
             Reducer::PoolByStake(x) => x.reduce_block(block, output),
 
             #[cfg(feature = "unstable")]
-            Reducer::AddressByTxo(x) => x.reduce_block(block, output),
+            Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]

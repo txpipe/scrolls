@@ -159,6 +159,7 @@ dependencies = [
  "nom",
  "pathdiff",
  "serde",
+ "serde_json",
  "toml",
 ]
 
