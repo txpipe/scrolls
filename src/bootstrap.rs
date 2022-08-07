@@ -24,7 +24,7 @@ pub fn build(
     mut reducer: reducers::Bootstrapper,
     mut storage: storage::Bootstrapper,
 ) -> Result<Pipeline, crate::Error> {
-    let cursor = storage.read_cursor()?;
+    let cursor = storage.build_cursor();
 
     let mut pipeline = Pipeline::new();
 
@@ -42,7 +42,7 @@ pub fn build(
         100,
     );
 
-    source.spawn_stages(&mut pipeline, &cursor);
+    source.spawn_stages(&mut pipeline, cursor);
     enrich.spawn_stages(&mut pipeline);
     reducer.spawn_stages(&mut pipeline);
     storage.spawn_stages(&mut pipeline);

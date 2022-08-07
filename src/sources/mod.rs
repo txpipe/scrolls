@@ -1,11 +1,7 @@
 use gasket::messaging::OutputPort;
 use serde::Deserialize;
 
-use crate::{
-    bootstrap,
-    crosscut::{self, PointArg},
-    model,
-};
+use crate::{bootstrap, crosscut, model, storage};
 
 #[cfg(target_family = "unix")]
 pub mod n2c;
@@ -48,7 +44,7 @@ impl Bootstrapper {
         }
     }
 
-    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, cursor: &Option<PointArg>) {
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, cursor: storage::Cursor) {
         match self {
             Bootstrapper::N2N(p) => p.spawn_stages(pipeline, cursor),
             Bootstrapper::N2C(p) => p.spawn_stages(pipeline, cursor),

@@ -52,8 +52,38 @@ impl Bootstrapper {
         &mut self.input
     }
 
-    pub fn read_cursor(&mut self) -> Result<crosscut::Cursor, crate::Error> {
-        let mut connection = redis::Client::open(self.config.connection_params.clone())
+    pub fn build_cursor(&self) -> Cursor {
+        Cursor {
+            connection_params: self.config.connection_params.clone(),
+        }
+    }
+
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
+        let worker = Worker {
+            config: self.config.clone(),
+            connection: None,
+            input: self.input,
+            ops_count: Default::default(),
+        };
+
+        pipeline.register_stage(spawn_stage(
+            worker,
+            gasket::runtime::Policy {
+                tick_timeout: Some(Duration::from_secs(600)),
+                ..Default::default()
+            },
+            Some("redis"),
+        ));
+    }
+}
+
+pub struct Cursor {
+    connection_params: String,
+}
+
+impl Cursor {
+    pub fn last_point(&mut self) -> Result<Option<crosscut::PointArg>, crate::Error> {
+        let mut connection = redis::Client::open(self.connection_params.clone())
             .and_then(|x| x.get_connection())
             .map_err(crate::Error::storage)?;
 
@@ -65,26 +95,6 @@ impl Bootstrapper {
         };
 
         Ok(point)
-    }
-
-    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
-        let worker = Worker {
-            config: self.config.clone(),
-            connection: None,
-            input: self.input,
-            ops_count: Default::default(),
-        };
-
-        pipeline.register_stage(
-            spawn_stage(
-                worker,
-                gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(600)),
-                    ..Default::default()
-                },
-                Some("redis"),
-            ),
-        );
     }
 }
 
