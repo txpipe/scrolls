@@ -9,7 +9,7 @@ use gasket::messaging::{InputPort, OutputPort};
 use pallas::network::miniprotocols::Point;
 use serde::Deserialize;
 
-use crate::{bootstrap::Pipeline, crosscut, model::RawBlockPayload};
+use crate::{bootstrap, crosscut, model, storage};
 
 #[derive(Debug)]
 pub enum ChainSyncInternalPayload {
@@ -55,15 +55,15 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     chain: crosscut::ChainWellKnownInfo,
-    output: OutputPort<RawBlockPayload>,
+    output: OutputPort<model::RawBlockPayload>,
 }
 
 impl Bootstrapper {
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<RawBlockPayload> {
+    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort<model::RawBlockPayload> {
         &mut self.output
     }
 
-    pub fn spawn_stages(self, pipeline: &mut Pipeline, cursor: &Option<crosscut::PointArg>) {
+    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, cursor: storage::Cursor) {
         let mut headers_out = OutputPort::<ChainSyncInternalPayload>::default();
         let mut headers_in = InputPort::<ChainSyncInternalPayload>::default();
         gasket::messaging::connect_ports(&mut headers_out, &mut headers_in, 10);
@@ -74,7 +74,7 @@ impl Bootstrapper {
                 0,
                 self.chain.clone(),
                 self.intersect,
-                cursor.clone(),
+                cursor,
                 headers_out,
             ),
             gasket::runtime::Policy {

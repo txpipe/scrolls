@@ -8,7 +8,7 @@ use gasket::{
     metrics::{Counter, Gauge},
 };
 
-use crate::{crosscut, model::RawBlockPayload, sources::utils};
+use crate::{crosscut, model, sources::utils, storage};
 
 use super::transport::Transport;
 
@@ -63,7 +63,8 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
                 .remove(&point)
                 .expect("required block not found in memory");
 
-            self.output.send(RawBlockPayload::roll_forward(block))?;
+            self.output
+                .send(model::RawBlockPayload::roll_forward(block))?;
             self.block_count.inc(1);
         }
 
@@ -86,7 +87,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
             chainsync::RollbackEffect::OutOfScope => {
                 log::debug!("rollback out of buffer scope, sending event down the pipeline");
                 self.output
-                    .send(RawBlockPayload::roll_back(point.clone()))?;
+                    .send(model::RawBlockPayload::roll_back(point.clone()))?;
             }
         }
 
@@ -94,7 +95,7 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
     }
 }
 
-type OutputPort = gasket::messaging::OutputPort<RawBlockPayload>;
+type OutputPort = gasket::messaging::OutputPort<model::RawBlockPayload>;
 type MyAgent = chainsync::BlockConsumer<ChainObserver>;
 
 pub struct Worker {
@@ -102,7 +103,7 @@ pub struct Worker {
     min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
-    cursor: crosscut::Cursor,
+    cursor: storage::Cursor,
     //finalize_config: Option<FinalizeConfig>,
     agent: Option<MyAgent>,
     transport: Option<Transport>,
@@ -117,7 +118,7 @@ impl Worker {
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
-        cursor: crosscut::Cursor,
+        cursor: storage::Cursor,
         output: OutputPort,
     ) -> Self {
         Self {
@@ -146,10 +147,10 @@ impl gasket::runtime::Worker for Worker {
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
         let mut transport = Transport::setup(&self.socket, self.chain.magic).or_retry()?;
 
-        let known_points = utils::define_known_points(
+        let known_points = utils::define_chainsync_start(
             &self.chain,
             &self.intersect,
-            &self.cursor,
+            &mut self.cursor,
             &mut transport.channel5,
         )
         .or_retry()?;
