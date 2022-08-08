@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   scrolls:
-    image: ghcr.io/txpipe/scrolls:latest
+    image: ghcr.io/txpipe/scrolls:v0.2.0
     command: [ "daemon" ]
     environment:
       - RUST_LOG=info
