@@ -9,25 +9,48 @@ use crate::{crosscut, model};
 
 #[derive(Deserialize, Clone, Default)]
 pub struct AddressPattern {
-    pub exact: Option<String>,
-    pub payment: Option<String>,
-    pub stake: Option<String>,
+    pub exact_hex: Option<String>,
+    pub exact_bech32: Option<String>,
+    pub payment_hex: Option<String>,
+    pub payment_bech32: Option<String>,
+    pub stake_hex: Option<String>,
+    pub stake_bech32: Option<String>,
     pub is_script: Option<bool>,
 }
 
 impl AddressPattern {
     pub fn matches(&self, addr: Address) -> bool {
-        if let Some(x) = &self.exact {
-            if addr.to_string().eq(x) {
+        if let Some(x) = &self.exact_hex {
+            if addr.to_hex().eq(x) {
                 return true;
             }
         }
 
-        if let Some(_) = &self.payment {
+        if let Some(x) = &self.exact_bech32 {
+            if let Ok(addr) = addr.to_bech32() {
+                if addr.eq(x) {
+                    return true;
+                }
+            }
+        }
+
+        if let Some(_) = &self.payment_hex {
+            // we need hex methods in Pallas addresses
             todo!();
         }
 
-        if let Some(_) = &self.stake {
+        if let Some(_) = &self.payment_bech32 {
+            // we need bech32 methods in Pallas addresses
+            todo!();
+        }
+
+        if let Some(_) = &self.stake_hex {
+            // we need hex methods in Pallas addresses
+            todo!();
+        }
+
+        if let Some(_) = &self.stake_bech32 {
+            // we need bech32 methods in Pallas addresses
             todo!();
         }
 
@@ -37,13 +60,6 @@ impl AddressPattern {
 
         false
     }
-}
-
-#[derive(Deserialize, Clone)]
-pub struct AssetPattern {
-    pub policy: Option<String>,
-    pub name: Option<String>,
-    pub subject: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -58,12 +74,14 @@ pub enum Predicate {
     AllOf(Vec<Predicate>),
     AnyOf(Vec<Predicate>),
     Not(Box<Predicate>),
+    Block(BlockPattern),
     InputAddress(AddressPattern),
     OutputAddress(AddressPattern),
-    WithdrawalTo(AddressPattern),
-    InputAsset(AssetPattern),
-    OutputAsset(AssetPattern),
-    Block(BlockPattern),
+    WithdrawalAddress(AddressPattern),
+    CollateralAddress(AddressPattern),
+
+    /// Filters by an address referenced in any part of the tx
+    Address(AddressPattern),
 }
 
 impl Predicate {
@@ -73,7 +91,7 @@ impl Predicate {
 }
 
 #[inline]
-fn eval_payment_to(tx: &MultiEraTx, pattern: &AddressPattern) -> Result<bool, crate::Error> {
+fn eval_output_address(tx: &MultiEraTx, pattern: &AddressPattern) -> Result<bool, crate::Error> {
     let x = tx
         .outputs()
         .iter()
@@ -84,7 +102,7 @@ fn eval_payment_to(tx: &MultiEraTx, pattern: &AddressPattern) -> Result<bool, cr
 }
 
 #[inline]
-fn eval_payment_from(
+fn eval_input_address(
     tx: &MultiEraTx,
     ctx: &model::BlockContext,
     pattern: &AddressPattern,
@@ -99,6 +117,79 @@ fn eval_payment_from(
                 }
             }
         }
+    }
+
+    Ok(false)
+}
+
+#[inline]
+fn eval_collateral_address(
+    tx: &MultiEraTx,
+    ctx: &model::BlockContext,
+    pattern: &AddressPattern,
+    policy: &crosscut::policies::RuntimePolicy,
+) -> Result<bool, crate::Error> {
+    for input in tx.collateral() {
+        let utxo = ctx.find_utxo(&input.output_ref()).apply_policy(policy)?;
+        if let Some(utxo) = utxo {
+            if let Some(addr) = utxo.address().ok() {
+                if pattern.matches(addr) {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+#[inline]
+fn eval_withdrawal_address(
+    tx: &MultiEraTx,
+    pattern: &AddressPattern,
+) -> Result<bool, crate::Error> {
+    let x = tx
+        .withdrawals()
+        .collect::<Vec<_>>()
+        .iter()
+        .filter_map(|(b, _)| Address::from_bytes(b).ok())
+        .any(|a| pattern.matches(a));
+
+    Ok(x)
+}
+
+fn eval_address(
+    tx: &MultiEraTx,
+    ctx: &model::BlockContext,
+    pattern: &AddressPattern,
+    policy: &crosscut::policies::RuntimePolicy,
+) -> Result<bool, crate::Error> {
+    if eval_output_address(tx, pattern)? {
+        return Ok(true);
+    }
+
+    if eval_input_address(tx, ctx, pattern, policy)? {
+        return Ok(true);
+    }
+
+    if eval_withdrawal_address(tx, pattern)? {
+        return Ok(true);
+    }
+
+    if eval_collateral_address(tx, ctx, pattern, policy)? {
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+fn eval_block(block: &MultiEraBlock, pattern: &BlockPattern) -> Result<bool, crate::Error> {
+    if let Some(x) = pattern.slot_after {
+        return Ok(block.slot() > x);
+    }
+
+    if let Some(x) = pattern.slot_before {
+        return Ok(block.slot() < x);
     }
 
     Ok(false)
@@ -149,12 +240,12 @@ pub fn eval_predicate(
         Predicate::Not(x) => eval_predicate(x, block, tx, ctx, policy).map(|x| !x),
         Predicate::AnyOf(x) => eval_any_of(x, block, tx, ctx, policy),
         Predicate::AllOf(x) => eval_all_of(x, block, tx, ctx, policy),
-        Predicate::OutputAddress(x) => eval_payment_to(tx, x),
-        Predicate::InputAddress(x) => eval_payment_from(tx, ctx, x, policy),
-        Predicate::WithdrawalTo(_) => todo!(),
-        Predicate::InputAsset(_) => todo!(),
-        Predicate::OutputAsset(_) => todo!(),
-        Predicate::Block(_) => todo!(),
+        Predicate::OutputAddress(x) => eval_output_address(tx, x),
+        Predicate::InputAddress(x) => eval_input_address(tx, ctx, x, policy),
+        Predicate::WithdrawalAddress(x) => eval_withdrawal_address(tx, x),
+        Predicate::CollateralAddress(x) => eval_collateral_address(tx, ctx, x, policy),
+        Predicate::Address(x) => eval_address(tx, ctx, x, policy),
+        Predicate::Block(x) => eval_block(block, x),
     }
 }
 
@@ -162,7 +253,10 @@ pub fn eval_predicate(
 mod tests {
     use pallas::ledger::traverse::MultiEraBlock;
 
-    use crate::{crosscut::policies::RuntimePolicy, model::BlockContext};
+    use crate::{
+        crosscut::policies::{ErrorAction, RuntimePolicy},
+        model::BlockContext,
+    };
 
     use super::{eval_predicate, AddressPattern, Predicate};
 
@@ -171,7 +265,10 @@ mod tests {
         let bytes = hex::decode(cbor).unwrap();
         let block = MultiEraBlock::decode(&bytes).unwrap();
         let ctx = BlockContext::default();
-        let policy = RuntimePolicy::default();
+        let policy = RuntimePolicy {
+            missing_data: Some(ErrorAction::Skip),
+            ..Default::default()
+        };
 
         let idxs: Vec<_> = block
             .txs()
@@ -185,9 +282,9 @@ mod tests {
     }
 
     #[test]
-    fn payment_to_exact_address() {
+    fn output_to_exact_address() {
         let x = Predicate::OutputAddress(AddressPattern {
-            exact: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
+            exact_bech32: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
             ..Default::default()
         });
 
@@ -195,7 +292,17 @@ mod tests {
     }
 
     #[test]
-    fn payment_to_script_address() {
+    fn exact_address() {
+        let x = Predicate::Address(AddressPattern {
+            exact_bech32: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
+            ..Default::default()
+        });
+
+        test_predicate_in_block(&x, &[0]);
+    }
+
+    #[test]
+    fn output_to_script_address() {
         let x = Predicate::OutputAddress(AddressPattern {
             is_script: Some(true),
             ..Default::default()
@@ -207,7 +314,7 @@ mod tests {
     #[test]
     fn any_of() {
         let a = Predicate::OutputAddress(AddressPattern {
-            exact: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
+            exact_bech32: Some("addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c".into()),
             ..Default::default()
         });
 
