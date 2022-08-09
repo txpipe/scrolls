@@ -24,3 +24,6 @@ value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f
 
 [chain]
 type = "Mainnet"
+
+[policy]
+missing_data = "Skip"
