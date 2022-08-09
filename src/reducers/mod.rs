@@ -20,15 +20,9 @@ pub mod address_by_txo;
 #[cfg(feature = "unstable")]
 pub mod balance_by_address;
 #[cfg(feature = "unstable")]
-pub mod total_transactions_count;
-#[cfg(feature = "unstable")]
-pub mod total_transactions_count_by_addresses;
-#[cfg(feature = "unstable")]
-pub mod transactions_count_by_address_by_epoch;
-#[cfg(feature = "unstable")]
-pub mod transactions_count_by_epoch;
-#[cfg(feature = "unstable")]
 pub mod tx_by_hash;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_address;
 
 // CRFA
 #[cfg(feature = "unstable")]
@@ -50,17 +44,11 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Config),
     #[cfg(feature = "unstable")]
-    TotalTransactionsCount(total_transactions_count::Config),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByEpoch(transactions_count_by_epoch::Config),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByAddressByEpoch(transactions_count_by_address_by_epoch::Config),
-    #[cfg(feature = "unstable")]
-    TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Config),
-    #[cfg(feature = "unstable")]
     BalanceByAddress(balance_by_address::Config),
     #[cfg(feature = "unstable")]
     TxByHash(tx_by_hash::Config),
+    #[cfg(feature = "unstable")]
+    TxCountByAddress(tx_count_by_address::Config),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -74,11 +62,7 @@ pub enum Config {
 }
 
 impl Config {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> Reducer {
+    fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> Reducer {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
@@ -87,17 +71,11 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::AddressByTxo(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TotalTransactionsCount(c) => c.plugin(),
-            #[cfg(feature = "unstable")]
-            Config::TransactionsCountByEpoch(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            Config::TransactionsCountByAddressByEpoch(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TotalTransactionsCountByAddresses(c) => c.plugin(),
-            #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TxByHash(c) => c.plugin(),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByAddress(c) => c.plugin(policy),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -120,16 +98,9 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn new(
-        configs: Vec<Config>,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> Self {
+    pub fn new(configs: Vec<Config>, policy: &crosscut::policies::RuntimePolicy) -> Self {
         Self {
-            reducers: configs
-                .into_iter()
-                .map(|x| x.plugin(chain, policy))
-                .collect(),
+            reducers: configs.into_iter().map(|x| x.plugin(policy)).collect(),
             input: Default::default(),
             output: Default::default(),
             policy: policy.clone(),
@@ -165,17 +136,11 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Reducer),
     #[cfg(feature = "unstable")]
-    TotalTransactionsCount(total_transactions_count::Reducer),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByEpoch(transactions_count_by_epoch::Reducer),
-    #[cfg(feature = "unstable")]
-    TransactionsCountByAddressByEpoch(transactions_count_by_address_by_epoch::Reducer),
-    #[cfg(feature = "unstable")]
-    TotalTransactionsCountByAddresses(total_transactions_count_by_addresses::Reducer),
-    #[cfg(feature = "unstable")]
     BalanceByAddress(balance_by_address::Reducer),
     #[cfg(feature = "unstable")]
     TxByHash(tx_by_hash::Reducer),
+    #[cfg(feature = "unstable")]
+    TxCountByAddress(tx_count_by_address::Reducer),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -203,17 +168,11 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::TotalTransactionsCount(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TransactionsCountByEpoch(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TransactionsCountByAddressByEpoch(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TotalTransactionsCountByAddresses(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
             Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TxByHash(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
 
             // CRFA
             #[cfg(feature = "unstable")]
