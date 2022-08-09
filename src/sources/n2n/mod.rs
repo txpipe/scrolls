@@ -34,6 +34,7 @@ impl ChainSyncInternalPayload {
 #[derive(Deserialize)]
 pub struct Config {
     pub address: String,
+    pub min_depth: Option<usize>,
 }
 
 impl Config {
@@ -71,7 +72,7 @@ impl Bootstrapper {
         pipeline.register_stage(gasket::runtime::spawn_stage(
             self::chainsync::Worker::new(
                 self.config.address.clone(),
-                0,
+                self.config.min_depth.unwrap_or(0),
                 self.chain.clone(),
                 self.intersect,
                 cursor,
