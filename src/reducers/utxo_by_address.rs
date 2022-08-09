@@ -29,12 +29,6 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let is_script_address = utxo.address().map_or(false, |x| x.has_script());
-
-        if !is_script_address {
-            return Ok(());
-        }
-
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
 
         if let Some(addresses) = &self.config.filter {
@@ -60,15 +54,8 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        
-        let is_script_address = tx_output.address().map_or(false, |x| x.has_script());
-
-        if !is_script_address {
-            return Ok(());
-        }
-
         let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
-        
+
         if let Some(addresses) = &self.config.filter {
             if let Err(_) = addresses.binary_search(&address) {
                 return Ok(());

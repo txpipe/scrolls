@@ -29,12 +29,6 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let is_script_address = utxo.address().map_or(false, |x| x.has_script());
-
-        if !is_script_address {
-            return Ok(());
-        }
-
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
 
         let key = match &self.config.key_prefix {
@@ -54,12 +48,6 @@ impl Reducer {
         tx_output: &MultiEraOutput,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let is_script_address = tx_output.address().map_or(false, |x| x.has_script());
-
-        if !is_script_address {
-            return Ok(());
-        }
-
         let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
 
         let key = match &self.config.key_prefix {
