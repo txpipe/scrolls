@@ -49,10 +49,12 @@ impl Reducer {
         let slot = block.slot();
 
         for tx in block.txs() {
-            for cert in tx.certs() {
-                if let Some(cert) = cert.as_alonzo() {
-                    if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
-                        self.send_key_write(cred, pool, slot, output)?;
+            if tx.is_valid() {
+                for cert in tx.certs() {
+                    if let Some(cert) = cert.as_alonzo() {
+                        if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
+                            self.send_key_write(cred, pool, slot, output)?;
+                        }
                     }
                 }
             }
