@@ -78,12 +78,14 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            for input in tx.inputs().iter().map(|i| i.output_ref()) {
-                self.process_inbound_txo(&ctx, &input, output)?;
-            }
+            if tx.is_valid() {
+                for input in tx.inputs().iter().map(|i| i.output_ref()) {
+                    self.process_inbound_txo(&ctx, &input, output)?;
+                }
 
-            for (idx, tx_output) in tx.outputs().iter().enumerate() {
-                self.process_outbound_txo(&tx, tx_output, idx, output)?;
+                for (idx, tx_output) in tx.outputs().iter().enumerate() {
+                    self.process_outbound_txo(&tx, tx_output, idx, output)?;
+                }
             }
         }
 
