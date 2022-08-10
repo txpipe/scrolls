@@ -17,10 +17,10 @@ impl Default for ErrorAction {
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct RuntimePolicy {
-    missing_data: Option<ErrorAction>,
-    cbor_errors: Option<ErrorAction>,
-    ledger_errors: Option<ErrorAction>,
-    any_error: Option<ErrorAction>,
+    pub missing_data: Option<ErrorAction>,
+    pub cbor_errors: Option<ErrorAction>,
+    pub ledger_errors: Option<ErrorAction>,
+    pub any_error: Option<ErrorAction>,
 }
 
 #[inline]

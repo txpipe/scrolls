@@ -60,21 +60,23 @@ Scrolls is a pipeline that takes block data as input and outputs DB update comma
 
 - [ ] Collections
   - [x] UTXOs by Address
-  - [ ] Address by UTXO
-  - [ ] Tx CBOR by UTXO
-  - [ ] Tx CBOR by Address
+  - [x] Address by Tx Output
+  - [x] Tx CBOR by Hash
+  - [x] Tx Count by Address
+  - [x] Chain Point by Tx Hash
+  - [x] Balance by Address
   - [x] Pool Id by Stake Address
   - [ ] Pool Metadata by Pool Id
   - [ ] Chain Parameters by Epoch
   - [ ] UTXOs by Asset
-  - [x] Block Hash by Tx Hash
+  - [ ] Block Hash by Tx Hash
   - [ ] Block Hashes by Epoch
   - [ ] Block Header by Block Hash
   - [ ] Tx Hashes by Block Hash
   - [ ] Ada Handle by Address
   - [ ] Address by Ada Handle
   - [ ] Block CBOR by Hash
-  - [ ] Tx CBOR by Hash
+  - [ ] Metadata by Tx Hash
   - [ ] Feature requests open
 - [ ] Data Sources
   - [x] Node-to-Node ChainSync + Blockfetch
@@ -90,6 +92,14 @@ Scrolls is a pipeline that takes block data as input and outputs DB update comma
   - [ ] Firestore
   - [ ] Azure CosmoDB
   - [ ] Feature requests open
+- [ ] Filtering Options
+  - [x] By Input / Output Address
+  - [x] By Withdrawal Address
+  - [x] By Collateral Address
+  - [x] By Block Slot Bounds
+  - [ ] By Metadata Label
+  - [ ] By Mint Policy / Asset
+  - [ ] By Pool
 
 ## Testdrive
 
