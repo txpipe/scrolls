@@ -70,43 +70,45 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::SmartContracts) {
             for tx in block.txs() {
-                let input_addresses: Vec<_> = tx
-                    .inputs()
-                    .iter()
-                    .filter_map(|multi_era_input| {
-                        let output_ref = multi_era_input.output_ref();
+                if tx.is_valid() {
+                    let input_addresses: Vec<_> = tx
+                        .inputs()
+                        .iter()
+                        .filter_map(|multi_era_input| {
+                            let output_ref = multi_era_input.output_ref();
 
-                        let maybe_input_address =
-                            self.find_address_from_output_ref(ctx, &output_ref);
+                            let maybe_input_address =
+                                self.find_address_from_output_ref(ctx, &output_ref);
 
-                        match maybe_input_address {
-                            Ok(maybe_addr) => maybe_addr,
-                            Err(x) => {
-                                log::error!(
-                                    "Not found, tx_id:{}, index_at:{}, e:{}",
-                                    output_ref.hash(),
-                                    output_ref.index(),
-                                    x
-                                );
-                                None
+                            match maybe_input_address {
+                                Ok(maybe_addr) => maybe_addr,
+                                Err(x) => {
+                                    log::error!(
+                                        "Not found, tx_id:{}, index_at:{}, e:{}",
+                                        output_ref.hash(),
+                                        output_ref.index(),
+                                        x
+                                    );
+                                    None
+                                }
                             }
-                        }
-                    })
-                    .collect();
+                        })
+                        .collect();
 
-                let output_addresses: Vec<_> = tx
-                    .outputs()
-                    .iter()
-                    .filter_map(|tx| tx.address().ok())
-                    .map(|addr| addr.to_hex())
-                    .collect();
+                    let output_addresses: Vec<_> = tx
+                        .outputs()
+                        .iter()
+                        .filter_map(|tx| tx.address().ok())
+                        .map(|addr| addr.to_hex())
+                        .collect();
 
-                let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
-                let all_addresses_deduped: HashSet<String> =
-                    HashSet::from_iter(all_addresses.iter().cloned());
+                    let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
+                    let all_addresses_deduped: HashSet<String> =
+                        HashSet::from_iter(all_addresses.iter().cloned());
 
-                for address in all_addresses_deduped.iter() {
-                    self.increment_for_address(address, output)?;
+                    for address in all_addresses_deduped.iter() {
+                        self.increment_for_address(address, output)?;
+                    }
                 }
             }
         }

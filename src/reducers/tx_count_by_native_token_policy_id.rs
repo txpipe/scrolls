@@ -21,28 +21,30 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::MultiAssets) {
             for tx in block.txs() {
-                let mint = tx.mint();
+                if tx.is_valid() {
+                    let mint = tx.mint();
 
-                if let Some(mints) = mint.as_alonzo() {
-                    for (policy, assets) in mints.iter() {
-                        let policy_id = hex::encode(policy.as_slice());
+                    if let Some(mints) = mint.as_alonzo() {
+                        for (policy, assets) in mints.iter() {
+                            let policy_id = hex::encode(policy.as_slice());
 
-                        let number_of_minted_or_destroyed = assets.len();
+                            let number_of_minted_or_destroyed = assets.len();
 
-                        let key = match &self.config.key_prefix {
-                            Some(prefix) => format!("{}.{}", prefix, policy_id),
-                            None => format!(
-                                "{}.{}",
-                                "transaction_count_by_native_token_policy".to_string(),
-                                policy_id
-                            ),
-                        };
+                            let key = match &self.config.key_prefix {
+                                Some(prefix) => format!("{}.{}", prefix, policy_id),
+                                None => format!(
+                                    "{}.{}",
+                                    "transaction_count_by_native_token_policy".to_string(),
+                                    policy_id
+                                ),
+                            };
 
-                        let crdt = model::CRDTCommand::PNCounter(
-                            key,
-                            number_of_minted_or_destroyed as i64,
-                        );
-                        output.send(gasket::messaging::Message::from(crdt))?;
+                            let crdt = model::CRDTCommand::PNCounter(
+                                key,
+                                number_of_minted_or_destroyed as i64,
+                            );
+                            output.send(gasket::messaging::Message::from(crdt))?;
+                        }
                     }
                 }
             }

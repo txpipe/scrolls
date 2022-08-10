@@ -82,12 +82,14 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
-                for input in tx.inputs().iter().map(|i| i.output_ref()) {
-                    self.process_inbound_txo(&ctx, &input, output)?;
-                }
+                if tx.is_valid() {
+                    for input in tx.inputs().iter().map(|i| i.output_ref()) {
+                        self.process_inbound_txo(&ctx, &input, output)?;
+                    }
 
-                for (_idx, tx_output) in tx.outputs().iter().enumerate() {
-                    self.process_outbound_txo(tx_output, output)?;
+                    for (_idx, tx_output) in tx.outputs().iter().enumerate() {
+                        self.process_outbound_txo(tx_output, output)?;
+                    }
                 }
             }
         }
