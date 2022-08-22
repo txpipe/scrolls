@@ -96,6 +96,7 @@ impl Reducer {
                         .iter()
                         .filter(|p| p.address().map_or(false, |a| a.has_script()))
                         .filter_map(|tx| tx.address().ok())
+                        .filter(|a| a.has_script())
                         .map(|addr| addr.to_string())
                         .collect();
 

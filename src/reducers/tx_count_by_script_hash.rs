@@ -81,7 +81,9 @@ impl Reducer {
                                 self.find_address_from_output_ref(ctx, &output_ref);
 
                             match maybe_input_address {
-                                Ok(maybe_addr) => maybe_addr,
+                                Ok(maybe_addr) => {
+                                    maybe_addr
+                                },
                                 Err(x) => {
                                     log::error!(
                                         "Not found, tx_id:{}, index_at:{}, e:{}",
@@ -99,6 +101,7 @@ impl Reducer {
                         .outputs()
                         .iter()
                         .filter_map(|tx| tx.address().ok())
+                        .filter(|a| a.has_script())
                         .map(|addr| addr.to_hex())
                         .collect();
 
