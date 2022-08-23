@@ -1,8 +1,17 @@
-use pallas::network::miniprotocols::{Point, MAINNET_MAGIC, TESTNET_MAGIC};
+use pallas::network::miniprotocols::{
+    Point,
+    MAINNET_MAGIC,
+    TESTNET_MAGIC,
+    // PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC,
+};
 use serde::{Deserialize, Serialize};
 use std::{ops::Deref, str::FromStr};
 
 use crate::Error;
+
+// TODO: use from pallas once available
+pub const PRE_PRODUCTION_MAGIC: u64 = 1;
+pub const PREVIEW_MAGIC: u64 = 2;
 
 /// A serialization-friendly chain Point struct using a hex-encoded hash
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -86,6 +95,8 @@ impl FromStr for MagicArg {
         let m = match s {
             "testnet" => MagicArg(TESTNET_MAGIC),
             "mainnet" => MagicArg(MAINNET_MAGIC),
+            "preview" => MagicArg(PREVIEW_MAGIC),
+            "preprod" => MagicArg(PRE_PRODUCTION_MAGIC),
             _ => MagicArg(u64::from_str(s).map_err(|_| "can't parse magic value")?),
         };
 
@@ -205,12 +216,54 @@ impl ChainWellKnownInfo {
         }
     }
 
+    pub fn preview() -> Self {
+        ChainWellKnownInfo {
+            magic: PREVIEW_MAGIC,
+            byron_epoch_length: 432000,
+            byron_slot_length: 20,
+            byron_known_slot: 0,
+            byron_known_hash: "".to_string(),
+            byron_known_time: 1660003200,
+            shelley_epoch_length: 432000,
+            shelley_slot_length: 1,
+            shelley_known_slot: 25260,
+            shelley_known_hash: "cac921895ef5f2e85f7e6e6b51b663ab81b3605cd47d6b6d66e8e785e5c65011"
+                .to_string(),
+            shelley_known_time: 1660003200,
+            address_network_id: 0,
+            adahandle_policy: "".to_string(),
+        }
+    }
+
+    /// Hardcoded values for the "pre-prod" testnet
+    pub fn preprod() -> Self {
+        ChainWellKnownInfo {
+            magic: PRE_PRODUCTION_MAGIC,
+            byron_epoch_length: 432000,
+            byron_slot_length: 20,
+            byron_known_slot: 0,
+            byron_known_hash: "9ad7ff320c9cf74e0f5ee78d22a85ce42bb0a487d0506bf60cfb5a91ea4497d2"
+                .to_string(),
+            byron_known_time: 1654041600,
+            shelley_epoch_length: 432000,
+            shelley_slot_length: 1,
+            shelley_known_slot: 86400,
+            shelley_known_hash: "c4a1595c5cc7a31eda9e544986fe9387af4e3491afe0ca9a80714f01951bbd5c"
+                .to_string(),
+            shelley_known_time: 1654041600,
+            address_network_id: 0,
+            adahandle_policy: "".to_string(),
+        }
+    }
+
     /// Uses the value of the magic to return either mainnet or testnet
     /// hardcoded values.
     pub fn try_from_magic(magic: u64) -> Result<ChainWellKnownInfo, Error> {
         match magic {
             MAINNET_MAGIC => Ok(Self::mainnet()),
             TESTNET_MAGIC => Ok(Self::testnet()),
+            PREVIEW_MAGIC => Ok(Self::preview()),
+            PRE_PRODUCTION_MAGIC => Ok(Self::preprod()),
             _ => Err(Error::ConfigError(
                 "can't infer well-known chain infro from specified magic".into(),
             )),
