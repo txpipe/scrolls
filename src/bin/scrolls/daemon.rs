@@ -10,6 +10,8 @@ use crate::console;
 pub enum ChainConfig {
     Mainnet,
     Testnet,
+    PreProd,
+    Preview,
     Custom(crosscut::ChainWellKnownInfo),
 }
 
@@ -24,6 +26,8 @@ impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
         match other {
             ChainConfig::Mainnet => crosscut::ChainWellKnownInfo::mainnet(),
             ChainConfig::Testnet => crosscut::ChainWellKnownInfo::testnet(),
+            ChainConfig::PreProd => crosscut::ChainWellKnownInfo::preprod(),
+            ChainConfig::Preview => crosscut::ChainWellKnownInfo::testnet(),
             ChainConfig::Custom(x) => x,
         }
     }
