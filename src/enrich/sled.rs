@@ -68,16 +68,14 @@ impl Bootstrapper {
             blocks_counter: Default::default(),
         };
 
-        pipeline.register_stage(
-            spawn_stage(
-                worker,
-                gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(600)),
-                    ..Default::default()
-                },
-                Some("enrich-sled"),
-            ),
-        );
+        pipeline.register_stage(spawn_stage(
+            worker,
+            gasket::runtime::Policy {
+                tick_timeout: Some(Duration::from_secs(600)),
+                ..Default::default()
+            },
+            Some("enrich-sled"),
+        ));
     }
 }
 
@@ -171,13 +169,20 @@ impl Worker {
     ) -> Result<BlockContext, crate::Error> {
         let mut ctx = BlockContext::default();
 
-        let utxo_refs: Vec<_> = txs
+        let input_refs: Vec<_> = txs
             .iter()
             .flat_map(|tx| tx.inputs())
             .map(|input| input.output_ref())
             .collect();
 
-        let matches: Result<Vec<_>, crate::Error> = utxo_refs
+        let collateral_refs: Vec<_> = txs
+            .iter()
+            .flat_map(|tx| tx.collateral())
+            .map(|input| input.output_ref())
+            .collect();
+
+        let matches: Result<Vec<_>, crate::Error> = [input_refs, collateral_refs]
+            .concat()
             .par_iter()
             .map(|utxo_ref| fetch_referenced_utxo(db, utxo_ref))
             .collect();
