@@ -71,6 +71,40 @@ impl Reducer {
         output.send(crdt.into())
     }
 
+    pub fn reduce_valid_tx(
+        &mut self,
+        tx: &MultiEraTx,
+        ctx: &model::BlockContext,
+        output: &mut super::OutputPort,
+    ) -> Result<(), gasket::error::Error> {
+        for input in tx.inputs().iter().map(|i| i.output_ref()) {
+            self.process_inbound_txo(&ctx, &input, output)?;
+        }
+
+        for (idx, tx_output) in tx.outputs().iter().enumerate() {
+            self.process_outbound_txo(tx, tx_output, idx, output)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn reduce_invalid_tx<'b>(
+        &mut self,
+        tx: &MultiEraTx,
+        ctx: &model::BlockContext,
+        output: &mut super::OutputPort,
+    ) -> Result<(), gasket::error::Error> {
+        for input in tx.collateral().iter().map(|i| i.output_ref()) {
+            self.process_inbound_txo(&ctx, &input, output)?;
+        }
+
+        for (idx, tx_output) in tx.outputs().iter().enumerate() {
+            self.process_outbound_txo(tx, tx_output, idx, output)?;
+        }
+
+        Ok(())
+    }
+
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
@@ -78,15 +112,10 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            if tx.is_valid() {
-                for input in tx.inputs().iter().map(|i| i.output_ref()) {
-                    self.process_inbound_txo(&ctx, &input, output)?;
-                }
-
-                for (idx, tx_output) in tx.outputs().iter().enumerate() {
-                    self.process_outbound_txo(&tx, tx_output, idx, output)?;
-                }
-            }
+            match tx.is_valid() {
+                true => self.reduce_valid_tx(&tx, ctx, output)?,
+                false => self.reduce_invalid_tx(&tx, ctx, output)?,
+            };
         }
 
         Ok(())
