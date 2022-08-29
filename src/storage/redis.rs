@@ -195,9 +195,11 @@ impl gasket::runtime::Worker for Worker {
                     .incr(key, value)
                     .or_restart()?;
             }
-            model::CRDTCommand::BlockFinished(point) => {
+            model::CRDTCommand::BlockFinished(point, height) => {
                 let cursor_str = crosscut::PointArg::from(point).to_string();
 
+                let cursor_str = format!("{},{}", cursor_str, height);
+                
                 self.connection
                     .as_mut()
                     .unwrap()

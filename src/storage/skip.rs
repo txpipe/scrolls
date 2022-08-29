@@ -112,7 +112,7 @@ impl gasket::runtime::Worker for Worker {
             model::CRDTCommand::PNCounter(key, value) => {
                 log::debug!("increasing counter [{}], by [{}]", key, value);
             }
-            model::CRDTCommand::BlockFinished(point) => {
+            model::CRDTCommand::BlockFinished(point, _height) => {
                 log::debug!("block finished {:?}", point);
                 let mut last_point = self.last_point.lock().unwrap();
                 *last_point = Some(crosscut::PointArg::from(point));

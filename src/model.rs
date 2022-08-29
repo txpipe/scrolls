@@ -76,6 +76,7 @@ pub type Member = String;
 pub type Key = String;
 pub type Delta = i64;
 pub type Timestamp = u64;
+pub type Height = u64;
 
 #[derive(Debug)]
 pub enum Value {
@@ -108,7 +109,7 @@ pub enum CRDTCommand {
     AnyWriteWins(Key, Value),
     // TODO make sure Value is a generic not stringly typed
     PNCounter(Key, Delta),
-    BlockFinished(Point),
+    BlockFinished(Point, Height),
 }
 
 impl CRDTCommand {
@@ -170,7 +171,8 @@ impl CRDTCommand {
     pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {
         let hash = block.hash();
         let slot = block.slot();
+        let height = block.number();
         let point = Point::Specific(slot, hash.to_vec());
-        CRDTCommand::BlockFinished(point)
+        CRDTCommand::BlockFinished(point, height)
     }
 }
