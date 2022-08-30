@@ -69,12 +69,19 @@ pub struct BlockPattern {
 }
 
 #[derive(Deserialize, Clone)]
+pub struct TransactionPattern {
+    pub is_valid: Option<bool>,
+}
+
+
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum Predicate {
     AllOf(Vec<Predicate>),
     AnyOf(Vec<Predicate>),
     Not(Box<Predicate>),
     Block(BlockPattern),
+    Transaction(TransactionPattern),
     InputAddress(AddressPattern),
     OutputAddress(AddressPattern),
     WithdrawalAddress(AddressPattern),
@@ -195,6 +202,14 @@ fn eval_block(block: &MultiEraBlock, pattern: &BlockPattern) -> Result<bool, cra
     Ok(false)
 }
 
+fn eval_transaction(tx: &MultiEraTx, pattern: &TransactionPattern) -> Result<bool, crate::Error> {
+    if let Some(b) = pattern.is_valid {
+        return Ok(tx.is_valid() == b)
+    }
+
+    Ok(false)
+}
+
 #[inline]
 fn eval_any_of(
     predicates: &[Predicate],
@@ -246,6 +261,7 @@ pub fn eval_predicate(
         Predicate::CollateralAddress(x) => eval_collateral_address(tx, ctx, x, policy),
         Predicate::Address(x) => eval_address(tx, ctx, x, policy),
         Predicate::Block(x) => eval_block(block, x),
+        Predicate::Transaction(x) => eval_transaction(tx, x),
     }
 }
 
