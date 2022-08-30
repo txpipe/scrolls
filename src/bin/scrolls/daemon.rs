@@ -27,7 +27,7 @@ impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
             ChainConfig::Mainnet => crosscut::ChainWellKnownInfo::mainnet(),
             ChainConfig::Testnet => crosscut::ChainWellKnownInfo::testnet(),
             ChainConfig::PreProd => crosscut::ChainWellKnownInfo::preprod(),
-            ChainConfig::Preview => crosscut::ChainWellKnownInfo::testnet(),
+            ChainConfig::Preview => crosscut::ChainWellKnownInfo::preview(),
             ChainConfig::Custom(x) => x,
         }
     }
