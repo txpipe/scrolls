@@ -89,8 +89,8 @@ impl Reducer {
             self.process_inbound_txo(&ctx, &input, output)?;
         }
 
-        for (_idx, tx_output) in tx.outputs().iter().enumerate() {
-            self.process_outbound_txo(tx_output, output)?;
+        if let Some(coll_ret) = tx.collateral_return() {
+            self.process_outbound_txo(&coll_ret, output)?;
         }
 
         Ok(())
