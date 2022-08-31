@@ -27,7 +27,7 @@ impl Config {
     ) -> Bootstrapper {
         match self {
             Config::N2N(c) => Bootstrapper::N2N(c.bootstrapper(chain, intersect, finalize)),
-            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, intersect, finalize)), // TODO
+            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, intersect, finalize)),
         }
     }
 }

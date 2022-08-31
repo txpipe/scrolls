@@ -21,7 +21,7 @@ struct ChainObserver {
     chain_tip: Gauge,
     finalize_config: Option<crosscut::FinalizeConfig>,
 }
-    
+
 impl ChainObserver {
     fn new(min_depth: usize, 
         block_count: Counter,
