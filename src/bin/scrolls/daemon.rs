@@ -40,6 +40,7 @@ struct ConfigRoot {
     reducers: Vec<reducers::Config>,
     storage: storage::Config,
     intersect: crosscut::IntersectConfig,
+    finalize: Option<crosscut::FinalizeConfig>,
     chain: Option<ChainConfig>,
     policy: Option<crosscut::policies::RuntimePolicy>,
 }
@@ -105,7 +106,7 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
     let chain = config.chain.unwrap_or_default().into();
     let policy = config.policy.unwrap_or_default().into();
 
-    let source = config.source.bootstrapper(&chain, &config.intersect);
+    let source = config.source.bootstrapper(&chain, &config.intersect, &config.finalize);
 
     let enrich = config.enrich.unwrap_or_default().bootstrapper(&policy);
 
