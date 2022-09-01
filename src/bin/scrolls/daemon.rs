@@ -27,7 +27,7 @@ impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
             ChainConfig::Mainnet => crosscut::ChainWellKnownInfo::mainnet(),
             ChainConfig::Testnet => crosscut::ChainWellKnownInfo::testnet(),
             ChainConfig::PreProd => crosscut::ChainWellKnownInfo::preprod(),
-            ChainConfig::Preview => crosscut::ChainWellKnownInfo::testnet(),
+            ChainConfig::Preview => crosscut::ChainWellKnownInfo::preview(),
             ChainConfig::Custom(x) => x,
         }
     }
@@ -40,6 +40,7 @@ struct ConfigRoot {
     reducers: Vec<reducers::Config>,
     storage: storage::Config,
     intersect: crosscut::IntersectConfig,
+    finalize: Option<crosscut::FinalizeConfig>,
     chain: Option<ChainConfig>,
     policy: Option<crosscut::policies::RuntimePolicy>,
 }
@@ -105,7 +106,7 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
     let chain = config.chain.unwrap_or_default().into();
     let policy = config.policy.unwrap_or_default().into();
 
-    let source = config.source.bootstrapper(&chain, &config.intersect);
+    let source = config.source.bootstrapper(&chain, &config.intersect, &config.finalize);
 
     let enrich = config.enrich.unwrap_or_default().bootstrapper(&policy);
 
