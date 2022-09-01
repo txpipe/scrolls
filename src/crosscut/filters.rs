@@ -1,7 +1,8 @@
 use pallas::ledger::{
     addresses::Address,
-    traverse::{MultiEraBlock, MultiEraTx},
+    traverse::{MultiEraBlock, MultiEraTx, MultiEraMint},
 };
+use pallas::codec::minicbor::bytes::ByteVec;
 use serde::Deserialize;
 
 use crate::prelude::*;
@@ -71,6 +72,8 @@ pub struct BlockPattern {
 #[derive(Deserialize, Clone)]
 pub struct TransactionPattern {
     pub is_valid: Option<bool>,
+    pub mint_policy_id_hex: Option<String>,
+    pub mint_asset_name_hex: Option<String>,
 }
 
 
@@ -205,6 +208,53 @@ fn eval_block(block: &MultiEraBlock, pattern: &BlockPattern) -> Result<bool, cra
 fn eval_transaction(tx: &MultiEraTx, pattern: &TransactionPattern) -> Result<bool, crate::Error> {
     if let Some(b) = pattern.is_valid {
         return Ok(tx.is_valid() == b)
+    }
+    
+    // match if transaction mints/burns multiasset with given policy id, asset name or both
+    if let MultiEraMint::AlonzoCompatible(multi_asset) = tx.mint() {
+        match (&pattern.mint_policy_id_hex, &pattern.mint_asset_name_hex) {
+            (Some(policy_hex), Some(asset_hex)) => {
+                let policy_pattern = ByteVec::from(hex::decode(policy_hex)
+                    .map_err(|_| crate::Error::message("can't decode mint_policy_id_hex value"))?);
+                
+                let asset_pattern = ByteVec::from(hex::decode(asset_hex)
+                    .map_err(|_| crate::Error::message("can't decode mint_asset_name_hex value"))?);
+                
+                for (policy_id, asset_names) in multi_asset.iter() {
+                    if *policy_id == policy_pattern {
+                        for asset in asset_names.iter() {
+                            if asset.0 == asset_pattern {
+                                return Ok(true)
+                            }
+                        }
+                    }
+                }
+            },
+            (Some(policy_hex), _) => {
+                let policy_pattern = ByteVec::from(hex::decode(policy_hex)
+                    .map_err(|_| crate::Error::message("can't decode mint_policy_hex value"))?);
+                
+                for (policy_id, _) in multi_asset.iter() {
+                    if *policy_id == policy_pattern {
+                        return Ok(true)
+                    }
+                }
+            }
+            (_, Some(asset_hex)) => {
+                let asset_pattern = ByteVec::from(hex::decode(asset_hex)
+                    .map_err(|_| crate::Error::message("can't decode mint_asset_name_hex value"))?);
+                
+                // check if specified asset name is used for _any_ present policy
+                for (_, asset_names) in multi_asset.iter() {
+                    for asset in asset_names.iter() {
+                        if asset.0 == asset_pattern {
+                            return Ok(true)
+                        }
+                    }
+                }
+            }
+            _ => ()
+        }
     }
 
     Ok(false)
