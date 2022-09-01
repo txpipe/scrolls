@@ -97,9 +97,10 @@ impl Reducer {
         for input in tx.collateral().iter().map(|i| i.output_ref()) {
             self.process_inbound_txo(&ctx, &input, output)?;
         }
-
-        for (idx, tx_output) in tx.outputs().iter().enumerate() {
-            self.process_outbound_txo(tx, tx_output, idx, output)?;
+        
+        if let Some(coll_ret) = tx.collateral_return() {
+            let idx = tx.outputs().len();
+            self.process_outbound_txo(tx, &coll_ret, idx, output)?;
         }
 
         Ok(())
