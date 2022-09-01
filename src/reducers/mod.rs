@@ -57,7 +57,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TxByHash(c) => c.plugin(),
+            Config::TxByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TxCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
@@ -138,7 +138,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::TxByHash(x) => x.reduce_block(block, output),
+            Reducer::TxByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
