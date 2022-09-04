@@ -1,6 +1,7 @@
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
 use serde::Deserialize;
+use std::collections::HashSet;
 
 use crate::{crosscut, model, prelude::*};
 
@@ -20,6 +21,7 @@ impl Reducer {
         &mut self,
         ctx: &model::BlockContext,
         input: &OutputRef,
+        seen: &mut HashSet<String>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
@@ -30,15 +32,17 @@ impl Reducer {
         };
 
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
-
-        let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}", prefix, address),
-            None => format!("{}.{}", "balance_by_address".to_string(), address),
-        };
-
-        let crdt = model::CRDTCommand::PNCounter(key, 1);
-
-        output.send(gasket::messaging::Message::from(crdt))?;
+        
+        if seen.insert(address.clone()) {
+            let key = match &self.config.key_prefix {
+                Some(prefix) => format!("{}.{}", prefix, address),
+                None => format!("{}.{}", "txcount_by_address".to_string(), address),
+            };
+    
+            let crdt = model::CRDTCommand::PNCounter(key, 1);
+    
+            output.send(gasket::messaging::Message::from(crdt))?;
+        }
 
         Ok(())
     }
@@ -46,18 +50,21 @@ impl Reducer {
     fn process_outbound_txo(
         &mut self,
         tx_output: &MultiEraOutput,
+        seen: &mut HashSet<String>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
-
-        let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}", prefix, address),
-            None => format!("{}.{}", "balance_by_address".to_string(), address),
-        };
-
-        let crdt = model::CRDTCommand::PNCounter(key, 1);
-
-        output.send(gasket::messaging::Message::from(crdt))?;
+        
+        if seen.insert(address.clone()) {
+            let key = match &self.config.key_prefix {
+                Some(prefix) => format!("{}.{}", prefix, address),
+                None => format!("{}.{}", "txcount_by_address".to_string(), address),
+            };
+    
+            let crdt = model::CRDTCommand::PNCounter(key, 1);
+    
+            output.send(gasket::messaging::Message::from(crdt))?;
+        }
 
         Ok(())
     }
@@ -70,14 +77,14 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
-                if tx.is_valid() {
-                    for input in tx.inputs().iter().map(|i| i.output_ref()) {
-                        self.process_inbound_txo(&ctx, &input, output)?;
-                    }
+                let mut seen = HashSet::new();
+                
+                for input in tx.inputs().iter().map(|i| i.output_ref()) {
+                    self.process_inbound_txo(&ctx, &input, &mut seen, output)?;
+                }
 
-                    for (_idx, tx_output) in tx.outputs().iter().enumerate() {
-                        self.process_outbound_txo(tx_output, output)?;
-                    }
+                for (_idx, tx_output) in tx.outputs().iter().enumerate() {
+                    self.process_outbound_txo(tx_output, &mut seen, output)?;
                 }
             }
         }

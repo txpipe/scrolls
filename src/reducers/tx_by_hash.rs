@@ -7,11 +7,12 @@ use crate::{crosscut, model};
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub policy: crosscut::policies::RuntimePolicy,
+    pub filter: Option<crosscut::filters::Predicate>,
 }
 
 pub struct Reducer {
     config: Config,
+    policy: crosscut::policies::RuntimePolicy,
 }
 
 impl Reducer {
@@ -23,7 +24,7 @@ impl Reducer {
         let cbor = tx
             .encode()
             .map_err(crate::Error::cbor)
-            .apply_policy(&self.config.policy)
+            .apply_policy(&self.policy)
             .or_panic()?;
 
         let value = match cbor {
@@ -42,10 +43,13 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
+        ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in &block.txs() {
-            self.send(tx, output)?;
+            if filter_matches!(self, block, &tx, ctx) {
+                self.send(tx, output)?;
+            }
         }
 
         Ok(())
@@ -53,8 +57,11 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self) -> super::Reducer {
-        let worker = Reducer { config: self };
+    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
+        let worker = Reducer {
+            config: self,
+            policy: policy.clone()
+        };
         super::Reducer::TxByHash(worker)
     }
 }

@@ -19,10 +19,16 @@ struct ChainObserver {
     blocks: HashMap<Point, Vec<u8>>,
     block_count: Counter,
     chain_tip: Gauge,
+    finalize_config: Option<crosscut::FinalizeConfig>,
 }
 
 impl ChainObserver {
-    fn new(min_depth: usize, block_count: Counter, chain_tip: Gauge, output: OutputPort) -> Self {
+    fn new(min_depth: usize, 
+        block_count: Counter,
+        chain_tip: Gauge,
+        output: OutputPort,
+        finalize_config: Option<crosscut::FinalizeConfig>,
+    ) -> Self {
         Self {
             min_depth,
             block_count,
@@ -30,6 +36,7 @@ impl ChainObserver {
             output,
             chain_buffer: Default::default(),
             blocks: Default::default(),
+            finalize_config
         }
     }
 }
@@ -66,6 +73,11 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
             self.output
                 .send(model::RawBlockPayload::roll_forward(block))?;
             self.block_count.inc(1);
+            
+            // evaluate if we should finalize the thread according to config
+            if crosscut::should_finalize(&self.finalize_config, &point) {
+                return Ok(chainsync::Continuation::DropOut);
+            }
         }
 
         // notify chain tip to the pipeline metrics
@@ -103,8 +115,8 @@ pub struct Worker {
     min_depth: usize,
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
+    finalize: Option<crosscut::FinalizeConfig>,
     cursor: storage::Cursor,
-    //finalize_config: Option<FinalizeConfig>,
     agent: Option<MyAgent>,
     transport: Option<Transport>,
     output: OutputPort,
@@ -118,6 +130,7 @@ impl Worker {
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
+        finalize: Option<crosscut::FinalizeConfig>,
         cursor: storage::Cursor,
         output: OutputPort,
     ) -> Self {
@@ -126,6 +139,7 @@ impl Worker {
             min_depth,
             chain,
             intersect,
+            finalize,
             cursor,
             output,
             agent: None,
@@ -162,6 +176,7 @@ impl gasket::runtime::Worker for Worker {
                 self.block_count.clone(),
                 self.chain_tip.clone(),
                 self.output.clone(),
+                self.finalize.clone(),
             ),
         )
         .apply_start()

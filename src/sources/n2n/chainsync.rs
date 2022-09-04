@@ -27,6 +27,7 @@ struct ChainObserver {
     chain_buffer: chainsync::RollbackBuffer,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
+    finalize_config: Option<crosscut::FinalizeConfig>,
 }
 
 impl ChainObserver {
@@ -35,6 +36,7 @@ impl ChainObserver {
         block_count: Counter,
         chain_tip: Gauge,
         output: gasket::messaging::OutputPort<ChainSyncInternalPayload>,
+        finalize_config: Option<crosscut::FinalizeConfig>,
     ) -> Self {
         Self {
             min_depth,
@@ -42,6 +44,7 @@ impl ChainObserver {
             chain_tip,
             output,
             chain_buffer: Default::default(),
+            finalize_config
         }
     }
 }
@@ -72,10 +75,9 @@ impl chainsync::Observer<chainsync::HeaderContent> for ChainObserver {
             self.block_count.inc(1);
 
             // evaluate if we should finalize the thread according to config
-            //if should_finalize(&self.finalize_config, &point,
-            // self.block_count) {    return Ok(chainsync::
-            // Continuation::DropOut);
-            //}
+            if crosscut::should_finalize(&self.finalize_config, &point) {
+                return Ok(chainsync::Continuation::DropOut);
+            }
         }
 
         // notify chain tip to the pipeline metrics
@@ -113,7 +115,7 @@ pub struct Worker {
     chain: crosscut::ChainWellKnownInfo,
     intersect: crosscut::IntersectConfig,
     cursor: storage::Cursor,
-    //finalize_config: Option<FinalizeConfig>,
+    finalize: Option<crosscut::FinalizeConfig>,
     agent: Option<chainsync::HeaderConsumer<ChainObserver>>,
     transport: Option<Transport>,
     output: OutputPort,
@@ -127,6 +129,7 @@ impl Worker {
         min_depth: usize,
         chain: crosscut::ChainWellKnownInfo,
         intersect: crosscut::IntersectConfig,
+        finalize: Option<crosscut::FinalizeConfig>,
         cursor: storage::Cursor,
         output: OutputPort,
     ) -> Self {
@@ -135,6 +138,7 @@ impl Worker {
             min_depth,
             chain,
             intersect,
+            finalize,
             cursor,
             output,
             agent: None,
@@ -171,6 +175,7 @@ impl gasket::runtime::Worker for Worker {
                 self.block_count.clone(),
                 self.chain_tip.clone(),
                 self.output.clone(),
+                self.finalize.clone(),
             ),
         )
         .apply_start()

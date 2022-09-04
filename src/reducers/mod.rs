@@ -23,6 +23,8 @@ pub mod balance_by_address;
 pub mod tx_by_hash;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_address;
+#[cfg(feature = "unstable")]
+pub mod block_header_by_hash;
 
 // CRFA
 #[cfg(feature = "unstable")]
@@ -49,6 +51,8 @@ pub enum Config {
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Config),
+    #[cfg(feature = "unstable")]    
+    BlockHeaderByHash(block_header_by_hash::Config),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -73,9 +77,11 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TxByHash(c) => c.plugin(),
+            Config::TxByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TxCountByAddress(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::BlockHeaderByHash(c) => c.plugin(policy),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -141,6 +147,8 @@ pub enum Reducer {
     TxByHash(tx_by_hash::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Reducer),
+    #[cfg(feature = "unstable")]
+    BlockHeaderByHash(block_header_by_hash::Reducer),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -170,9 +178,11 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::TxByHash(x) => x.reduce_block(block, output),
+            Reducer::TxByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
 
             // CRFA
             #[cfg(feature = "unstable")]
