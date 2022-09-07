@@ -20,6 +20,7 @@ impl ToRedisArgs for model::Value {
         match self {
             model::Value::String(x) => x.write_redis_args(out),
             model::Value::Cbor(x) => x.write_redis_args(out),
+            model::Value::Json(x) => todo!("{}", x),
         }
     }
 }
@@ -30,7 +31,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn boostrapper(
+    pub fn bootstrapper(
         self,
         _chain: &crosscut::ChainWellKnownInfo,
         _intersect: &crosscut::IntersectConfig,
