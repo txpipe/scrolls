@@ -24,8 +24,8 @@ impl Config {
         intersect: &crosscut::IntersectConfig,
     ) -> Bootstrapper {
         match self {
-            Config::Redis(c) => Bootstrapper::Redis(c.boostrapper(chain, intersect)),
-            Config::Skip(c) => Bootstrapper::Skip(c.boostrapper()),
+            Config::Redis(c) => Bootstrapper::Redis(c.bootstrapper(chain, intersect)),
+            Config::Skip(c) => Bootstrapper::Skip(c.bootstrapper()),
         }
     }
 }
