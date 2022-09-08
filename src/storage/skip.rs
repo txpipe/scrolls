@@ -15,7 +15,7 @@ type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
 pub struct Config {}
 
 impl Config {
-    pub fn boostrapper(self) -> Bootstrapper {
+    pub fn bootstrapper(self) -> Bootstrapper {
         Bootstrapper {
             input: Default::default(),
             last_point: Arc::new(Mutex::new(None)),

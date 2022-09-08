@@ -81,6 +81,7 @@ pub type Timestamp = u64;
 pub enum Value {
     String(String),
     Cbor(Vec<u8>),
+    Json(serde_json::Value),
 }
 
 impl From<String> for Value {
@@ -92,6 +93,12 @@ impl From<String> for Value {
 impl From<Vec<u8>> for Value {
     fn from(x: Vec<u8>) -> Self {
         Value::Cbor(x)
+    }
+}
+
+impl From<serde_json::Value> for Value {
+    fn from(x: serde_json::Value) -> Self {
+        Value::Json(x)
     }
 }
 
