@@ -66,7 +66,9 @@ pub enum Config {
 }
 
 impl Config {
-    fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> Reducer {
+    fn plugin(self, 
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy) -> Reducer {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
@@ -85,11 +87,11 @@ impl Config {
 
             // CRFA
             #[cfg(feature = "unstable")]
-            Config::BalanceByScript(c) => c.plugin(policy),
+            Config::BalanceByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
-            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(),
+            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
-            Config::TxCountByScript(c) => c.plugin(policy),
+            Config::TxCountByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TxCountByScriptHash(c) => c.plugin(policy),
         }
@@ -104,9 +106,11 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn new(configs: Vec<Config>, policy: &crosscut::policies::RuntimePolicy) -> Self {
+    pub fn new(configs: Vec<Config>,
+         chain: &crosscut::ChainWellKnownInfo,
+         policy: &crosscut::policies::RuntimePolicy) -> Self {
         Self {
-            reducers: configs.into_iter().map(|x| x.plugin(policy)).collect(),
+            reducers: configs.into_iter().map(|x| x.plugin(chain, policy)).collect(),
             input: Default::default(),
             output: Default::default(),
             policy: policy.clone(),

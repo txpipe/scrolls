@@ -1,3 +1,5 @@
+// deprecated, use tx_count_by_script instead
+
 use std::collections::HashSet;
 
 use pallas::ledger::traverse::{Feature, MultiEraBlock, OutputRef};
@@ -25,7 +27,7 @@ impl Reducer {
             Some(prefix) => format!("{}.{}", prefix, address.to_string()),
             None => format!(
                 "{}.{}",
-                "transaction_count_by_address_hash".to_string(),
+                "trx_count_by_address_hash".to_string(),
                 address.to_string()
             ),
         };
