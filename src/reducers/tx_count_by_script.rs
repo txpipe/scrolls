@@ -71,7 +71,7 @@ impl Reducer {
         let utxo = match utxo {
             Some(x) => x,
             None => {
-                log::error!("Output index not found, index:{}", input.index());
+                log::warn!("UTxO:{} at index not found, index:{}", input.hash(), input.index());
                 return Result::Ok(None);
             }
         };
@@ -81,8 +81,6 @@ impl Reducer {
         if !is_script_address {
             return Ok(None);
         }
-
-
 
         let address = utxo.address()
         .map(|x| {

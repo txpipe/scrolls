@@ -33,8 +33,6 @@ pub mod balance_by_script;
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_script;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_script_hash;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -61,8 +59,6 @@ pub enum Config {
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
     #[cfg(feature = "unstable")]
     TxCountByScript(tx_count_by_script::Config),
-    #[cfg(feature = "unstable")]
-    TxCountByScriptHash(tx_count_by_script_hash::Config),
 }
 
 impl Config {
@@ -92,8 +88,6 @@ impl Config {
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::TxCountByScript(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TxCountByScriptHash(c) => c.plugin(policy),
         }
     }
 }
@@ -161,8 +155,6 @@ pub enum Reducer {
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByScript(tx_count_by_script::Reducer),
-    #[cfg(feature = "unstable")]
-    TxCountByScriptHash(tx_count_by_script_hash::Reducer),
 }
 
 impl Reducer {
@@ -195,8 +187,6 @@ impl Reducer {
             Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByScript(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TxCountByScriptHash(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
