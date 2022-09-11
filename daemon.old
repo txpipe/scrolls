@@ -1,0 +1,45 @@
+{
+  "source": {
+      "type": "N2C",
+      "path": "/opt/cardano-node/socket.db"
+  },
+  "reducers": [
+    {
+      "type": "BalanceByScript",
+      "key_prefix": "c5",
+      "aggr_by": "EPOCH"
+    },
+    {
+      "type": "TxCountByScript",
+      "key_prefix": "c6",
+      "aggr_by": "EPOCH"
+    },
+    {
+      "type": "TxCountByScriptHash",
+      "key_prefix": "c7",
+      "aggr_by": "EPOCH"
+    },
+    {
+      "type": "TxCountByNativeTokenPolicyId",
+      "key_prefix": "c8",
+      "aggr_by": "EPOCH"
+    }
+  ],
+  "storage": {
+      "type": "Redis",
+      "connection_params": "redis://localhost:6379"
+  },
+  "intersect": {
+      "type": "Origin"
+  },
+  "chain": {
+      "type": "Mainnet"
+  },
+  "policy": {
+      "missing_data": "Skip"
+  },
+  "enrich": {
+      "type": "Sled",
+      "db_path": "/home/mati/sled_db"
+  }
+}

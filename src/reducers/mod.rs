@@ -35,6 +35,9 @@ pub mod tx_count_by_native_token_policy_id;
 pub mod tx_count_by_script;
 #[cfg(feature = "unstable")]
 pub mod total_tx_count;
+#[cfg(feature = "unstable")]
+pub mod total_balance;
+
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -63,6 +66,8 @@ pub enum Config {
     TxCountByScript(tx_count_by_script::Config),
     #[cfg(feature = "unstable")]
     TotalTransactionsCount(total_tx_count::Config),
+    #[cfg(feature = "unstable")]
+    TotalBalance(total_balance::Config),
 }
 
 impl Config {
@@ -94,6 +99,8 @@ impl Config {
             Config::TxCountByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TotalTransactionsCount(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TotalBalance(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -163,6 +170,8 @@ pub enum Reducer {
     TxCountByScript(tx_count_by_script::Reducer),
     #[cfg(feature = "unstable")]
     TotalTransactionsCount(total_tx_count::Reducer),
+    #[cfg(feature = "unstable")]
+    TotalBalance(total_balance::Reducer),
 }
 
 impl Reducer {
@@ -197,6 +206,8 @@ impl Reducer {
             Reducer::TxCountByScript(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
