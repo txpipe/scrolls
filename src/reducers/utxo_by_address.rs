@@ -16,7 +16,7 @@ pub struct Reducer {
 }
 
 impl Reducer {
-    fn process_inbound_txo(
+    fn process_consumed_txo(
         &mut self,
         ctx: &model::BlockContext,
         input: &OutputRef,
@@ -46,7 +46,7 @@ impl Reducer {
         output.send(crdt.into())
     }
 
-    fn process_outbound_txo(
+    fn process_produced_txo(
         &mut self,
         tx: &MultiEraTx,
         tx_output: &MultiEraOutput,
@@ -71,41 +71,6 @@ impl Reducer {
         output.send(crdt.into())
     }
 
-    pub fn reduce_valid_tx(
-        &mut self,
-        tx: &MultiEraTx,
-        ctx: &model::BlockContext,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        for input in tx.inputs().iter().map(|i| i.output_ref()) {
-            self.process_inbound_txo(&ctx, &input, output)?;
-        }
-
-        for (idx, tx_output) in tx.outputs().iter().enumerate() {
-            self.process_outbound_txo(tx, tx_output, idx, output)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn reduce_invalid_tx<'b>(
-        &mut self,
-        tx: &MultiEraTx,
-        ctx: &model::BlockContext,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        for input in tx.collateral().iter().map(|i| i.output_ref()) {
-            self.process_inbound_txo(&ctx, &input, output)?;
-        }
-        
-        if let Some(coll_ret) = tx.collateral_return() {
-            let idx = tx.outputs().len();
-            self.process_outbound_txo(tx, &coll_ret, idx, output)?;
-        }
-
-        Ok(())
-    }
-
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
@@ -113,10 +78,13 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            match tx.is_valid() {
-                true => self.reduce_valid_tx(&tx, ctx, output)?,
-                false => self.reduce_invalid_tx(&tx, ctx, output)?,
-            };
+            for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
+                self.process_consumed_txo(&ctx, &consumed, output)?;
+            }
+
+            for (idx, produced) in tx.produces().iter().enumerate() {
+                self.process_produced_txo(&tx, produced, idx, output)?;
+            }
         }
 
         Ok(())
