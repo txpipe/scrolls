@@ -142,14 +142,27 @@ impl Worker {
         let mut insert_batch = sled::Batch::default();
 
         for tx in txs.iter() {
-            for (idx, output) in tx.outputs().iter().enumerate() {
-                let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
+            if tx.is_valid() {
+                for (idx, output) in tx.outputs().iter().enumerate() {
+                    let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
 
-                let era = tx.era().into();
-                let body = output.encode().map_err(crate::Error::cbor)?;
-                let value: IVec = SledTxValue(era, body).try_into()?;
+                    let era = tx.era().into();
+                    let body = output.encode().map_err(crate::Error::cbor)?;
+                    let value: IVec = SledTxValue(era, body).try_into()?;
 
-                insert_batch.insert(key, value)
+                    insert_batch.insert(key, value)
+                }
+            } else {
+                if let Some(collret) = tx.collateral_return() {
+                    let idx = tx.outputs().len();
+                    let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
+
+                    let era = tx.era().into();
+                    let body = collret.encode().map_err(crate::Error::cbor)?;
+                    let value: IVec = SledTxValue(era, body).try_into()?;
+
+                    insert_batch.insert(key, value)
+                }
             }
         }
 
@@ -171,18 +184,17 @@ impl Worker {
 
         let input_refs: Vec<_> = txs
             .iter()
-            .flat_map(|tx| tx.inputs())
+            .flat_map(|tx| {
+                if tx.is_valid() {
+                    tx.inputs()
+                } else {
+                    tx.collateral()
+                }
+            })
             .map(|input| input.output_ref())
             .collect();
 
-        let collateral_refs: Vec<_> = txs
-            .iter()
-            .flat_map(|tx| tx.collateral())
-            .map(|input| input.output_ref())
-            .collect();
-
-        let matches: Result<Vec<_>, crate::Error> = [input_refs, collateral_refs]
-            .concat()
+        let matches: Result<Vec<_>, crate::Error> = input_refs
             .par_iter()
             .map(|utxo_ref| fetch_referenced_utxo(db, utxo_ref))
             .collect();
