@@ -146,7 +146,7 @@ impl Worker {
                 let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
 
                 let era = tx.era().into();
-                let body = output.encode().map_err(crate::Error::cbor)?;
+                let body = output.encode();
                 let value: IVec = SledTxValue(era, body).try_into()?;
 
                 insert_batch.insert(key, value)
