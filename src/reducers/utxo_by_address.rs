@@ -26,10 +26,7 @@ impl Reducer {
 
         let utxo = match utxo {
             Some(x) => x,
-            None => {
-                log::warn!("UTxO:{} at index not found, index:{}", input.hash(), input.index());
-                return Ok(());
-            }
+            None => return Ok(())
         };
 
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
