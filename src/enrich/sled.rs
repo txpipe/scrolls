@@ -134,15 +134,11 @@ fn fetch_referenced_utxo<'a>(
 
 impl Worker {
     #[inline]
-    fn batch_insert_new_utxos(
-        &self,
-        db: &sled::Db,
-        txs: &[MultiEraTx],
-    ) -> Result<(), crate::Error> {
+    fn insert_produced_utxos(&self, db: &sled::Db, txs: &[MultiEraTx]) -> Result<(), crate::Error> {
         let mut insert_batch = sled::Batch::default();
 
         for tx in txs.iter() {
-            for (idx, output) in tx.outputs().iter().enumerate() {
+            for (idx, output) in tx.produces().iter().enumerate() {
                 let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
 
                 let era = tx.era().into();
@@ -169,20 +165,13 @@ impl Worker {
     ) -> Result<BlockContext, crate::Error> {
         let mut ctx = BlockContext::default();
 
-        let input_refs: Vec<_> = txs
+        let required: Vec<_> = txs
             .iter()
-            .flat_map(|tx| tx.inputs())
+            .flat_map(|tx| tx.requires())
             .map(|input| input.output_ref())
             .collect();
 
-        let collateral_refs: Vec<_> = txs
-            .iter()
-            .flat_map(|tx| tx.collateral())
-            .map(|input| input.output_ref())
-            .collect();
-
-        let matches: Result<Vec<_>, crate::Error> = [input_refs, collateral_refs]
-            .concat()
+        let matches: Result<Vec<_>, crate::Error> = required
             .par_iter()
             .map(|utxo_ref| fetch_referenced_utxo(db, utxo_ref))
             .collect();
@@ -199,15 +188,17 @@ impl Worker {
         Ok(ctx)
     }
 
-    fn remove_consumed_utxos(&self, db: &sled::Db, keys: Vec<String>) -> Result<(), crate::Error> {
-        let mut remove_batch = sled::Batch::default();
+    fn remove_consumed_utxos(&self, db: &sled::Db, txs: &[MultiEraTx]) -> Result<(), crate::Error> {
+        let keys: Vec<_> = txs
+            .iter()
+            .flat_map(|tx| tx.consumes())
+            .map(|i| i.output_ref())
+            .collect();
 
         for key in keys.iter() {
-            remove_batch.remove(key.as_bytes());
+            db.remove(key.to_string().as_bytes())
+                .map_err(crate::Error::storage)?;
         }
-
-        db.apply_batch(remove_batch)
-            .map_err(crate::Error::storage)?;
 
         self.remove_counter.inc(keys.len() as u64);
 
@@ -245,19 +236,17 @@ impl gasket::runtime::Worker for Worker {
 
                 let txs = block.txs();
 
-                // first we insert new utxo found in this block
-                self.batch_insert_new_utxos(db, &txs).or_restart()?;
+                // first we insert new utxo produced in this block
+                self.insert_produced_utxos(db, &txs).or_restart()?;
 
                 // then we fetch referenced utxo in this block
                 let ctx = self.par_fetch_referenced_utxos(db, &txs).or_restart()?;
 
-                // TODO: refactor removal as a concern of the last stage
-                let keys = ctx.get_all_keys();
+                // and finally we remove utxos consumed by the block
+                self.remove_consumed_utxos(db, &txs).or_restart()?;
 
                 self.output
                     .send(model::EnrichedBlockPayload::roll_forward(cbor, ctx))?;
-
-                self.remove_consumed_utxos(db, keys).or_restart()?;
 
                 self.blocks_counter.inc(1);
             }
