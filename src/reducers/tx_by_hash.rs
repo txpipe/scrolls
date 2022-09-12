@@ -37,18 +37,8 @@ impl Reducer {
         let key_prefix = self.config.key_prefix.as_deref();
         let crdt = match self.config.projection.unwrap_or_default() {
             Projection::Cbor => {
-                let cbor = tx
-                    .encode()
-                    .map_err(crate::Error::cbor)
-                    .apply_policy(&self.policy)
-                    .or_panic()?;
-
-                let value = match cbor {
-                    Some(x) => x,
-                    None => return Ok(()),
-                };
-
-                model::CRDTCommand::any_write_wins(key_prefix, tx.hash(), value)
+                let cbor = tx.encode();
+                model::CRDTCommand::any_write_wins(key_prefix, tx.hash(), cbor)
             }
             Projection::Json => todo!(),
         };
