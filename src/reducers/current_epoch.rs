@@ -27,8 +27,8 @@ impl Reducer {
         let def_key_prefix = "current_epoch";
 
         let key = match &self.config.key_prefix {
-            Some(prefix) => format!("{}.{}", prefix, epoch_no),
-            None => format!("{}.{}", def_key_prefix.to_string(), epoch_no),
+            Some(prefix) => format!("{}", prefix),
+            None => format!("{}", def_key_prefix.to_string()),
         };
 
         let crdt = model::CRDTCommand::AnyWriteWins(key, Value::String(epoch_no.to_string()));
