@@ -17,23 +17,35 @@ pub struct Reducer {
 
 impl Reducer {
 
+    pub fn current_epoch(
+        &mut self,
+        block: &MultiEraBlock,
+        key: &str,
+        output: &mut super::OutputPort,
+    ) -> Result<(), gasket::error::Error> {
+        let epoch_no = block_epoch(&self.chain, block);
+
+        let crdt = model::CRDTCommand::AnyWriteWins(format!("{}.{}", key, "epoch_no"), Value::BigInt(epoch_no as i128));
+
+        output.send(gasket::messaging::Message::from(crdt))?;
+
+        Result::Ok(())
+    } 
+
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let epoch_no = block_epoch(&self.chain, block);
 
-        let def_key_prefix = "current_epoch";
+        let def_key_prefix = "current_block";
 
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}", prefix),
             None => format!("{}", def_key_prefix.to_string()),
         };
 
-        let crdt = model::CRDTCommand::AnyWriteWins(key, Value::String(epoch_no.to_string()));
-
-        output.send(gasket::messaging::Message::from(crdt))?;
+        self.current_epoch(block, &key, output)?;
 
         Ok(())
     }
@@ -48,6 +60,6 @@ impl Config {
             chain: chain.clone(),
         };
 
-        super::Reducer::CurrentEpoch(reducer)
+        super::Reducer::LastBlockParameters(reducer)
     }
 }

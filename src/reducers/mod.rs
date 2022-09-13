@@ -38,7 +38,7 @@ pub mod total_tx_count;
 #[cfg(feature = "unstable")]
 pub mod total_balance;
 #[cfg(feature = "unstable")]
-pub mod current_epoch;
+pub mod last_block_parameters;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -70,7 +70,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Config),
     #[cfg(feature = "unstable")]
-    CurrentEpoch(current_epoch::Config),
+    CurrentEpoch(last_block_parameters::Config),
 }
 
 impl Config {
@@ -178,7 +178,7 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Reducer),
     #[cfg(feature = "unstable")]
-    CurrentEpoch(current_epoch::Reducer),
+    LastBlockParameters(last_block_parameters::Reducer),
 }
 
 impl Reducer {
@@ -216,7 +216,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::CurrentEpoch(x) => x.reduce_block(block, output),
+            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
         }
     }
 }

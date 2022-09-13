@@ -80,6 +80,7 @@ pub type Timestamp = u64;
 #[derive(Debug)]
 pub enum Value {
     String(String),
+    BigInt(i128),
     Cbor(Vec<u8>),
     Json(serde_json::Value),
 }
