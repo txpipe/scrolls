@@ -70,7 +70,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Config),
     #[cfg(feature = "unstable")]
-    CurrentEpoch(last_block_parameters::Config),
+    LastBlockParameters(last_block_parameters::Config),
 }
 
 impl Config {
@@ -105,7 +105,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TotalBalance(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
-            Config::CurrentEpoch(c) => c.plugin(chain),
+            Config::LastBlockParameters(c) => c.plugin(chain),
         }
     }
 }
