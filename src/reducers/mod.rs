@@ -37,7 +37,8 @@ pub mod tx_count_by_script;
 pub mod total_tx_count;
 #[cfg(feature = "unstable")]
 pub mod total_balance;
-
+#[cfg(feature = "unstable")]
+pub mod current_epoch;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -68,6 +69,8 @@ pub enum Config {
     TotalTransactionsCount(total_tx_count::Config),
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Config),
+    #[cfg(feature = "unstable")]
+    CurrentEpoch(current_epoch::Config),
 }
 
 impl Config {
@@ -101,6 +104,8 @@ impl Config {
             Config::TotalTransactionsCount(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TotalBalance(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::CurrentEpoch(c) => c.plugin(chain),
         }
     }
 }
@@ -172,6 +177,8 @@ pub enum Reducer {
     TotalTransactionsCount(total_tx_count::Reducer),
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Reducer),
+    #[cfg(feature = "unstable")]
+    CurrentEpoch(current_epoch::Reducer),
 }
 
 impl Reducer {
@@ -208,6 +215,8 @@ impl Reducer {
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::CurrentEpoch(x) => x.reduce_block(block, output),
         }
     }
 }
