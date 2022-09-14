@@ -27,7 +27,6 @@ pub struct Reducer {
 impl Reducer {
     fn process_datum(
         &mut self,
-        slot: u64,
         datum: &PlutusData,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -55,12 +54,10 @@ impl Reducer {
         ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let slot = block.slot();
-
         for tx in block.txs().into_iter() {
             if let Some(plutus_data) = tx.witnesses().plutus_data() {
                 for datum in plutus_data {
-                    self.process_datum(slot, datum, output);
+                    self.process_datum(datum, output);
                 }
             }
         }
