@@ -34,24 +34,44 @@ impl AddressPattern {
             }
         }
 
-        if let Some(_) = &self.payment_hex {
-            // we need hex methods in Pallas addresses
-            todo!();
+        if let Some(x) = &self.payment_hex {
+            if let Address::Shelley(ref a) = addr {
+                let payment_hex = a.payment().to_hex();
+
+                if payment_hex.eq(x) {
+                    return true;
+                }
+            }
         }
 
-        if let Some(_) = &self.payment_bech32 {
-            // we need bech32 methods in Pallas addresses
-            todo!();
+        if let Some(x) = &self.payment_bech32 {
+            if let Address::Shelley(ref a) = addr {
+                if let Ok(payment_bech32) = a.payment().to_bech32() {
+                    if payment_bech32.eq(x) {
+                        return true;
+                    }
+                }
+            }
         }
 
-        if let Some(_) = &self.stake_hex {
-            // we need hex methods in Pallas addresses
-            todo!();
+        if let Some(x) = &self.stake_hex {
+            if let Address::Shelley(ref a) = addr {
+                let delegation_hex = a.delegation().to_hex();
+
+                if delegation_hex.eq(x) {
+                    return true;
+                }
+            }
         }
 
-        if let Some(_) = &self.stake_bech32 {
-            // we need bech32 methods in Pallas addresses
-            todo!();
+        if let Some(x) = &self.stake_bech32 {
+            if let Address::Shelley(ref a) = addr {
+                if let Ok(deleg_bech32) = a.delegation().to_bech32() {
+                    if deleg_bech32.eq(x) {
+                        return true;
+                    }
+                }
+            }
         }
 
         if let Some(x) = &self.is_script {
