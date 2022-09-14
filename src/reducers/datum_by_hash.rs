@@ -1,10 +1,9 @@
 use pallas::ledger::primitives::babbage::PlutusData;
 use pallas::ledger::primitives::{Fragment, ToCanonicalJson};
-use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{crosscut, model, prelude::*};
+use crate::{crosscut, model};
 
 #[derive(Deserialize, Default)]
 pub enum Projection {
@@ -32,20 +31,18 @@ impl Reducer {
         datum: &PlutusData,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let datum_hash = datum.original_hash();
+        let datum_hash = datum.to_hash();
 
         let crdt = match self.config.projection.unwrap_or_default() {
-            Projection::Cbor => model::CRDTCommand::last_write_wins(
+            Projection::Cbor => model::CRDTCommand::any_write_wins(
                 self.config.key_prefix.as_deref(),
                 &datum_hash,
                 datum.encode_fragment().unwrap(),
-                slot,
             ),
-            Projection::Json => model::CRDTCommand::last_write_wins(
+            Projection::Json => model::CRDTCommand::any_write_wins(
                 self.config.key_prefix.as_deref(),
                 &datum_hash,
                 datum.to_json(),
-                slot,
             ),
         };
 
