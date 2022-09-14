@@ -9,6 +9,7 @@ use crate::{bootstrap, crosscut, model};
 type InputPort = gasket::messaging::TwoPhaseInputPort<model::EnrichedBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
+pub mod datum_by_hash;
 pub mod macros;
 pub mod point_by_tx;
 pub mod pool_by_stake;
@@ -42,6 +43,7 @@ pub enum Config {
     UtxoByAddress(utxo_by_address::Config),
     PointByTx(point_by_tx::Config),
     PoolByStake(pool_by_stake::Config),
+    DatumByHash(datum_by_hash::Config),
 
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Config),
@@ -149,6 +151,7 @@ pub enum Reducer {
     UtxoByAddress(utxo_by_address::Reducer),
     PointByTx(point_by_tx::Reducer),
     PoolByStake(pool_by_stake::Reducer),
+    DatumByHash(datum_by_hash::Reducer),
 
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Reducer),
