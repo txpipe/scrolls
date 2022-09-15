@@ -19,6 +19,7 @@ impl ToRedisArgs for model::Value {
     {
         match self {
             model::Value::String(x) => x.write_redis_args(out),
+            model::Value::BigInt(x) => x.to_string().write_redis_args(out),
             model::Value::Cbor(x) => x.write_redis_args(out),
             model::Value::Json(x) => todo!("{}", x),
         }

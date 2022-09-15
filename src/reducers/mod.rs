@@ -25,6 +25,8 @@ pub mod tx_by_hash;
 pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod block_header_by_hash;
+#[cfg(feature = "unstable")]
+pub mod last_block_parameters;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -41,12 +43,16 @@ pub enum Config {
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Config),
-    #[cfg(feature = "unstable")]
+    #[cfg(feature = "unstable")]    
     BlockHeaderByHash(block_header_by_hash::Config),
+    #[cfg(feature = "unstable")]
+    LastBlockParameters(last_block_parameters::Config),
 }
 
 impl Config {
-    fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> Reducer {
+    fn plugin(self, 
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy) -> Reducer {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
@@ -62,6 +68,8 @@ impl Config {
             Config::TxCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::LastBlockParameters(c) => c.plugin(chain),
         }
     }
 }
@@ -74,9 +82,11 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn new(configs: Vec<Config>, policy: &crosscut::policies::RuntimePolicy) -> Self {
+    pub fn new(configs: Vec<Config>,
+         chain: &crosscut::ChainWellKnownInfo,
+         policy: &crosscut::policies::RuntimePolicy) -> Self {
         Self {
-            reducers: configs.into_iter().map(|x| x.plugin(policy)).collect(),
+            reducers: configs.into_iter().map(|x| x.plugin(chain, policy)).collect(),
             input: Default::default(),
             output: Default::default(),
             policy: policy.clone(),
@@ -119,6 +129,9 @@ pub enum Reducer {
     TxCountByAddress(tx_count_by_address::Reducer),
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
+
+    #[cfg(feature = "unstable")]
+    LastBlockParameters(last_block_parameters::Reducer),
 }
 
 impl Reducer {
@@ -143,6 +156,9 @@ impl Reducer {
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
+
+            #[cfg(feature = "unstable")]
+            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
         }
     }
 }
