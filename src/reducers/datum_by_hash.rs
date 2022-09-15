@@ -1,11 +1,12 @@
+use pallas::codec::utils::KeepRaw;
 use pallas::ledger::primitives::babbage::PlutusData;
 use pallas::ledger::primitives::{Fragment, ToCanonicalJson};
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas::ledger::traverse::{MultiEraBlock, OriginalHash};
 use serde::Deserialize;
 
-use crate::{crosscut, model};
+use crate::model;
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Copy, Clone)]
 pub enum Projection {
     #[default]
     Cbor,
@@ -21,16 +22,15 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    policy: crosscut::policies::RuntimePolicy,
 }
 
 impl Reducer {
     fn process_datum(
         &mut self,
-        datum: &PlutusData,
+        datum: &KeepRaw<PlutusData>,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let datum_hash = datum.to_hash();
+        let datum_hash = datum.original_hash();
 
         let crdt = match self.config.projection.unwrap_or_default() {
             Projection::Cbor => model::CRDTCommand::any_write_wins(
@@ -51,14 +51,11 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
-        ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            if let Some(plutus_data) = tx.witnesses().plutus_data() {
-                for datum in plutus_data {
-                    self.process_datum(datum, output);
-                }
+            for datum in tx.plutus_data() {
+                self.process_datum(datum, output)?;
             }
         }
 
@@ -67,11 +64,8 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
-        let reducer = Reducer {
-            config: self,
-            policy: policy.clone(),
-        };
+    pub fn plugin(self) -> super::Reducer {
+        let reducer = Reducer { config: self };
 
         super::Reducer::DatumByHash(reducer)
     }
