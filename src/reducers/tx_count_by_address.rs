@@ -28,7 +28,7 @@ impl Reducer {
 
         let utxo = match utxo {
             Some(x) => x,
-            None => return Ok(())
+            None => return Ok(()),
         };
 
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
