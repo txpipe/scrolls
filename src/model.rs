@@ -75,6 +75,7 @@ pub type Set = String;
 pub type Member = String;
 pub type Key = String;
 pub type Delta = i64;
+pub type LargeDelta = i128;
 pub type Timestamp = u64;
 
 #[derive(Debug)]
@@ -109,6 +110,8 @@ pub enum CRDTCommand {
     BlockStarting(Point),
     SetAdd(Set, Member),
     SetRemove(Set, Member),
+    SortedSetAdd(Set, Member, Delta),
+    SortedSetRemove(Set, Member, Delta),
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
@@ -168,7 +171,7 @@ impl CRDTCommand {
         V: Into<Value>,
     {
         let key = match prefix {
-            Some(prefix) => format!("{}.{}", prefix, key),
+        Some(prefix) => format!("{}.{}", prefix, key),
             None => key.to_string(),
         };
 
