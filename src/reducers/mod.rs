@@ -25,6 +25,8 @@ pub mod tx_by_hash;
 pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod block_header_by_hash;
+#[cfg(feature = "unstable")]
+pub mod last_block_parameters;
 
 // CRFA
 #[cfg(feature = "unstable")]
@@ -37,8 +39,6 @@ pub mod tx_count_by_script;
 pub mod total_tx_count;
 #[cfg(feature = "unstable")]
 pub mod total_balance;
-#[cfg(feature = "unstable")]
-pub mod last_block_parameters;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -57,6 +57,8 @@ pub enum Config {
     TxCountByAddress(tx_count_by_address::Config),
     #[cfg(feature = "unstable")]    
     BlockHeaderByHash(block_header_by_hash::Config),
+    #[cfg(feature = "unstable")]
+    LastBlockParameters(last_block_parameters::Config),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -69,8 +71,6 @@ pub enum Config {
     TotalTransactionsCount(total_tx_count::Config),
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Config),
-    #[cfg(feature = "unstable")]
-    LastBlockParameters(last_block_parameters::Config),
 }
 
 impl Config {
@@ -92,6 +92,8 @@ impl Config {
             Config::TxCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::LastBlockParameters(c) => c.plugin(chain),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -104,8 +106,6 @@ impl Config {
             Config::TotalTransactionsCount(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TotalBalance(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::LastBlockParameters(c) => c.plugin(chain),
         }
     }
 }
@@ -165,6 +165,8 @@ pub enum Reducer {
     TxCountByAddress(tx_count_by_address::Reducer),
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
+    #[cfg(feature = "unstable")]
+    LastBlockParameters(last_block_parameters::Reducer),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -177,8 +179,6 @@ pub enum Reducer {
     TotalTransactionsCount(total_tx_count::Reducer),
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Reducer),
-    #[cfg(feature = "unstable")]
-    LastBlockParameters(last_block_parameters::Reducer),
 }
 
 impl Reducer {
@@ -203,6 +203,8 @@ impl Reducer {
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -215,8 +217,6 @@ impl Reducer {
             Reducer::TotalTransactionsCount(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
         }
     }
 }
