@@ -100,6 +100,12 @@ impl gasket::runtime::Worker for Worker {
             model::CRDTCommand::SetAdd(key, value) => {
                 log::debug!("adding to set [{}], value [{}]", key, value);
             }
+            model::CRDTCommand::SortedSetAdd(key, value, delta) => {
+                log::debug!("adding to set [{}], value [{}], delta [{}]", key, value, delta);
+            }
+            model::CRDTCommand::SortedSetRemove(key, value, delta) => {
+                log::debug!("removing from set [{}], value [{}], delta [{}]", key, value, delta);
+            }
             model::CRDTCommand::SetRemove(key, value) => {
                 log::debug!("removing from set [{}], value [{}]", key, value);
             }

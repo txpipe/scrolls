@@ -109,6 +109,8 @@ pub enum CRDTCommand {
     BlockStarting(Point),
     SetAdd(Set, Member),
     SetRemove(Set, Member),
+    SortedSetAdd(Set, Member, Delta),
+    SortedSetRemove(Set, Member, Delta),
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
