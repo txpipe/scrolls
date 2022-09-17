@@ -5,10 +5,15 @@ use pallas::ledger::traverse::{Feature, MultiEraBlock};
 use crate::crosscut::epochs::block_epoch;
 use crate::{crosscut, model};
 
+#[derive(Deserialize, Copy, Clone)]
+pub enum AggrType {
+    Epoch,
+}
+
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub aggr_by: Option<String>,
+    pub aggr_by: Option<AggrType>,
 }
 
 pub struct Reducer {
@@ -18,25 +23,29 @@ pub struct Reducer {
 
 impl Reducer {
     fn config_key(&self, policy_id: String, epoch_no: u64) -> String {
-        let def_key_prefix = "trx_count_by_native_token_policy";
+        let def_key_prefix = "transaction_count_by_native_token_policy";
 
         match &self.config.aggr_by {
-            Some(aggr) if aggr == "EPOCH" => {
-                let k = match &self.config.key_prefix {
-                    Some(prefix) => format!("{}.{}.{}", prefix, policy_id, epoch_no),
-                    None => format!("{}.{}", def_key_prefix.to_string(), policy_id),
-                };
-
-                return k;
-            }
-            _ => {
+            Some(aggr_type) => {
+                match aggr_type {
+                    AggrType::Epoch => {
+                        let k = match &self.config.key_prefix {
+                            Some(prefix) => format!("{}.{}.{}", prefix, policy_id, epoch_no),
+                            None => format!("{}.{}", def_key_prefix.to_string(), policy_id),
+                        };
+        
+                        return k;
+                    }
+                }
+            },
+            None => {
                 let k = match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, policy_id),
                     None => format!("{}.{}", def_key_prefix.to_string(), policy_id),
                 };
 
                 return k;
-            }
+            },
         };
     }
 
@@ -58,7 +67,6 @@ impl Reducer {
                             let policy_id = hex::encode(policy.as_slice());
 
                             let number_of_minted_or_destroyed = assets.len();
-
 
                             let key = self.config_key(policy_id, epoch_no);
                             
