@@ -36,10 +36,13 @@ thiserror = "1.0.30"
 redis = "0.21.5"
 sled = "0.34.7"
 lazy_static = "1.4.0"
+rayon = "1.5.3"
+elasticsearch = "8.4.0-alpha.1"
+futures = "0.3.24"
+tokio = { version = "1.21.1", features = ["rt-multi-thread"] }
 
 # tui feature
 indicatif = { version = "0.17.0-rc.11", optional = true }
-rayon = "1.5.3"
 
 [features]
 unstable = []
