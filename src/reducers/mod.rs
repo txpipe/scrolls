@@ -16,15 +16,17 @@ pub mod utxo_by_address;
 mod worker;
 
 #[cfg(feature = "unstable")]
+pub mod address_by_ada_handle;
+#[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
 pub mod balance_by_address;
 #[cfg(feature = "unstable")]
+pub mod block_header_by_hash;
+#[cfg(feature = "unstable")]
 pub mod tx_by_hash;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_address;
-#[cfg(feature = "unstable")]
-pub mod block_header_by_hash;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -43,6 +45,8 @@ pub enum Config {
     TxCountByAddress(tx_count_by_address::Config),
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
+    #[cfg(feature = "unstable")]
+    AddressByAdaHandle(address_by_ada_handle::Config),
 }
 
 impl Config {
@@ -62,6 +66,8 @@ impl Config {
             Config::TxCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::AddressByAdaHandle(c) => c.plugin(),
         }
     }
 }
@@ -119,6 +125,8 @@ pub enum Reducer {
     TxCountByAddress(tx_count_by_address::Reducer),
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
+    #[cfg(feature = "unstable")]
+    AddressByAdaHandle(address_by_ada_handle::Reducer),
 }
 
 impl Reducer {
@@ -143,6 +151,8 @@ impl Reducer {
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
