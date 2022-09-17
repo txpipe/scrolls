@@ -110,7 +110,7 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
 
     let enrich = config.enrich.unwrap_or_default().bootstrapper(&policy);
 
-    let reducer = reducers::Bootstrapper::new(config.reducers, &policy);
+    let reducer = reducers::Bootstrapper::new(config.reducers, &chain, &policy);
 
     let storage = config.storage.plugin(&chain, &config.intersect);
 

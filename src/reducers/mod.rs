@@ -24,6 +24,8 @@ pub mod balance_by_address;
 #[cfg(feature = "unstable")]
 pub mod block_header_by_hash;
 #[cfg(feature = "unstable")]
+pub mod last_block_parameters;
+#[cfg(feature = "unstable")]
 pub mod tx_by_hash;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_address;
@@ -47,10 +49,16 @@ pub enum Config {
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
     AddressByAdaHandle(address_by_ada_handle::Config),
+    #[cfg(feature = "unstable")]
+    LastBlockParameters(last_block_parameters::Config),
 }
 
 impl Config {
-    fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> Reducer {
+    fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> Reducer {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
@@ -68,6 +76,8 @@ impl Config {
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::AddressByAdaHandle(c) => c.plugin(),
+            #[cfg(feature = "unstable")]
+            Config::LastBlockParameters(c) => c.plugin(chain),
         }
     }
 }
@@ -80,9 +90,16 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn new(configs: Vec<Config>, policy: &crosscut::policies::RuntimePolicy) -> Self {
+    pub fn new(
+        configs: Vec<Config>,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> Self {
         Self {
-            reducers: configs.into_iter().map(|x| x.plugin(policy)).collect(),
+            reducers: configs
+                .into_iter()
+                .map(|x| x.plugin(chain, policy))
+                .collect(),
             input: Default::default(),
             output: Default::default(),
             policy: policy.clone(),
@@ -127,6 +144,8 @@ pub enum Reducer {
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
     AddressByAdaHandle(address_by_ada_handle::Reducer),
+    #[cfg(feature = "unstable")]
+    LastBlockParameters(last_block_parameters::Reducer),
 }
 
 impl Reducer {
@@ -153,6 +172,8 @@ impl Reducer {
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
         }
     }
 }
