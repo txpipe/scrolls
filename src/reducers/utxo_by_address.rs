@@ -82,8 +82,15 @@ impl Reducer {
                 self.process_consumed_txo(&ctx, &consumed, output)?;
             }
 
-            for (idx, produced) in tx.produces().iter().enumerate() {
-                self.process_produced_txo(&tx, produced, idx, output)?;
+            if tx.is_valid() {
+                for (idx, txo) in tx.outputs().iter().enumerate() {
+                    self.process_produced_txo(&tx, txo, idx, output)?;
+                }
+            } else {
+                if let Some(collret) = tx.collateral_return() {
+                    let idx = tx.outputs().len();
+                    self.process_produced_txo(&tx, &collret, idx, output)?;
+                }
             }
         }
 

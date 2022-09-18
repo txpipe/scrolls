@@ -138,14 +138,27 @@ impl Worker {
         let mut insert_batch = sled::Batch::default();
 
         for tx in txs.iter() {
-            for (idx, output) in tx.produces().iter().enumerate() {
-                let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
+            if tx.is_valid() {
+                for (idx, output) in tx.outputs().iter().enumerate() {
+                    let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
 
-                let era = tx.era().into();
-                let body = output.encode();
-                let value: IVec = SledTxValue(era, body).try_into()?;
+                    let era = tx.era().into();
+                    let body = output.encode();
+                    let value: IVec = SledTxValue(era, body).try_into()?;
 
-                insert_batch.insert(key, value)
+                    insert_batch.insert(key, value)
+                }
+            } else {
+                if let Some(collret) = tx.collateral_return() {
+                    let idx = tx.outputs().len();
+                    let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
+
+                    let era = tx.era().into();
+                    let body = collret.encode();
+                    let value: IVec = SledTxValue(era, body).try_into()?;
+
+                    insert_batch.insert(key, value)
+                }
             }
         }
 
