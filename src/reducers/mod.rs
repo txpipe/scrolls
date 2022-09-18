@@ -16,17 +16,19 @@ pub mod utxo_by_address;
 mod worker;
 
 #[cfg(feature = "unstable")]
+pub mod address_by_ada_handle;
+#[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
 pub mod balance_by_address;
 #[cfg(feature = "unstable")]
-pub mod tx_by_hash;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_address;
-#[cfg(feature = "unstable")]
 pub mod block_header_by_hash;
 #[cfg(feature = "unstable")]
 pub mod last_block_parameters;
+#[cfg(feature = "unstable")]
+pub mod tx_by_hash;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
 
@@ -48,15 +50,19 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
+    AddressByAdaHandle(address_by_ada_handle::Config),
+    #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
 }
 
 impl Config {
-    fn plugin(self, 
+    fn plugin(
+        self,
         chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy) -> Reducer {
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> Reducer {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
@@ -73,6 +79,8 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
+            Config::AddressByAdaHandle(c) => c.plugin(),
+            #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
@@ -88,11 +96,16 @@ pub struct Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn new(configs: Vec<Config>,
-         chain: &crosscut::ChainWellKnownInfo,
-         policy: &crosscut::policies::RuntimePolicy) -> Self {
+    pub fn new(
+        configs: Vec<Config>,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> Self {
         Self {
-            reducers: configs.into_iter().map(|x| x.plugin(chain, policy)).collect(),
+            reducers: configs
+                .into_iter()
+                .map(|x| x.plugin(chain, policy))
+                .collect(),
             input: Default::default(),
             output: Default::default(),
             policy: policy.clone(),
@@ -136,6 +149,8 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
+    AddressByAdaHandle(address_by_ada_handle::Reducer),
+    #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
@@ -163,6 +178,8 @@ impl Reducer {
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
