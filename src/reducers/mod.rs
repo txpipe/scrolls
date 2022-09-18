@@ -27,6 +27,8 @@ pub mod tx_count_by_address;
 pub mod block_header_by_hash;
 #[cfg(feature = "unstable")]
 pub mod last_block_parameters;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_native_token_policy_id;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -43,10 +45,12 @@ pub enum Config {
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Config),
-    #[cfg(feature = "unstable")]    
+    #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
+    #[cfg(feature = "unstable")]
+    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
 }
 
 impl Config {
@@ -70,6 +74,8 @@ impl Config {
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
         }
     }
 }
@@ -129,9 +135,10 @@ pub enum Reducer {
     TxCountByAddress(tx_count_by_address::Reducer),
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
-
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
+    #[cfg(feature = "unstable")]
+    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
 }
 
 impl Reducer {
@@ -156,9 +163,10 @@ impl Reducer {
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
-
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
         }
     }
 }
