@@ -29,13 +29,13 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let address = utxo.address().map(|x| x.to_string()).or_panic()?;
+        let address = utxo.address().map(|addr| addr.to_string()).or_panic()?;
 
         for asset in utxo.assets().iter() {
             let sub = &asset.subject;
             let quantity = &asset.quantity;
 
-            let delta = *quantity as i64 * -1;
+            let delta = *quantity as i64 * (-1);
 
             let prefix = match &self.config.key_prefix {
                 Some(prefix) => prefix,
@@ -44,9 +44,11 @@ impl Reducer {
 
             match sub {
                 Subject::NativeAsset(policy_id, asset_name) =>  {
-                    let asset_name_hex = format!("{}.{}{}", prefix.to_string(), policy_id, asset_name);
+                    let asset_id = format!("{}{}", policy_id, asset_name);
 
-                    let crdt = model::CRDTCommand::SortedSetRemove(asset_name_hex, address.to_string(), delta);
+                    let key = format!("{}.{}", prefix.to_string(), asset_id);
+
+                    let crdt = model::CRDTCommand::SortedSetRemove(key, address.to_string(), delta);
 
                     output.send(gasket::messaging::Message::from(crdt))?;
                 }
@@ -62,7 +64,7 @@ impl Reducer {
         tx_output: &MultiEraOutput,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
+        let address = tx_output.address().map(|addr| addr.to_string()).or_panic()?;
 
         for asset in tx_output.assets().iter() {
             let sub = &asset.subject;
@@ -73,13 +75,15 @@ impl Reducer {
                 None => "asset_holders_by_asset",
             };
 
+            let delta = *quantity as i64;
+
             match sub {
                 Subject::NativeAsset(policy_id, asset_name) =>  {
-                    let asset_name_hex = format!("{}.{}{}", prefix.to_string(), policy_id, asset_name);
+                    let asset_id = format!("{}{}", policy_id, asset_name);
 
-                    let delta = *quantity as i64;
+                    let key = format!("{}.{}", prefix, asset_id);
 
-                    let crdt = model::CRDTCommand::SortedSetAdd(asset_name_hex, address.to_string(), delta);
+                    let crdt = model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
 
                     output.send(gasket::messaging::Message::from(crdt))?;
                 }
@@ -132,3 +136,9 @@ impl Config {
 
 // Wing Riders - L token holders
 // ZRANGEBYSCORE "c14.5d9d887de76a2c9d057b3e5d34d5411f7f8dc4d54f0c06e8ed2eb4a9494e44594C" 1 +inf
+
+// gc command
+// ZREMRANGEBYSCORE "c14.fff75ea36607458cc1f924fb1a9d4dbf53afb475357cc81c04b420be5175697a486f6c6f436172645331" 0 0
+
+// 127.0.0.1:6379> get _cursor
+// "49907420,a4b89845e2224de34701806a3d5768f3c0efd0c4ce44bc0f19127d3588659eb4"

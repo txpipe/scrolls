@@ -27,12 +27,12 @@ pub mod tx_count_by_address;
 pub mod block_header_by_hash;
 #[cfg(feature = "unstable")]
 pub mod last_block_parameters;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_native_token_policy_id;
 
 // CRFA
 #[cfg(feature = "unstable")]
 pub mod balance_by_script;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_script;
 #[cfg(feature = "unstable")]
@@ -57,16 +57,15 @@ pub enum Config {
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Config),
-    #[cfg(feature = "unstable")]    
+    #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
-
-    // CRFA
-    #[cfg(feature = "unstable")]
-    BalanceByScript(balance_by_script::Config),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
+
+    #[cfg(feature = "unstable")]
+    BalanceByScript(balance_by_script::Config),
     #[cfg(feature = "unstable")]
     TxCountByScript(tx_count_by_script::Config),
     #[cfg(feature = "unstable")]
@@ -76,7 +75,6 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     AssetHoldersByAsset(asset_holders_by_asset::Config),
 }
-
 impl Config {
     fn plugin(self, 
         chain: &crosscut::ChainWellKnownInfo,
@@ -98,12 +96,12 @@ impl Config {
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
 
             // CRFA
             #[cfg(feature = "unstable")]
             Config::BalanceByScript(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::TxCountByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
@@ -173,12 +171,12 @@ pub enum Reducer {
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
+    #[cfg(feature = "unstable")]
+    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
 
     // CRFA
     #[cfg(feature = "unstable")]
     BalanceByScript(balance_by_script::Reducer),
-    #[cfg(feature = "unstable")]
-    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByScript(tx_count_by_script::Reducer),
     #[cfg(feature = "unstable")]
@@ -213,12 +211,12 @@ impl Reducer {
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
 
             // CRFA
             #[cfg(feature = "unstable")]
             Reducer::BalanceByScript(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByScript(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
@@ -227,6 +225,6 @@ impl Reducer {
             Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::AssetHoldersByAsset(x) => x.reduce_block(block, ctx, output),
-        }
     }
+}
 }

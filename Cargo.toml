@@ -36,12 +36,21 @@ thiserror = "1.0.30"
 redis = "0.21.5"
 sled = "0.34.7"
 lazy_static = "1.4.0"
+rayon = "1.5.3"
+
+# async feature
+futures = { version = "0.3.24", optional = true }
+tokio = { version = "1.21.1", features = ["rt-multi-thread"], optional = true }
+
+# elastic feature
+elasticsearch = { version = "8.4.0-alpha.1", optional = true }
 
 # tui feature
 indicatif = { version = "0.17.0-rc.11", optional = true }
-rayon = "1.5.3"
 
 [features]
-unstable = []
+async = ["futures", "tokio"]
+elastic = ["elasticsearch", "async"]
+unstable = ["elastic"]
 tui = ["indicatif"]
 default = ["tui"]
