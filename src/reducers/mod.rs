@@ -29,6 +29,8 @@ pub mod last_block_parameters;
 pub mod tx_by_hash;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_address;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_native_token_policy_id;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -51,6 +53,8 @@ pub enum Config {
     AddressByAdaHandle(address_by_ada_handle::Config),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
+    #[cfg(feature = "unstable")]
+    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
 }
 
 impl Config {
@@ -78,6 +82,8 @@ impl Config {
             Config::AddressByAdaHandle(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
         }
     }
 }
@@ -146,6 +152,8 @@ pub enum Reducer {
     AddressByAdaHandle(address_by_ada_handle::Reducer),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
+    #[cfg(feature = "unstable")]
+    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
 }
 
 impl Reducer {
@@ -174,6 +182,8 @@ impl Reducer {
             Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
         }
     }
 }
