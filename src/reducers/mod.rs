@@ -40,7 +40,7 @@ pub mod total_tx_count;
 #[cfg(feature = "unstable")]
 pub mod total_balance;
 #[cfg(feature = "unstable")]
-pub mod asset_holders_by_asset;
+pub mod asset_holders_by_asset_id;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -73,7 +73,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Config),
     #[cfg(feature = "unstable")]
-    AssetHoldersByAsset(asset_holders_by_asset::Config),
+    AssetHoldersByAsset(asset_holders_by_asset_id::Config),
 }
 impl Config {
     fn plugin(self, 
@@ -184,7 +184,7 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TotalBalance(total_balance::Reducer),
     #[cfg(feature = "unstable")]
-    AssetHoldersByAsset(asset_holders_by_asset::Reducer),
+    AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
 }
 
 impl Reducer {
@@ -224,7 +224,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::AssetHoldersByAsset(x) => x.reduce_block(block, ctx, output),
+            Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
     }
 }
 }

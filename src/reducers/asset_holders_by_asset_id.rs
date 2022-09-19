@@ -39,7 +39,7 @@ impl Reducer {
 
             let prefix = match &self.config.key_prefix {
                 Some(prefix) => prefix,
-                None => "asset_holders_by_asset",
+                None => "asset_holders_by_asset_id",
             };
 
             match sub {
@@ -72,7 +72,7 @@ impl Reducer {
 
             let prefix = match &self.config.key_prefix {
                 Some(prefix) => prefix,
-                None => "asset_holders_by_asset",
+                None => "asset_holders_by_asset_id",
             };
 
             let delta = *quantity as i64;
@@ -124,7 +124,7 @@ impl Config {
             policy: policy.clone(),
         };
 
-        super::Reducer::AssetHoldersByAsset(reducer)
+        super::Reducer::AssetHoldersByAssetId(reducer)
     }
 }
 
