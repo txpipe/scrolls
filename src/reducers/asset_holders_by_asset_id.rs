@@ -2,24 +2,72 @@ use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, OutputRef, Subject};
 use serde::Deserialize;
 
+use pallas::crypto::hash::Hash;
 use crate::{crosscut, model, prelude::*};
+
+use crate::crosscut::epochs::block_epoch;
+use std::str::FromStr;
+
+#[derive(Deserialize, Copy, Clone)]
+pub enum AggrType {
+    Epoch,
+}
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
     pub filter: Option<crosscut::filters::Predicate>,
+    pub aggr_by: Option<AggrType>,
+    pub policy_ids_hex: Option<Vec<String>>, // if specified only those policy ids as hex will be taken into account, if not all policy ids will be indexed
 }
 
 pub struct Reducer {
     config: Config,
     policy: crosscut::policies::RuntimePolicy,
+    chain: crosscut::ChainWellKnownInfo,
+    policy_ids: Option<Vec<Hash<28>>>
 }
 
 impl Reducer {
+    fn config_key(&self, asset_id: String, epoch_no: u64) -> String {
+        let def_key_prefix = "asset_holders_by_asset_id";
+
+        match &self.config.aggr_by {
+            Some(aggr_type) => {
+                match aggr_type {
+                    AggrType::Epoch => {
+                        let k = match &self.config.key_prefix {
+                            Some(prefix) => format!("{}.{}.{}", prefix, asset_id, epoch_no),
+                            None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
+                        };
+        
+                        return k;
+                    }
+                }
+            },
+            None => {
+                let k = match &self.config.key_prefix {
+                    Some(prefix) => format!("{}.{}", prefix, asset_id),
+                    None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
+                };
+
+                return k;
+            },
+        };
+    }
+
+    fn is_policy_id_accepted(&self, policy_id: &Hash<28>) -> bool {
+        return match &self.policy_ids {
+            Some(pids) => pids.contains(&policy_id),
+            None => true,
+        };
+    }
+
     fn process_consumed_txo(
         &mut self,
         ctx: &model::BlockContext,
         input: &OutputRef,
+        epoch_no: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
@@ -37,20 +85,18 @@ impl Reducer {
 
             let delta = *quantity as i64 * (-1);
 
-            let prefix = match &self.config.key_prefix {
-                Some(prefix) => prefix,
-                None => "asset_holders_by_asset_id",
-            };
-
             match sub {
                 Subject::NativeAsset(policy_id, asset_name) =>  {
-                    let asset_id = format!("{}{}", policy_id, asset_name);
+                    if self.is_policy_id_accepted(policy_id) {
+                        let asset_id = format!("{}{}", policy_id, asset_name);
 
-                    let key = format!("{}.{}", prefix.to_string(), asset_id);
+                        let key = self.config_key(asset_id, epoch_no);
+    
+                        let crdt = model::CRDTCommand::SortedSetRemove(key, address.to_string(), delta);
+    
+                        output.send(gasket::messaging::Message::from(crdt))?;
+                    }
 
-                    let crdt = model::CRDTCommand::SortedSetRemove(key, address.to_string(), delta);
-
-                    output.send(gasket::messaging::Message::from(crdt))?;
                 }
                 _ => {},
             };
@@ -62,6 +108,7 @@ impl Reducer {
     fn process_produced_txo(
         &mut self,
         tx_output: &MultiEraOutput,
+        epoch_no: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let address = tx_output.address().map(|addr| addr.to_string()).or_panic()?;
@@ -70,22 +117,20 @@ impl Reducer {
             let sub = &asset.subject;
             let quantity = &asset.quantity;
 
-            let prefix = match &self.config.key_prefix {
-                Some(prefix) => prefix,
-                None => "asset_holders_by_asset_id",
-            };
-
             let delta = *quantity as i64;
 
             match sub {
                 Subject::NativeAsset(policy_id, asset_name) =>  {
-                    let asset_id = format!("{}{}", policy_id, asset_name);
+                    if self.is_policy_id_accepted(policy_id) {
 
-                    let key = format!("{}.{}", prefix, asset_id);
+                        let asset_id = format!("{}{}", policy_id, asset_name);
 
-                    let crdt = model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
-
-                    output.send(gasket::messaging::Message::from(crdt))?;
+                        let key = self.config_key(asset_id, epoch_no);
+    
+                        let crdt = model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
+    
+                        output.send(gasket::messaging::Message::from(crdt))?;
+                    }
                 }
                 _ => {},
             };
@@ -102,13 +147,14 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
+                let epoch_no = block_epoch(&self.chain, block);
 
                 for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
-                    self.process_consumed_txo(&ctx, &consumed, output)?;
+                    self.process_consumed_txo(&ctx, &consumed, epoch_no, output)?;
                 }
 
                 for produced in tx.produces().iter() {
-                    self.process_produced_txo(produced, output)?;
+                    self.process_produced_txo(produced, epoch_no, output)?;
                 }
             }
         }
@@ -118,10 +164,29 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
+    pub fn plugin(self,
+         chain: &crosscut::ChainWellKnownInfo,
+         policy: &crosscut::policies::RuntimePolicy,
+        ) -> super::Reducer {
+
+            let policy_ids: Option<Vec<Hash<28>>> = match &self.policy_ids_hex {
+                Some(pids) => {
+                    let ps = pids
+                    .iter()
+                    .map(|pid| Hash::<28>::from_str(pid)
+                    .expect("invalid policy_id"))
+                    .collect();
+
+                    Some(ps)
+                },
+                None => None,
+            };
+
         let reducer = Reducer {
             config: self,
+            chain: chain.clone(),
             policy: policy.clone(),
+            policy_ids: policy_ids.clone(),
         };
 
         super::Reducer::AssetHoldersByAssetId(reducer)
@@ -129,16 +194,5 @@ impl Config {
 }
 
 // How to query
-// 127.0.0.1:6379> ZRANGEBYSCORE "c14.5d9d887de76a2c9d057b3e5d34d5411f7f8dc4d54f0c06e8ed2eb4a9494e4459" 1 +inf
+// 127.0.0.1:6379> ZRANGEBYSCORE "asset_holders_by_asset_id.5d9d887de76a2c9d057b3e5d34d5411f7f8dc4d54f0c06e8ed2eb4a9494e4459" 1 +inf
 // 1) "addr1q8lmu79hgm3sppz8dta3aftf0cwh2v2eja56wqvzqy4jj0zjt7qgvj7saxdxve35c4ehuxuam4czlz9fw6ls7zr4as9s609d7u"
-
-// TODO empty (0 scores need to be regularly garbage collected either by scrolls or by client app [hacky])
-
-// Wing Riders - L token holders
-// ZRANGEBYSCORE "c14.5d9d887de76a2c9d057b3e5d34d5411f7f8dc4d54f0c06e8ed2eb4a9494e44594C" 1 +inf
-
-// gc command
-// ZREMRANGEBYSCORE "c14.fff75ea36607458cc1f924fb1a9d4dbf53afb475357cc81c04b420be5175697a486f6c6f436172645331" 0 0
-
-// 127.0.0.1:6379> get _cursor
-// "49907420,a4b89845e2224de34701806a3d5768f3c0efd0c4ce44bc0f19127d3588659eb4"

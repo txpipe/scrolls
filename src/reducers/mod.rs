@@ -117,7 +117,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TotalBalance(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
-            Config::AssetHoldersByAsset(c) => c.plugin(policy),
+            Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
         }
     }
 }

@@ -187,13 +187,6 @@ impl gasket::runtime::Worker for Worker {
                     .unwrap()
                     .zincr(key.clone(), value, delta)
                     .or_restart()?;
-
-                    // removal of dangling scores (aka garage collection)
-                    self.connection
-                    .as_mut()
-                    .unwrap()
-                    .zrembyscore(key.clone(), 0, 0)
-                    .or_restart()?;
             }
             model::CRDTCommand::SortedSetRemove(key, value, delta) => {
                 log::debug!("sorted set remove [{}], value [{}], delta [{}]", key, value, delta);
