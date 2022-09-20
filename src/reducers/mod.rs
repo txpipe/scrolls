@@ -43,6 +43,8 @@ pub mod total_tx_count;
 pub mod total_balance;
 #[cfg(feature = "unstable")]
 pub mod asset_holders_by_asset_id;
+#[cfg(feature = "unstable")]
+pub mod unique_addresses_by_script;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -78,6 +80,8 @@ pub enum Config {
     TotalBalance(total_balance::Config),
     #[cfg(feature = "unstable")]
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
+    #[cfg(feature = "unstable")]
+    UniqueAddressesByScript(unique_addresses_by_script::Config),
 }
 impl Config {
     fn plugin(
@@ -118,6 +122,8 @@ impl Config {
             Config::TotalBalance(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::UniqueAddressesByScript(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -200,6 +206,8 @@ pub enum Reducer {
     TotalBalance(total_balance::Reducer),
     #[cfg(feature = "unstable")]
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
+    #[cfg(feature = "unstable")]
+    UniqueAddressesByScript(unique_addresses_by_script::Reducer),
 }
 
 impl Reducer {
@@ -242,6 +250,8 @@ impl Reducer {
             Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
-    }
+            #[cfg(feature = "unstable")]
+            Reducer::UniqueAddressesByScript(x) => x.reduce_block(block, ctx, output),
+        }
 }
 }
