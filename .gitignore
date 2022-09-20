@@ -16,3 +16,4 @@ daemon*.json
 
 # Nix build results
 result
+TODO.txt

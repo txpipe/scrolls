@@ -30,7 +30,7 @@ impl Reducer {
         };
         
         match &self.config.aggr_by {
-            Some(aggr) if aggr == "EPOCH" => {
+            Some(aggr) if aggr == "Epoch" => {
                 let k = match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, epoch_no),
                     None => format!("{}", def_key_prefix.to_string()),

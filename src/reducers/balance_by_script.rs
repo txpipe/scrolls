@@ -26,7 +26,7 @@ impl Reducer {
         let def_key_prefix = "balance_by_address";
 
         match &self.config.aggr_by {
-            Some(aggr) if aggr == "EPOCH" => {
+            Some(aggr) if aggr == "Epoch" => {
                 let k = match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}.{}", prefix, address, epoch_no),
                     None => format!("{}.{}", def_key_prefix.to_string(), address),

@@ -1,7 +1,7 @@
-use pallas::ledger::addresses::Address;
+use pallas::ledger::addresses::{Address, ShelleyDelegationPart};
 
 use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};
@@ -60,76 +60,40 @@ impl Reducer {
         };
     }
 
-    fn process_consumed_txo(
+    fn process_user_address_given_contract_address(
         &mut self,
-        ctx: &model::BlockContext,
-        input: &OutputRef,
+        contract_address: &Address,
+        user_address: &Address,
         epoch_no: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
 
-        let utxo = match utxo {
-            Some(x) => x,
-            None => return Ok(()),
+        let maybe_addr = match user_address {
+            Address::Shelley(shelley_addr) => {
+                match &self.config.addr_type {
+                    AddressType::Staking => {
+                        let delegation_part = shelley_addr.delegation();
+
+                        match delegation_part {
+                            ShelleyDelegationPart::Key(_) => delegation_part.to_bech32().ok(),
+                            ShelleyDelegationPart::Script(_) => delegation_part.to_bech32().ok(),
+                            _ => None,
+                        }
+                    },
+                    AddressType::Payment => shelley_addr.to_bech32().ok(),
+                }
+            },
+            _ => None,
         };
 
-        if let Some(addr) = utxo.address().ok() {
-            if !addr.has_script() {
-                return Ok(());
-            }
+        if let Some(addr) = &maybe_addr {
+            if let Some(c_addr) = contract_address.to_bech32().ok() {
+                let key = self.config_key(&c_addr, epoch_no);
 
-            let maybe_addr = match addr {
-                Address::Shelley(shelley_addr) => {
-                    match &self.config.addr_type {
-                        AddressType::Staking => shelley_addr.payment().to_bech32().ok(),
-                        AddressType::Payment => shelley_addr.delegation().to_bech32().ok()
-                    }
-                },
-                _ => None,
-            };
-
-            if let Some(addr) =  &maybe_addr {
-                let key = self.config_key(addr, epoch_no);
                 let crdt = model::CRDTCommand::GrowOnlySetAdd(key, addr.to_string());
-
+    
                 output.send(gasket::messaging::Message::from(crdt))?;
             }
-
-        }
-
-        Ok(())
-    }
-
-    fn process_produced_txo(
-        &mut self,
-        tx_output: &MultiEraOutput,
-        epoch_no: u64,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-
-        if let Some(addr) = tx_output.address().ok() {
-            if !addr.has_script() {
-                return Ok(());
-            }
-
-            let maybe_addr = match addr {
-                Address::Shelley(shelley_addr) => {
-                    match &self.config.addr_type {
-                        AddressType::Staking => shelley_addr.payment().to_bech32().ok(),
-                        AddressType::Payment => shelley_addr.delegation().to_bech32().ok()
-                    }
-                },
-                _ => None,
-            };
-
-            if let Some(addr) =  &maybe_addr {
-                let key = self.config_key(addr, epoch_no);
-                let crdt = model::CRDTCommand::GrowOnlySetAdd(key, addr.to_string());
-
-                output.send(gasket::messaging::Message::from(crdt))?;
-            }
-
         }
 
         Ok(())
@@ -145,12 +109,52 @@ impl Reducer {
             if filter_matches!(self, block, &tx, ctx) {
                 let epoch_no = block_epoch(&self.chain, block);
 
-                for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
-                    self.process_consumed_txo(&ctx, &consumed, epoch_no, output)?;
+                let enriched_inputs: Vec<MultiEraOutput> = tx.consumes().iter()
+                .flat_map(|mei| ctx.find_utxo(&mei.output_ref()).apply_policy(&self.policy).or_panic().ok())
+                .filter_map(|maybe_multi_era_output| maybe_multi_era_output)
+                .collect();
+
+                let inputs_have_script = enriched_inputs.iter().find(|meo| {
+                    match meo.address().ok() {
+                        Some(addr) => addr.has_script(),
+                        None => false
+                    }
+                });
+
+                let enriched_outputs = tx.produces();
+
+                let outputs_have_script = enriched_outputs.iter().find(|meo| {
+                    match meo.address().ok() {
+                        Some(addr) => addr.has_script(),
+                        None => false
+                    }
+                });
+
+                if let Some(meo) = inputs_have_script {
+
+                    if let Some(contract_address) = &meo.address().ok() {
+
+                        for a in enriched_inputs.iter().chain(enriched_outputs.iter()) {
+                            match a.address().ok() {
+                                Some(user_address) if !user_address.has_script() => self.process_user_address_given_contract_address(&contract_address, &user_address, epoch_no, output)?,
+                                _ => (),
+                            }
+                        }
+    
+                    }
                 }
 
-                for produced in tx.produces().iter() {
-                    self.process_produced_txo(produced, epoch_no, output)?;
+                if let Some(meo) = outputs_have_script {
+
+                    if let Some(contract_address) = &meo.address().ok() {
+
+                        for a in enriched_inputs.iter().chain(enriched_outputs.iter()) {
+                            match a.address().ok() {
+                                Some(user_address) if !user_address.has_script() => self.process_user_address_given_contract_address(&contract_address, &user_address, epoch_no, output)?,
+                                _ => (),
+                            }
+                        }
+                    }
                 }
             }
         }
