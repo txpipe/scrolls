@@ -92,7 +92,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().iter() {
-            for txo in tx.produces() {
+            for (_, txo) in tx.produces() {
                 self.process_txo(&txo, output)?;
             }
         }

@@ -138,7 +138,7 @@ impl Worker {
         let mut insert_batch = sled::Batch::default();
 
         for tx in txs.iter() {
-            for (idx, output) in tx.produces().iter().enumerate() {
+            for (idx, output) in tx.produces() {
                 let key: IVec = format!("{}#{}", tx.hash(), idx).as_bytes().into();
 
                 let era = tx.era().into();
