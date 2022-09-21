@@ -20,11 +20,12 @@ use crate::{
 
 type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
 
-impl Into<JsonValue> for model::Value {
-    fn into(self) -> JsonValue {
-        match self {
-            model::Value::String(x) => json!({ "value": x }),
-            model::Value::Cbor(x) => json!({ "cbor": hex::encode(x) }),
+impl From<model::Value> for JsonValue {
+    fn from(other: model::Value) -> JsonValue {
+        match other {
+            model::Value::String(x) => json!(x),
+            model::Value::Cbor(x) => json!(hex::encode(x)),
+            model::Value::BigInt(x) => json!(x),
             model::Value::Json(x) => x,
         }
     }
@@ -158,13 +159,16 @@ async fn apply_command(cmd: CRDTCommand, client: &Elasticsearch) -> Option<ESRes
     match cmd {
         CRDTCommand::BlockStarting(_) => None,
         CRDTCommand::AnyWriteWins(key, value) => client
-            .index(elasticsearch::IndexParts::IndexId("scrolls", &key))
-            .body::<JsonValue>(value.into())
+            .index(elasticsearch::IndexParts::IndexId(
+                "adahandles.mainnet",
+                &key,
+            ))
+            .body::<JsonValue>(json!({ "key": &key, "value": JsonValue::from(value) }))
             .send()
             .await
             .into(),
         CRDTCommand::BlockFinished(point) => {
-            log::warn!("Elasticsearch storage doesn't support cursors ATM");
+            log::debug!("Elasticsearch storage doesn't support cursors ATM");
             None
         }
         _ => todo!(),
@@ -190,8 +194,6 @@ async fn apply_batch(
                 .map_err(|e| Error::StorageError(e.to_string()))
                 .apply_policy(policy)
                 .or_panic()?;
-
-            log::warn!("op executed on elastic");
         }
     }
 
