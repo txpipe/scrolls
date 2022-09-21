@@ -82,8 +82,8 @@ impl Reducer {
                 self.process_consumed_txo(&ctx, &consumed, output)?;
             }
 
-            for (idx, produced) in tx.produces().iter().enumerate() {
-                self.process_produced_txo(&tx, produced, idx, output)?;
+            for (idx, produced) in tx.produces() {
+                self.process_produced_txo(&tx, &produced, idx, output)?;
             }
         }
 
