@@ -121,10 +121,10 @@ impl Reducer {
                     }
                 });
 
-                let enriched_outputs = tx.produces();
+                let enriched_outputs: Vec<(usize, MultiEraOutput)> = tx.produces();
 
                 let outputs_have_script = enriched_outputs.iter().find(|meo| {
-                    match meo.address().ok() {
+                    match meo.1.address().ok() {
                         Some(addr) => addr.has_script(),
                         None => false
                     }
@@ -134,26 +134,41 @@ impl Reducer {
 
                     if let Some(contract_address) = &meo.address().ok() {
 
-                        for a in enriched_inputs.iter().chain(enriched_outputs.iter()) {
-                            match a.address().ok() {
+                        for meo in &enriched_inputs {
+                            match meo.address().ok() {
                                 Some(user_address) if !user_address.has_script() => self.process_user_address_given_contract_address(&contract_address, &user_address, epoch_no, output)?,
                                 _ => (),
                             }
                         }
-    
+
+                        for (_, meo) in &enriched_outputs {
+                            match meo.address().ok() {
+                                Some(user_address) if !user_address.has_script() => self.process_user_address_given_contract_address(&contract_address, &user_address, epoch_no, output)?,
+                                _ => (),
+                            }
+                        }
+
                     }
                 }
 
-                if let Some(meo) = outputs_have_script {
+                if let Some((_, meo)) = outputs_have_script {
 
                     if let Some(contract_address) = &meo.address().ok() {
 
-                        for a in enriched_inputs.iter().chain(enriched_outputs.iter()) {
-                            match a.address().ok() {
+                        for meo in &enriched_inputs {
+                            match meo.address().ok() {
                                 Some(user_address) if !user_address.has_script() => self.process_user_address_given_contract_address(&contract_address, &user_address, epoch_no, output)?,
                                 _ => (),
                             }
                         }
+
+                        for (_, meo) in &enriched_outputs {
+                            match meo.address().ok() {
+                                Some(user_address) if !user_address.has_script() => self.process_user_address_given_contract_address(&contract_address, &user_address, epoch_no, output)?,
+                                _ => (),
+                            }
+                        }
+
                     }
                 }
             }

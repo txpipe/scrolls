@@ -153,8 +153,8 @@ impl Reducer {
                     self.process_consumed_txo(&ctx, &consumed, epoch_no, output)?;
                 }
 
-                for produced in tx.produces().iter() {
-                    self.process_produced_txo(produced, epoch_no, output)?;
+                for (_, meo) in tx.produces() {
+                    self.process_produced_txo(&meo, epoch_no, output)?;
                 }
             }
         }
