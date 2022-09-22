@@ -34,10 +34,10 @@ impl Reducer {
 
         match &self.config.aggr_by {
             Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
-                    return match &self.config.key_prefix {
-                        Some(prefix) => format!("{}.{}.{}", prefix, asset_id, epoch_no),
-                        None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
-                    };
+                return match &self.config.key_prefix {
+                    Some(prefix) => format!("{}.{}.{}", prefix, asset_id, epoch_no),
+                    None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
+                };
             },
             _ => {
                 return match &self.config.key_prefix {

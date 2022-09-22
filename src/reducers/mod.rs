@@ -31,20 +31,8 @@ pub mod tx_by_hash;
 pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
-
-// CRFA
-#[cfg(feature = "unstable")]
-pub mod balance_by_script;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_script;
-#[cfg(feature = "unstable")]
-pub mod total_tx_count;
-#[cfg(feature = "unstable")]
-pub mod total_balance;
 #[cfg(feature = "unstable")]
 pub mod asset_holders_by_asset_id;
-#[cfg(feature = "unstable")]
-pub mod unique_addresses_by_script;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -69,20 +57,10 @@ pub enum Config {
     LastBlockParameters(last_block_parameters::Config),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
-
-    #[cfg(feature = "unstable")]
-    BalanceByScript(balance_by_script::Config),
-    #[cfg(feature = "unstable")]
-    TxCountByScript(tx_count_by_script::Config),
-    #[cfg(feature = "unstable")]
-    TotalTransactionsCount(total_tx_count::Config),
-    #[cfg(feature = "unstable")]
-    TotalBalance(total_balance::Config),
     #[cfg(feature = "unstable")]
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
-    #[cfg(feature = "unstable")]
-    UniqueAddressesByScript(unique_addresses_by_script::Config),
 }
+
 impl Config {
     fn plugin(
         self,
@@ -110,20 +88,8 @@ impl Config {
             Config::LastBlockParameters(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
-
-            // CRFA
-            #[cfg(feature = "unstable")]
-            Config::BalanceByScript(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TxCountByScript(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TotalTransactionsCount(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TotalBalance(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::UniqueAddressesByScript(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -194,20 +160,8 @@ pub enum Reducer {
     LastBlockParameters(last_block_parameters::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
-
-    // CRFA
-    #[cfg(feature = "unstable")]
-    BalanceByScript(balance_by_script::Reducer),
-    #[cfg(feature = "unstable")]
-    TxCountByScript(tx_count_by_script::Reducer),
-    #[cfg(feature = "unstable")]
-    TotalTransactionsCount(total_tx_count::Reducer),
-    #[cfg(feature = "unstable")]
-    TotalBalance(total_balance::Reducer),
     #[cfg(feature = "unstable")]
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
-    #[cfg(feature = "unstable")]
-    UniqueAddressesByScript(unique_addresses_by_script::Reducer),
 }
 
 impl Reducer {
@@ -238,20 +192,8 @@ impl Reducer {
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
-
-            // CRFA
-            #[cfg(feature = "unstable")]
-            Reducer::BalanceByScript(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TxCountByScript(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TotalTransactionsCount(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::UniqueAddressesByScript(x) => x.reduce_block(block, ctx, output),
         }
 }
 }
