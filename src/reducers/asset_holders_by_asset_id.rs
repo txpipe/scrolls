@@ -33,25 +33,17 @@ impl Reducer {
         let def_key_prefix = "asset_holders_by_asset_id";
 
         match &self.config.aggr_by {
-            Some(aggr_type) => {
-                match aggr_type {
-                    AggrType::Epoch => {
-                        let k = match &self.config.key_prefix {
-                            Some(prefix) => format!("{}.{}.{}", prefix, asset_id, epoch_no),
-                            None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
-                        };
-        
-                        return k;
-                    }
-                }
+            Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
+                    return match &self.config.key_prefix {
+                        Some(prefix) => format!("{}.{}.{}", prefix, asset_id, epoch_no),
+                        None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
+                    };
             },
-            None => {
-                let k = match &self.config.key_prefix {
+            _ => {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, asset_id),
                     None => format!("{}.{}", def_key_prefix.to_string(), asset_id),
                 };
-
-                return k;
             },
         };
     }

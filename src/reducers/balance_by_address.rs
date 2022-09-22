@@ -29,7 +29,7 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let address = utxo.address().map(|x| x.to_string()).or_panic()?;
+        let address = utxo.address().map(|addr| addr.to_string()).or_panic()?;
 
         let key = match &self.config.key_prefix {
             Some(prefix) => format!("{}.{}", prefix, address),

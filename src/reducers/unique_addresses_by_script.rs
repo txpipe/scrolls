@@ -37,25 +37,17 @@ impl Reducer {
         let def_key_prefix = "unique_addresses_by_script";
 
         match &self.config.aggr_by {
-            Some(aggr_type) => {
-                match aggr_type {
-                    AggrType::Epoch => {
-                        let k = match &self.config.key_prefix {
-                            Some(prefix) => format!("{}.{}.{}", prefix, address, epoch_no),
-                            None => format!("{}.{}", def_key_prefix.to_string(), address),
-                        };
-        
-                        return k;
-                    }
-                }
+            Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
+                return match &self.config.key_prefix {
+                    Some(prefix) => format!("{}.{}.{}", prefix, address, epoch_no),
+                    None => format!("{}.{}", def_key_prefix.to_string(), address),
+                };
             },
-            None => {
-                let k = match &self.config.key_prefix {
+            _ => {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, address),
                     None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
-
-                return k;
             },
         };
     }
@@ -75,8 +67,7 @@ impl Reducer {
                         let delegation_part = shelley_addr.delegation();
 
                         match delegation_part {
-                            ShelleyDelegationPart::Key(_) => delegation_part.to_bech32().ok(),
-                            ShelleyDelegationPart::Script(_) => delegation_part.to_bech32().ok(),
+                            ShelleyDelegationPart::Key(_) | ShelleyDelegationPart::Script(_) => delegation_part.to_bech32().ok(),
                             _ => None,
                         }
                     },
@@ -87,8 +78,8 @@ impl Reducer {
         };
 
         if let Some(addr) = &maybe_addr {
-            if let Some(c_addr) = contract_address.to_bech32().ok() {
-                let key = self.config_key(&c_addr, epoch_no);
+            if let Some(contr_addr) = contract_address.to_bech32().ok() {
+                let key = self.config_key(&contr_addr, epoch_no);
 
                 let crdt = model::CRDTCommand::GrowOnlySetAdd(key, addr.to_string());
     
@@ -123,8 +114,8 @@ impl Reducer {
 
                 let enriched_outputs: Vec<(usize, MultiEraOutput)> = tx.produces();
 
-                let outputs_have_script = enriched_outputs.iter().find(|meo| {
-                    match meo.1.address().ok() {
+                let outputs_have_script = enriched_outputs.iter().find(|(_, meo)| {
+                    match meo.address().ok() {
                         Some(addr) => addr.has_script(),
                         None => false
                     }

@@ -9,11 +9,21 @@ use crate::crosscut::epochs::block_epoch;
 
 use crate::{crosscut, model, prelude::*};
 
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum AggrType {
+    Epoch,
+}
+
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum AddrType {
+    Hex,
+}
+
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub aggr_by: Option<String>,
-    pub addr_type: Option<String>,
+    pub aggr_by: Option<AggrType>,
+    pub addr_type: Option<AddrType>,
 }
 
 pub struct Reducer {
@@ -28,22 +38,18 @@ impl Reducer {
         let def_key_prefix = "trx_count";
 
         match &self.config.aggr_by {
-            Some(aggr) if aggr == "Epoch" => {
-                let k = match &self.config.key_prefix {
+            Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}.{}", prefix, address, epoch_no),
                     None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
-
-                return k;
-            }
+            },
             _ => {
-                let k = match &self.config.key_prefix {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, address),
                     None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
-
-                return k;
-            }
+            },
         };
     }
 
@@ -73,17 +79,17 @@ impl Reducer {
             None => return Result::Ok(None)
         };
 
-        let is_script_address = utxo.address().map_or(false, |x| x.has_script());
+        let is_script_address = utxo.address().map_or(false, |addr| addr.has_script());
 
         if !is_script_address {
             return Ok(None);
         }
 
         let address = utxo.address()
-        .map(|x| {
+        .map(|addr| {
             match &self.config.addr_type {
-                Some(addr_typ) if addr_typ == "HEX" => x.to_hex(),
-                _ => x.to_string()
+                Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
+                _ => addr.to_string()
             }
         })
         .or_panic()?;
@@ -99,54 +105,44 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         if block.era().has_feature(Feature::SmartContracts) {
             for tx in block.txs() {
-                if tx.is_valid() {
-                    let epoch_no = block_epoch(&self.chain, block);
+                let epoch_no = block_epoch(&self.chain, block);
 
-                    let input_addresses: Vec<_> = tx
-                        .inputs()
-                        .iter()
-                        .filter_map(|multi_era_input| {
-                            let output_ref = multi_era_input.output_ref();
+                let input_addresses: Vec<_> = tx
+                    .consumes()
+                    .iter()
+                    .filter_map(|mei| {
+                        let output_ref = mei.output_ref();
 
-                            let maybe_input_address =
-                                self.find_address_from_output_ref(ctx, &output_ref);
+                        let maybe_input_address =
+                            self.find_address_from_output_ref(ctx, &output_ref);
 
-                            match maybe_input_address {
-                                Ok(maybe_addr) => maybe_addr,
-                                Err(x) => {
-                                    log::error!(
-                                        "Not found, tx_id:{}, index_at:{}, e:{}",
-                                        output_ref.hash(),
-                                        output_ref.index(),
-                                        x
-                                    );
-                                    None
-                                }
-                            }
-                        })
-                        .collect();
+                        match maybe_input_address {
+                            Ok(maybe_addr) => maybe_addr,
+                            Err(_) => None
+                        }
+                    })
+                    .collect();
 
-                    let output_addresses: Vec<_> = tx
-                        .outputs()
-                        .iter()
-                        .filter(|p| p.address().map_or(false, |a| a.has_script()))
-                        .filter_map(|tx| tx.address().ok())
-                        .filter(|a| a.has_script())
-                        .map(|x| -> String {
-                            match &self.config.addr_type {
-                                Some(addr_typ) if addr_typ == "HEX" => x.to_hex(),
-                                _ => x.to_string()
-                            }
-                        })
-                        .collect();
+                let output_addresses: Vec<_> = tx
+                    .produces()
+                    .iter()
+                    .filter(|(_, meo)| meo.address().map_or(false, |a| a.has_script()))
+                    .filter_map(|(_, meo)| meo.address().ok())
+                    .filter(|addr| addr.has_script())
+                    .map(|addr| -> String {
+                        match &self.config.addr_type {
+                            Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
+                            _ => addr.to_string()
+                        }
+                    })
+                    .collect();
 
-                    let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
-                    let all_addresses_deduped: HashSet<String> =
-                        HashSet::from_iter(all_addresses.iter().cloned());
+                let all_addresses = [&input_addresses[..], &output_addresses[..]].concat();
+                let all_addresses_deduped: HashSet<String> =
+                    HashSet::from_iter(all_addresses.iter().cloned());
 
-                    for address in all_addresses_deduped.iter() {
-                        self.increment_for_address(address, output, epoch_no)?;
-                    }
+                for address in all_addresses_deduped.iter() {
+                    self.increment_for_address(address, output, epoch_no)?;
                 }
             }
         }

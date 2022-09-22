@@ -1,16 +1,21 @@
 use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
-use pallas::ledger::traverse::{MultiEraOutput, MultiEraTx};
+use pallas::ledger::traverse::MultiEraOutput;
 use serde::Deserialize;
 
 use crate::crosscut::epochs::block_epoch;
 
 use crate::{crosscut, model, prelude::*};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
+pub enum AggrType {
+    Epoch,
+}
+
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub aggr_by: Option<String>,
     pub filter: Option<crosscut::filters::Predicate>,
+    pub aggr_by: Option<AggrType>,
 }
 
 pub struct Reducer {
@@ -25,21 +30,17 @@ impl Reducer {
        let def_key_prefix = "total_balance";
        
        match &self.config.aggr_by {
-           Some(aggr) if aggr == "Epoch" => {
-               let k = match &self.config.key_prefix {
+           Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
+               return match &self.config.key_prefix {
                    Some(prefix) => format!("{}.{}", prefix, epoch_no),
                    None => format!("{}", def_key_prefix.to_string()),
                };
-
-               return k;
            }
            _ => {
-               let k = match &self.config.key_prefix {
+               return match &self.config.key_prefix {
                    Some(prefix) => format!("{}", prefix),
                    None => format!("{}", def_key_prefix.to_string()),
                };
-
-               return k;
            }
        };
    }
@@ -58,7 +59,7 @@ impl Reducer {
             None => return Ok(())
         };
 
-        let is_script_address = utxo.address().map_or(false, |x| x.has_script());
+        let is_script_address = utxo.address().map_or(false, |addr| addr.has_script());
 
         if !is_script_address {
             return Ok(());
@@ -79,7 +80,7 @@ impl Reducer {
         tx_output: &MultiEraOutput,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let is_script_address = tx_output.address().map_or(false, |x| x.has_script());
+        let is_script_address = tx_output.address().map_or(false, |addr| addr.has_script());
 
         if !is_script_address {
             return Ok(());
@@ -94,24 +95,6 @@ impl Reducer {
         Ok(())
     }
 
-    pub fn reduce_valid_tx(
-        &mut self,
-        tx: &MultiEraTx,
-        ctx: &model::BlockContext,
-        epoch_no: u64,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        for input in tx.inputs().iter().map(|i| i.output_ref()) {
-            self.process_inbound_txo(&ctx, epoch_no, &input, output)?;
-        }
-
-        for (_idx, tx_output) in tx.outputs().iter().enumerate() {
-            self.process_outbound_txo(epoch_no, tx_output, output)?;
-        }
-
-        Ok(())
-    }
-
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
@@ -120,10 +103,14 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
-                if tx.is_valid() {
-                    let epoch_no = block_epoch(&self.chain, block);
+                let epoch_no = block_epoch(&self.chain, block);
 
-                    self.reduce_valid_tx(&tx, ctx, epoch_no, output)?;
+                for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
+                    self.process_inbound_txo(&ctx, epoch_no, &consumed, output)?;
+                }
+        
+                for (_, produced) in tx.produces() {
+                    self.process_outbound_txo(epoch_no, &produced, output)?;
                 }
             }
         }

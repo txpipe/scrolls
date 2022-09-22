@@ -7,11 +7,22 @@ use serde::Deserialize;
 use crate::crosscut::epochs::block_epoch;
 use crate::{crosscut, model, prelude::*};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum AggrType {
+    Epoch,
+}
+
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum ReportingMode {
+    Volume,
+}
+
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub aggr_by: Option<String>,
     pub filter: Option<crosscut::filters::Predicate>,
+    pub aggr_by: Option<AggrType>,
+    pub report_mode: Option<ReportingMode>,
 }
 
 pub struct Reducer {
@@ -23,24 +34,20 @@ pub struct Reducer {
 impl Reducer {
 
     fn config_key(&self, address: String, epoch_no: u64) -> String {
-        let def_key_prefix = "balance_by_address";
+        let def_key_prefix = "balance_by_script";
 
         match &self.config.aggr_by {
-            Some(aggr) if aggr == "Epoch" => {
-                let k = match &self.config.key_prefix {
+            Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}.{}", prefix, address, epoch_no),
                     None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
-
-                return k;
-            }
+            },
             _ => {
-                let k = match &self.config.key_prefix {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, address),
                     None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
-
-                return k;
             }
         };
     }
@@ -60,17 +67,22 @@ impl Reducer {
             None => return Ok(())
         };
 
-        let is_script_address = utxo.address().map_or(false, |x| x.has_script());
+        let is_script_address = utxo.address().map_or(false, |addr| addr.has_script());
 
         if !is_script_address {
             return Ok(());
         }
 
-        let address = utxo.address().map(|x| x.to_string()).or_panic()?;
+        let address = utxo.address().map(|addr| addr.to_string()).or_panic()?;
 
         let key = self.config_key(address, epoch_no);
 
-        let crdt = model::CRDTCommand::PNCounter(key, (-1) * utxo.ada_amount() as i64);
+        let amount: i64 = match &self.config.report_mode {
+            Some(rep_mode) if matches!(rep_mode, ReportingMode::Volume) => utxo.ada_amount() as i64,
+            _ => (-1) * utxo.ada_amount() as i64,
+        };
+
+        let crdt = model::CRDTCommand::PNCounter(key, amount);
 
         output.send(gasket::messaging::Message::from(crdt))?;
 
@@ -83,13 +95,13 @@ impl Reducer {
         output: &mut super::OutputPort,
         epoch_no: u64,
     ) -> Result<(), gasket::error::Error> {
-        let is_script_address = tx_output.address().map_or(false, |x| x.has_script());
+        let is_script_address = tx_output.address().map_or(false, |addr| addr.has_script());
 
         if !is_script_address {
             return Ok(());
         }
 
-        let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
+        let address = tx_output.address().map(|addr| addr.to_string()).or_panic()?;
 
         let key = self.config_key(address, epoch_no);
 
@@ -109,16 +121,14 @@ impl Reducer {
 
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
-                if tx.is_valid() {
-                    let epoch_no = block_epoch(&self.chain, block);
+                let epoch_no = block_epoch(&self.chain, block);
 
-                    for input in tx.inputs().iter().map(|i| i.output_ref()) {
-                        self.process_inbound_txo(&ctx, &input, output, epoch_no)?;
-                    }
-
-                    for (_idx, tx_output) in tx.outputs().iter().enumerate() {
-                        self.process_outbound_txo(tx_output, output, epoch_no)?;
-                    }
+                for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
+                    self.process_inbound_txo(&ctx, &consumed, output, epoch_no)?;
+                }
+    
+                for (_, produced) in tx.produces() {
+                    self.process_outbound_txo(&produced, output, epoch_no)?;
                 }
             }
         }

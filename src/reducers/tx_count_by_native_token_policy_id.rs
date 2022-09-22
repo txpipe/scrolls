@@ -29,22 +29,18 @@ impl Reducer {
             Some(aggr_type) => {
                 match aggr_type {
                     AggrType::Epoch => {
-                        let k = match &self.config.key_prefix {
+                        return match &self.config.key_prefix {
                             Some(prefix) => format!("{}.{}.{}", prefix, policy_id, epoch_no),
                             None => format!("{}.{}", def_key_prefix.to_string(), policy_id),
                         };
-        
-                        return k;
                     }
                 }
             },
             None => {
-                let k = match &self.config.key_prefix {
+                return match &self.config.key_prefix {
                     Some(prefix) => format!("{}.{}", prefix, policy_id),
                     None => format!("{}.{}", def_key_prefix.to_string(), policy_id),
                 };
-
-                return k;
             },
         };
     }
