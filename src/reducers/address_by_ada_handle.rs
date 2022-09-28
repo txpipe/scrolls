@@ -1,10 +1,5 @@
-use std::str::FromStr;
-
-use pallas::codec::utils::{Bytes, KeyValuePairs};
-use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::babbage::Value;
-use pallas::ledger::traverse::MultiEraBlock;
 use pallas::ledger::traverse::MultiEraOutput;
+use pallas::ledger::traverse::{Asset, MultiEraBlock};
 use serde::Deserialize;
 
 use crate::{model, prelude::*};
@@ -18,42 +13,14 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    policy_id: Hash<28>,
-}
-
-type Asset = (Hash<28>, Bytes, u64);
-
-fn iter_policy_assets<'b>(
-    policy: &'b Hash<28>,
-    assets: &'b KeyValuePairs<Bytes, u64>,
-) -> impl Iterator<Item = Asset> + 'b {
-    assets
-        .iter()
-        .map(|(name, amount)| (policy.clone(), name.clone(), *amount))
-}
-
-// TODO: replace this with upstream pallas method
-fn collect_txo_assets(txo: &MultiEraOutput) -> Vec<Asset> {
-    txo.as_alonzo()
-        .iter()
-        .filter_map(|x| match &x.amount {
-            Value::Multiasset(_, x) => Some(x),
-            _ => None,
-        })
-        .flat_map(|x| x.iter())
-        .flat_map(|(p, a)| iter_policy_assets(p, a))
-        .collect::<Vec<_>>()
 }
 
 impl Reducer {
     fn to_ada_handle(&self, asset: Asset) -> Option<String> {
-        let (policy, name, _) = asset;
-
-        if !policy.eq(&self.policy_id) {
-            return None;
+        match asset.policy_hex() {
+            Some(policy_id) if policy_id.eq(&self.config.policy_id_hex) => asset.ascii_name(),
+            _ => None,
         }
-
-        String::from_utf8(name.into()).ok()
     }
 
     pub fn process_txo(
@@ -61,7 +28,8 @@ impl Reducer {
         txo: &MultiEraOutput,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let handles: Vec<_> = collect_txo_assets(&txo)
+        let handles: Vec<_> = txo
+            .non_ada_assets()
             .into_iter()
             .filter_map(|x| self.to_ada_handle(x))
             .collect();
@@ -73,6 +41,8 @@ impl Reducer {
         let address = txo.address().map(|x| x.to_string()).or_panic()?;
 
         for handle in handles {
+            log::debug!("ada handle match found: ${handle}=>{address}");
+
             let crdt = model::CRDTCommand::any_write_wins(
                 self.config.key_prefix.as_deref(),
                 handle,
@@ -103,11 +73,7 @@ impl Reducer {
 
 impl Config {
     pub fn plugin(self) -> super::Reducer {
-        let reducer = Reducer {
-            policy_id: Hash::<28>::from_str(&self.policy_id_hex)
-                .expect("invalid ada handle policy id"),
-            config: self,
-        };
+        let reducer = Reducer { config: self };
 
         super::Reducer::AddressByAdaHandle(reducer)
     }

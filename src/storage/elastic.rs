@@ -159,15 +159,12 @@ async fn apply_command(cmd: CRDTCommand, client: &Elasticsearch) -> Option<ESRes
     match cmd {
         CRDTCommand::BlockStarting(_) => None,
         CRDTCommand::AnyWriteWins(key, value) => client
-            .index(elasticsearch::IndexParts::IndexId(
-                "scrolls",
-                &key,
-            ))
+            .index(elasticsearch::IndexParts::IndexId("scrolls", &key))
             .body::<JsonValue>(json!({ "key": &key, "value": JsonValue::from(value) }))
             .send()
             .await
             .into(),
-        CRDTCommand::BlockFinished(point) => {
+        CRDTCommand::BlockFinished(_point) => {
             log::debug!("Elasticsearch storage doesn't support cursors ATM");
             None
         }

@@ -36,7 +36,7 @@ impl Reducer {
             None => format!("{}.{}", "balance_by_address".to_string(), address),
         };
 
-        let crdt = model::CRDTCommand::PNCounter(key, -1 * utxo.ada_amount() as i64);
+        let crdt = model::CRDTCommand::PNCounter(key, -1 * utxo.lovelace_amount() as i64);
 
         output.send(gasket::messaging::Message::from(crdt))?;
 
@@ -55,7 +55,7 @@ impl Reducer {
             None => format!("{}.{}", "balance_by_address".to_string(), address),
         };
 
-        let crdt = model::CRDTCommand::PNCounter(key, tx_output.ada_amount() as i64);
+        let crdt = model::CRDTCommand::PNCounter(key, tx_output.lovelace_amount() as i64);
 
         output.send(gasket::messaging::Message::from(crdt))?;
 
