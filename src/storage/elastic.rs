@@ -160,7 +160,7 @@ async fn apply_command(cmd: CRDTCommand, client: &Elasticsearch) -> Option<ESRes
         CRDTCommand::BlockStarting(_) => None,
         CRDTCommand::AnyWriteWins(key, value) => client
             .index(elasticsearch::IndexParts::IndexId(
-                "adahandles.mainnet",
+                "scrolls",
                 &key,
             ))
             .body::<JsonValue>(json!({ "key": &key, "value": JsonValue::from(value) }))
