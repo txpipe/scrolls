@@ -7,7 +7,7 @@ use crate::{
     model::{self, BlockContext},
 };
 
-type InputPort = gasket::messaging::InputPort<model::RawBlockPayload>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::RawBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::EnrichedBlockPayload>;
 
 pub struct Bootstrapper {
@@ -39,16 +39,14 @@ impl Bootstrapper {
             output: self.output,
         };
 
-        pipeline.register_stage(
-            spawn_stage(
-                worker,
-                gasket::runtime::Policy {
-                    tick_timeout: Some(Duration::from_secs(600)),
-                    ..Default::default()
-                },
-                Some("enrich-skip"),
-            ),
-        );
+        pipeline.register_stage(spawn_stage(
+            worker,
+            gasket::runtime::Policy {
+                tick_timeout: Some(Duration::from_secs(600)),
+                ..Default::default()
+            },
+            Some("enrich-skip"),
+        ));
     }
 }
 
@@ -78,6 +76,7 @@ impl gasket::runtime::Worker for Worker {
             }
         };
 
+        self.input.commit();
         Ok(WorkOutcome::Partial)
     }
 }

@@ -4,7 +4,7 @@ pub mod skip;
 #[cfg(feature = "elastic")]
 pub mod elastic;
 
-use gasket::messaging::InputPort;
+use gasket::messaging::TwoPhaseInputPort;
 use serde::Deserialize;
 
 use crate::{
@@ -49,7 +49,7 @@ pub enum Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::CRDTCommand> {
+    pub fn borrow_input_port(&mut self) -> &'_ mut TwoPhaseInputPort<model::CRDTCommand> {
         match self {
             Bootstrapper::Skip(x) => x.borrow_input_port(),
             Bootstrapper::Redis(x) => x.borrow_input_port(),
