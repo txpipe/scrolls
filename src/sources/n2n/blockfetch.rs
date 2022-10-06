@@ -17,7 +17,7 @@ impl<'a> blockfetch::Observer for Observer<'a> {
     }
 }
 
-pub type InputPort = gasket::messaging::InputPort<ChainSyncInternalPayload>;
+pub type InputPort = gasket::messaging::TwoPhaseInputPort<ChainSyncInternalPayload>;
 pub type OutputPort = gasket::messaging::OutputPort<RawBlockPayload>;
 
 pub struct Worker {
@@ -91,6 +91,7 @@ impl gasket::runtime::Worker for Worker {
             }
         };
 
+        self.input.commit();
         Ok(WorkOutcome::Partial)
     }
 }

@@ -19,7 +19,7 @@ use crate::{
     prelude::AppliesPolicy,
 };
 
-type InputPort = gasket::messaging::InputPort<model::RawBlockPayload>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::RawBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::EnrichedBlockPayload>;
 
 #[derive(Deserialize, Clone)]
@@ -256,6 +256,7 @@ impl gasket::runtime::Worker for Worker {
             }
         };
 
+        self.input.commit();
         Ok(WorkOutcome::Partial)
     }
 

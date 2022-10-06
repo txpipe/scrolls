@@ -18,7 +18,7 @@ use crate::{
     Error,
 };
 
-type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::CRDTCommand>;
 
 impl From<model::Value> for JsonValue {
     fn from(other: model::Value) -> JsonValue {
@@ -225,6 +225,8 @@ impl gasket::runtime::Worker for Worker {
             .block_on(async { apply_batch(batch, client, &self.policy).await })?;
 
         self.ops_count.inc(count as u64);
+        self.input.commit();
+
         Ok(WorkOutcome::Partial)
     }
 
