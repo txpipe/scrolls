@@ -31,6 +31,8 @@ pub mod tx_by_hash;
 pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
+#[cfg(feature = "unstable")]
+pub mod asset_holders_by_asset_id;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -55,6 +57,8 @@ pub enum Config {
     LastBlockParameters(last_block_parameters::Config),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
+    #[cfg(feature = "unstable")]
+    AssetHoldersByAsset(asset_holders_by_asset_id::Config),
 }
 
 impl Config {
@@ -84,6 +88,8 @@ impl Config {
             Config::LastBlockParameters(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
+            #[cfg(feature = "unstable")]
+            Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -154,6 +160,8 @@ pub enum Reducer {
     LastBlockParameters(last_block_parameters::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
+    #[cfg(feature = "unstable")]
+    AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
 }
 
 impl Reducer {
@@ -184,6 +192,8 @@ impl Reducer {
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
         }
-    }
+}
 }

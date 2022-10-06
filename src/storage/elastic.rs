@@ -27,6 +27,7 @@ impl From<model::Value> for JsonValue {
             model::Value::Cbor(x) => json!(hex::encode(x)),
             model::Value::BigInt(x) => json!(x),
             model::Value::Json(x) => x,
+            model::Value::BigInt(x) => json!({ "value": x }),
         }
     }
 }
@@ -164,8 +165,8 @@ async fn apply_command(cmd: CRDTCommand, client: &Elasticsearch) -> Option<ESRes
             .send()
             .await
             .into(),
-        CRDTCommand::BlockFinished(_point) => {
-            log::debug!("Elasticsearch storage doesn't support cursors ATM");
+        CRDTCommand::BlockFinished(_) => {
+            log::warn!("Elasticsearch storage doesn't support cursors ATM");
             None
         }
         _ => todo!(),

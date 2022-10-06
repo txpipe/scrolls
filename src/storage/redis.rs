@@ -182,6 +182,31 @@ impl gasket::runtime::Worker for Worker {
                     .zadd(key, value, ts)
                     .or_restart()?;
             }
+            model::CRDTCommand::SortedSetAdd(key, value, delta) => {
+                log::debug!("sorted set add [{}], value [{}], delta [{}]", key, value, delta);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zincr(key, value, delta)
+                    .or_restart()?;
+            }
+            model::CRDTCommand::SortedSetRemove(key, value, delta) => {
+                log::debug!("sorted set remove [{}], value [{}], delta [{}]", key, value, delta);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zincr(&key, value, delta)
+                    .or_restart()?;
+
+                    // removal of dangling scores  (aka garage collection)
+                    self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zrembyscore(&key, 0, 0)
+                    .or_restart()?;
+            }
             model::CRDTCommand::AnyWriteWins(key, value) => {
                 log::debug!("overwrite [{}]", key);
 
