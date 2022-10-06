@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
 
-type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::CRDTCommand>;
 
 impl ToRedisArgs for model::Value {
     fn write_redis_args<W>(&self, out: &mut W)
@@ -125,7 +125,10 @@ impl gasket::runtime::Worker for Worker {
 
         match msg.payload {
             model::CRDTCommand::BlockStarting(_) => {
-                // TODO: start transaction
+                // start redis transaction
+                redis::cmd("MULTI")
+                    .query(self.connection.as_mut().unwrap())
+                    .or_restart()?;
             }
             model::CRDTCommand::GrowOnlySetAdd(key, value) => {
                 self.connection
@@ -231,11 +234,17 @@ impl gasket::runtime::Worker for Worker {
                     .set("_cursor", &cursor_str)
                     .or_restart()?;
 
-                log::info!("new cursor saved to redis {}", &cursor_str)
+                log::info!("new cursor saved to redis {}", &cursor_str);
+
+                // end redis transaction
+                redis::cmd("EXEC")
+                    .query(self.connection.as_mut().unwrap())
+                    .or_restart()?;
             }
         };
 
         self.ops_count.inc(1);
+        self.input.commit();
 
         Ok(WorkOutcome::Partial)
     }

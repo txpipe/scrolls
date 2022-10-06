@@ -18,13 +18,14 @@ use crate::{
     Error,
 };
 
-type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::CRDTCommand>;
 
-impl Into<JsonValue> for model::Value {
-    fn into(self) -> JsonValue {
-        match self {
-            model::Value::String(x) => json!({ "value": x }),
-            model::Value::Cbor(x) => json!({ "cbor": hex::encode(x) }),
+impl From<model::Value> for JsonValue {
+    fn from(other: model::Value) -> JsonValue {
+        match other {
+            model::Value::String(x) => json!(x),
+            model::Value::Cbor(x) => json!(hex::encode(x)),
+            model::Value::BigInt(x) => json!(x),
             model::Value::Json(x) => x,
             model::Value::BigInt(x) => json!({ "value": x }),
         }
@@ -160,7 +161,7 @@ async fn apply_command(cmd: CRDTCommand, client: &Elasticsearch) -> Option<ESRes
         CRDTCommand::BlockStarting(_) => None,
         CRDTCommand::AnyWriteWins(key, value) => client
             .index(elasticsearch::IndexParts::IndexId("scrolls", &key))
-            .body::<JsonValue>(value.into())
+            .body::<JsonValue>(json!({ "key": &key, "value": JsonValue::from(value) }))
             .send()
             .await
             .into(),
@@ -191,8 +192,6 @@ async fn apply_batch(
                 .map_err(|e| Error::StorageError(e.to_string()))
                 .apply_policy(policy)
                 .or_panic()?;
-
-            log::warn!("op executed on elastic");
         }
     }
 
@@ -227,6 +226,8 @@ impl gasket::runtime::Worker for Worker {
             .block_on(async { apply_batch(batch, client, &self.policy).await })?;
 
         self.ops_count.inc(count as u64);
+        self.input.commit();
+
         Ok(WorkOutcome::Partial)
     }
 
