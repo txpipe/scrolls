@@ -4,7 +4,7 @@ use crate::{crosscut, model, prelude::*};
 
 use super::Reducer;
 
-type InputPort = gasket::messaging::InputPort<model::EnrichedBlockPayload>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::EnrichedBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
 pub struct Worker {
@@ -87,6 +87,7 @@ impl gasket::runtime::Worker for Worker {
             }
         }
 
+        self.input.commit();
         Ok(gasket::runtime::WorkOutcome::Partial)
     }
 }

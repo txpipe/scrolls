@@ -77,7 +77,7 @@ pub type Key = String;
 pub type Delta = i64;
 pub type Timestamp = u64;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Value {
     String(String),
     BigInt(i128),
@@ -103,7 +103,7 @@ impl From<serde_json::Value> for Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum CRDTCommand {
     BlockStarting(Point),

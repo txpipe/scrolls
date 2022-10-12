@@ -55,7 +55,7 @@ impl Reducer {
 
         let key = self.config_key(address, epoch_no);
 
-        let amount = tx_output.ada_amount() as i64;
+        let amount = tx_output.lovelace_amount() as i64;
 
         let crdt = model::CRDTCommand::PNCounter(key, amount);
 

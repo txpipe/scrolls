@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
 
-type InputPort = gasket::messaging::InputPort<model::CRDTCommand>;
+type InputPort = gasket::messaging::TwoPhaseInputPort<model::CRDTCommand>;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {}
@@ -126,7 +126,7 @@ impl gasket::runtime::Worker for Worker {
         };
 
         self.ops_count.inc(1);
-
+        self.input.commit();
         Ok(WorkOutcome::Partial)
     }
 }

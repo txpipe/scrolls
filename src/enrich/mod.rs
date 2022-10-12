@@ -1,7 +1,7 @@
 pub mod skip;
 pub mod sled;
 
-use gasket::messaging::{InputPort, OutputPort};
+use gasket::messaging::{OutputPort, TwoPhaseInputPort};
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
@@ -34,7 +34,7 @@ pub enum Bootstrapper {
 }
 
 impl Bootstrapper {
-    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort<model::RawBlockPayload> {
+    pub fn borrow_input_port(&mut self) -> &'_ mut TwoPhaseInputPort<model::RawBlockPayload> {
         match self {
             Bootstrapper::Skip(x) => x.borrow_input_port(),
             Bootstrapper::Sled(x) => x.borrow_input_port(),

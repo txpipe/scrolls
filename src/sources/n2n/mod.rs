@@ -4,14 +4,14 @@ mod transport;
 
 use std::time::Duration;
 
-use gasket::messaging::{InputPort, OutputPort};
+use gasket::messaging::{OutputPort, TwoPhaseInputPort};
 
 use pallas::network::miniprotocols::Point;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model, storage};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ChainSyncInternalPayload {
     RollForward(Point),
     RollBack(Point),
@@ -69,7 +69,7 @@ impl Bootstrapper {
 
     pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline, cursor: storage::Cursor) {
         let mut headers_out = OutputPort::<ChainSyncInternalPayload>::default();
-        let mut headers_in = InputPort::<ChainSyncInternalPayload>::default();
+        let mut headers_in = TwoPhaseInputPort::<ChainSyncInternalPayload>::default();
         gasket::messaging::connect_ports(&mut headers_out, &mut headers_in, 10);
 
         pipeline.register_stage(gasket::runtime::spawn_stage(
