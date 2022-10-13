@@ -1089,9 +1089,9 @@ checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
 
 [[package]]
 name = "pallas"
-version = "0.14.0-alpha.5"
+version = "0.14.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efb83a2370c24935d1acc91b74eee532f0884eb58131f8575b2f9980eb11f6b5"
+checksum = "6508e75d5b58633e0cc431962129ed246eaa3b208888bd0767ad67e23c137ecb"
 dependencies = [
  "pallas-addresses",
  "pallas-codec",
@@ -1504,7 +1504,7 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "scrolls"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "bech32 0.8.1",
  "clap",
