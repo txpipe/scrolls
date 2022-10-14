@@ -33,7 +33,7 @@ pub fn define_chainsync_start(
     match cursor.last_point()? {
         Some(x) => {
             log::info!("found existing cursor in storage plugin: {:?}", x);
-            return Ok(Some(vec![x.clone().try_into()?]));
+            return Ok(Some(vec![x.try_into()?]));
         }
         None => log::info!("no cursor found in storage plugin"),
     };

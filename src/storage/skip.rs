@@ -43,7 +43,7 @@ impl Bootstrapper {
         let worker = Worker {
             input: self.input,
             ops_count: Default::default(),
-            last_point: self.last_point.clone(),
+            last_point: self.last_point,
         };
 
         pipeline.register_stage(spawn_stage(
@@ -101,10 +101,20 @@ impl gasket::runtime::Worker for Worker {
                 log::debug!("adding to set [{}], value [{}]", key, value);
             }
             model::CRDTCommand::SortedSetAdd(key, value, delta) => {
-                log::debug!("adding to set [{}], value [{}], delta [{}]", key, value, delta);
+                log::debug!(
+                    "adding to set [{}], value [{}], delta [{}]",
+                    key,
+                    value,
+                    delta
+                );
             }
             model::CRDTCommand::SortedSetRemove(key, value, delta) => {
-                log::debug!("removing from set [{}], value [{}], delta [{}]", key, value, delta);
+                log::debug!(
+                    "removing from set [{}], value [{}], delta [{}]",
+                    key,
+                    value,
+                    delta
+                );
             }
             model::CRDTCommand::SetRemove(key, value) => {
                 log::debug!("removing from set [{}], value [{}]", key, value);

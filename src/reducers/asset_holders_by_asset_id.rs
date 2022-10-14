@@ -140,7 +140,7 @@ impl Reducer {
                 let epoch_no = block_epoch(&self.chain, block);
 
                 for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
-                    self.process_consumed_txo(&ctx, &consumed, epoch_no, output)?;
+                    self.process_consumed_txo(ctx, &consumed, epoch_no, output)?;
                 }
 
                 for (_, meo) in tx.produces() {
@@ -175,7 +175,7 @@ impl Config {
             config: self,
             chain: chain.clone(),
             policy: policy.clone(),
-            policy_ids: policy_ids.clone(),
+            policy_ids,
         };
 
         super::Reducer::AssetHoldersByAssetId(reducer)

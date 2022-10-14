@@ -1,4 +1,3 @@
-use clap;
 use scrolls::{bootstrap, crosscut, enrich, reducers, sources, storage};
 use serde::Deserialize;
 use std::time::Duration;
@@ -72,10 +71,9 @@ fn should_stop(pipeline: &bootstrap::Pipeline) -> bool {
         .tethers
         .iter()
         .any(|tether| match tether.check_state() {
-            gasket::runtime::TetherState::Alive(x) => match x {
-                gasket::runtime::StageState::StandBy => true,
-                _ => false,
-            },
+            gasket::runtime::TetherState::Alive(x) => {
+                matches!(x, gasket::runtime::StageState::StandBy)
+            }
             _ => true,
         })
 }
@@ -104,7 +102,7 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
         .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
 
     let chain = config.chain.unwrap_or_default().into();
-    let policy = config.policy.unwrap_or_default().into();
+    let policy = config.policy.unwrap_or_default();
 
     let source = config
         .source

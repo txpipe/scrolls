@@ -12,7 +12,7 @@ use crate::sources::n2n::transport::Transport;
 use crate::{crosscut, sources::utils};
 use crate::{storage, Error};
 
-fn to_traverse<'b>(header: &'b HeaderContent) -> Result<MultiEraHeader<'b>, Error> {
+fn to_traverse(header: &HeaderContent) -> Result<MultiEraHeader<'_>, Error> {
     MultiEraHeader::decode(
         header.variant,
         header.byron_prefix.map(|x| x.0),
@@ -44,7 +44,7 @@ impl ChainObserver {
             chain_tip,
             output,
             chain_buffer: Default::default(),
-            finalize_config
+            finalize_config,
         }
     }
 }
