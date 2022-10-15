@@ -1,4 +1,4 @@
-// used by crfa in prod, c1 key
+// used by crfa in prod
 
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
@@ -6,6 +6,8 @@ use serde::Deserialize;
 
 use crate::crosscut::epochs::block_epoch;
 use crate::{crosscut, model, prelude::*};
+
+use std::collections::HashSet;
 
 #[derive(Deserialize, Copy, Clone)]
 pub enum Projection {
@@ -41,7 +43,7 @@ pub struct Reducer {
 impl Reducer {
 
     fn config_key(&self, address: String, epoch_no: u64) -> String {
-        let def_key_prefix = "balance_by_script";
+        let def_key_prefix = "fees_by_script";
 
         match &self.config.aggr_by {
             Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
@@ -62,9 +64,8 @@ impl Reducer {
     fn process_inbound_txo(
         &mut self,
         ctx: &model::BlockContext,
+        seen: &mut HashSet<String>,
         input: &OutputRef,
-        output: &mut super::OutputPort,
-        epoch_no: u64
     ) -> Result<(), gasket::error::Error> {
 
         let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
@@ -89,25 +90,15 @@ impl Reducer {
         })
         .or_panic()?;
 
-        let key = self.config_key(address, epoch_no);
-
-        let amount: i64 = (-1) * utxo.lovelace_amount() as i64;
-
-        let crdt = match &self.config.projection {
-            Projection::Individual => model::CRDTCommand::GrowOnlySetAdd(key, format!("{}", amount)),
-            Projection::Total => model::CRDTCommand::PNCounter(key, amount),
-        };
-
-        output.send(gasket::messaging::Message::from(crdt))?;
+        seen.insert(address);
 
         Ok(())
     }
 
     fn process_outbound_txo(
         &mut self,
+        seen: &mut HashSet<String>,
         tx_output: &MultiEraOutput,
-        output: &mut super::OutputPort,
-        epoch_no: u64,
     ) -> Result<(), gasket::error::Error> {
         let is_script_address = tx_output.address().map_or(false, |addr| addr.has_script());
 
@@ -124,16 +115,7 @@ impl Reducer {
         })
         .or_panic()?;
 
-        let key = self.config_key(address, epoch_no);
-
-        let amount = tx_output.lovelace_amount() as i64;
-
-        let crdt = match &self.config.projection {
-            Projection::Individual => model::CRDTCommand::GrowOnlySetAdd(key, format!("{}", amount)),
-            Projection::Total => model::CRDTCommand::PNCounter(key, amount),
-        };
-
-        output.send(gasket::messaging::Message::from(crdt))?;
+        seen.insert(address);
 
         Ok(())
     }
@@ -148,13 +130,39 @@ impl Reducer {
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
                 let epoch_no = block_epoch(&self.chain, block);
+                let mut seen = HashSet::new();
 
                 for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
-                    self.process_inbound_txo(&ctx, &consumed, output, epoch_no)?;
+                    self.process_inbound_txo(&ctx, &mut seen, &consumed)?;
                 }
-    
+
                 for (_, produced) in tx.produces() {
-                    self.process_outbound_txo(&produced, output, epoch_no)?;
+                    self.process_outbound_txo(&mut seen, &produced)?;
+                }
+
+                let fee = tx.fee().unwrap_or(0);
+
+                if fee == 0 {
+                    return Ok(());
+                }
+
+                let seen_size = seen.len();
+
+                if seen_size == 0 {
+                    return Ok(());
+                }
+
+                let fee_per_addr = fee / (seen_size as u64);
+
+                for addr in seen.iter() {
+                    let key = self.config_key(addr.to_string(), epoch_no);
+
+                    let crdt = match &self.config.projection {
+                        Projection::Individual => model::CRDTCommand::GrowOnlySetAdd(key, format!("{}", fee)),
+                        Projection::Total => model::CRDTCommand::PNCounter(key, fee_per_addr as i64),
+                    };
+
+                    output.send(gasket::messaging::Message::from(crdt))?;
                 }
             }
         }
@@ -173,6 +181,6 @@ impl Config {
             chain: chain.clone(),
         };
 
-        super::Reducer::BalanceByScript(reducer)
+        super::Reducer::FeesByScript(reducer)
     }
 }

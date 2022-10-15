@@ -8,6 +8,11 @@ use pallas::crypto::hash::Hash;
 use crate::crosscut::epochs::block_epoch;
 use std::str::FromStr;
 
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum AddrType {
+    Hex,
+}
+
 #[derive(Deserialize, Copy, Clone)]
 pub enum AggrType {
     Epoch,
@@ -24,6 +29,7 @@ pub struct Config {
     /// If specified only those policy ids as hex will be taken into account, if
     /// not all policy ids will be indexed.
     pub policy_ids_hex: Option<Vec<String>>,
+    pub key_addr_type: Option<AddrType>,
 }
 
 pub struct Reducer {
@@ -74,7 +80,14 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let address = utxo.address().map(|addr| addr.to_string()).or_panic()?;
+        let address = utxo.address()
+        .map(|addr| {
+            match &self.config.key_addr_type {
+                Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
+                _ => addr.to_string()
+            }
+        })
+        .or_panic()?;
 
         for asset in utxo.assets() {
             match asset {
@@ -103,10 +116,15 @@ impl Reducer {
         epoch_no: u64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let address = tx_output
-            .address()
-            .map(|addr| addr.to_string())
-            .or_panic()?;
+
+        let address = tx_output.address()
+        .map(|addr| {
+            match &self.config.key_addr_type {
+                Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
+                _ => addr.to_string()
+            }
+        })
+        .or_panic()?;
 
         for asset in tx_output.assets() {
             match asset {
@@ -116,8 +134,7 @@ impl Reducer {
                         let key = self.config_key(subject, epoch_no);
                         let delta = quantity as i64;
 
-                        let crdt =
-                            model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
+                        let crdt = model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
 
                         output.send(gasket::messaging::Message::from(crdt))?;
                     }

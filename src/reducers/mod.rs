@@ -47,6 +47,9 @@ pub mod total_balance;
 pub mod unique_addresses_by_script;
 #[cfg(feature = "unstable")]
 pub mod volume_by_address;
+#[cfg(feature = "unstable")]
+pub mod fees_by_script;
+
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -87,6 +90,8 @@ pub enum Config {
     UniqueAddressesByScript(unique_addresses_by_script::Config),
     #[cfg(feature = "unstable")]
     VolumeByAddress(volume_by_address::Config),
+    #[cfg(feature = "unstable")]
+    FeesByScript(fees_by_script::Config),
 }
 
 impl Config {
@@ -98,7 +103,7 @@ impl Config {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
-            Config::PoolByStake(c) => c.plugin(),
+            Config::PoolByStake(c) => c.plugin(policy),
 
             #[cfg(feature = "unstable")]
             Config::AddressByTxo(c) => c.plugin(policy),
@@ -132,6 +137,8 @@ impl Config {
             Config::UniqueAddressesByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::VolumeByAddress(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::FeesByScript(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -218,6 +225,8 @@ pub enum Reducer {
     UniqueAddressesByScript(unique_addresses_by_script::Reducer),
     #[cfg(feature = "unstable")]
     VolumeByAddress(volume_by_address::Reducer),
+    #[cfg(feature = "unstable")]
+    FeesByScript(fees_by_script::Reducer),
 }
 
 impl Reducer {
@@ -230,7 +239,7 @@ impl Reducer {
         match self {
             Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
             Reducer::PointByTx(x) => x.reduce_block(block, output),
-            Reducer::PoolByStake(x) => x.reduce_block(block, output),
+            Reducer::PoolByStake(x) => x.reduce_block(block, ctx, output),
 
             #[cfg(feature = "unstable")]
             Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
@@ -264,6 +273,8 @@ impl Reducer {
             Reducer::UniqueAddressesByScript(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::VolumeByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::FeesByScript(x) => x.reduce_block(block, ctx, output),
         }
 }
 }

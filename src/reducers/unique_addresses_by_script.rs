@@ -8,6 +8,11 @@ use crate::{crosscut, model, prelude::*};
 
 use crate::crosscut::epochs::block_epoch;
 
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum AddrType {
+    Hex,
+}
+
 #[derive(Deserialize, Copy, Clone)]
 pub enum AggrType {
     Epoch,
@@ -24,6 +29,7 @@ pub struct Config {
     pub filter: Option<crosscut::filters::Predicate>,
     pub aggr_by: Option<AggrType>,
     pub addr_type: AddressType,
+    pub key_addr_type: Option<AddrType>,
 }
 
 pub struct Reducer {
@@ -67,11 +73,21 @@ impl Reducer {
                         let delegation_part = shelley_addr.delegation();
 
                         match delegation_part {
-                            ShelleyDelegationPart::Key(_) | ShelleyDelegationPart::Script(_) => delegation_part.to_bech32().ok(),
+                            ShelleyDelegationPart::Key(_) | ShelleyDelegationPart::Script(_) => {
+                                match &self.config.key_addr_type {
+                                    Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => Some(delegation_part.to_hex()),
+                                    _ => delegation_part.to_bech32().ok()
+                                }
+                            },
                             _ => None,
                         }
                     },
-                    AddressType::Payment => shelley_addr.to_bech32().ok(),
+                    AddressType::Payment => {
+                        match &self.config.key_addr_type {
+                            Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => Some(shelley_addr.to_hex()),
+                            _ => shelley_addr.to_bech32().ok()
+                        }
+                    },
                 }
             },
             _ => None,

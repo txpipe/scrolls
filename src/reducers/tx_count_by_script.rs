@@ -23,7 +23,7 @@ pub enum AddrType {
 pub struct Config {
     pub key_prefix: Option<String>,
     pub aggr_by: Option<AggrType>,
-    pub addr_type: Option<AddrType>,
+    pub key_addr_type: Option<AddrType>,
 }
 
 pub struct Reducer {
@@ -87,7 +87,7 @@ impl Reducer {
 
         let address = utxo.address()
         .map(|addr| {
-            match &self.config.addr_type {
+            match &self.config.key_addr_type {
                 Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
                 _ => addr.to_string()
             }
@@ -130,7 +130,7 @@ impl Reducer {
                     .filter_map(|(_, meo)| meo.address().ok())
                     .filter(|addr| addr.has_script())
                     .map(|addr| -> String {
-                        match &self.config.addr_type {
+                        match &self.config.key_addr_type {
                             Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
                             _ => addr.to_string()
                         }

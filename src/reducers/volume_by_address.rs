@@ -1,3 +1,4 @@
+
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
@@ -6,9 +7,20 @@ use crate::{crosscut, model, prelude::*};
 
 use crate::crosscut::epochs::block_epoch;
 
+#[derive(Deserialize, Copy, Clone)]
+pub enum Projection {
+    Individual,
+    Total,
+}
+
 #[derive(Deserialize, Copy, Clone, PartialEq)]
 pub enum AggrType {
     Epoch,
+}
+
+#[derive(Deserialize, Copy, Clone, PartialEq)]
+pub enum AddrType {
+    Hex,
 }
 
 #[derive(Deserialize)]
@@ -16,6 +28,8 @@ pub struct Config {
     pub key_prefix: Option<String>,
     pub filter: Option<crosscut::filters::Predicate>,
     pub aggr_by: Option<AggrType>,
+    pub key_addr_type: Option<AddrType>,
+    pub projection: Projection,
 }
 
 pub struct Reducer {
@@ -27,7 +41,7 @@ pub struct Reducer {
 impl Reducer {
 
     fn config_key(&self, address: String, epoch_no: u64) -> String {
-        let def_key_prefix = "volume_by_script";
+        let def_key_prefix = "volume_by_address";
 
         match &self.config.aggr_by {
             Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
@@ -51,13 +65,24 @@ impl Reducer {
         output: &mut super::OutputPort,
         epoch_no: u64
     ) -> Result<(), gasket::error::Error> {
-        let address = tx_output.address().map(|x| x.to_string()).or_panic()?;
+
+        let address = tx_output.address()
+        .map(|addr| {
+            match &self.config.key_addr_type {
+                Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => addr.to_hex(),
+                _ => addr.to_string()
+            }
+        })
+        .or_panic()?;
 
         let key = self.config_key(address, epoch_no);
 
         let amount = tx_output.lovelace_amount() as i64;
 
-        let crdt = model::CRDTCommand::PNCounter(key, amount);
+        let crdt = match &self.config.projection {
+            Projection::Individual => model::CRDTCommand::GrowOnlySetAdd(key, format!("{}", amount)),
+            Projection::Total => model::CRDTCommand::PNCounter(key, amount as i64),
+        };
 
         output.send(gasket::messaging::Message::from(crdt))?;
 

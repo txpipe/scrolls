@@ -3,15 +3,17 @@ use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::model;
+use crate::{crosscut, model, prelude::*};
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
+    pub filter: Option<crosscut::filters::Predicate>,
 }
 
 pub struct Reducer {
     config: Config,
+    policy: crosscut::policies::RuntimePolicy,
 }
 
 impl Reducer {
@@ -44,16 +46,19 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
+        ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let slot = block.slot();
 
         for tx in block.txs() {
-            if tx.is_valid() {
-                for cert in tx.certs() {
-                    if let Some(cert) = cert.as_alonzo() {
-                        if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
-                            self.send_key_write(cred, pool, slot, output)?;
+            if filter_matches!(self, block, &tx, ctx) {
+                if tx.is_valid() {
+                    for cert in tx.certs() {
+                        if let Some(cert) = cert.as_alonzo() {
+                            if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
+                                self.send_key_write(cred, pool, slot, output)?;
+                            }
                         }
                     }
                 }
@@ -65,8 +70,12 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self) -> super::Reducer {
-        let reducer = Reducer { config: self };
+    pub fn plugin(self, 
+        policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
+        let reducer = Reducer { 
+            config: self,
+            policy: policy.clone()
+         };
         super::Reducer::PoolByStake(reducer)
     }
 }
