@@ -3,7 +3,7 @@ use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{crosscut, model, prelude::*};
+use crate::{crosscut, model};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -13,6 +13,7 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
+
     policy: crosscut::policies::RuntimePolicy,
 }
 
@@ -52,13 +53,11 @@ impl Reducer {
         let slot = block.slot();
 
         for tx in block.txs() {
-            if filter_matches!(self, block, &tx, ctx) {
-                if tx.is_valid() {
-                    for cert in tx.certs() {
-                        if let Some(cert) = cert.as_alonzo() {
-                            if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
-                                self.send_key_write(cred, pool, slot, output)?;
-                            }
+            if tx.is_valid() {
+                for cert in tx.certs() {
+                    if let Some(cert) = cert.as_alonzo() {
+                        if let alonzo::Certificate::StakeDelegation(cred, pool) = cert {
+                            self.send_key_write(cred, pool, slot, output)?;
                         }
                     }
                 }
