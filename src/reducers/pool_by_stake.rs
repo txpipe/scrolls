@@ -13,7 +13,6 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-
     policy: crosscut::policies::RuntimePolicy,
 }
 

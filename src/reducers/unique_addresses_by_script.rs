@@ -94,12 +94,24 @@ impl Reducer {
         };
 
         if let Some(addr) = &maybe_addr {
-            if let Some(contr_addr) = contract_address.to_bech32().ok() {
-                let key = self.config_key(&contr_addr, epoch_no);
 
-                let crdt = model::CRDTCommand::GrowOnlySetAdd(key, addr.to_string());
+            match &self.config.key_addr_type {
+                Some(addr_typ) if matches!(addr_typ, AddrType::Hex) => {
+                    let key = self.config_key(&contract_address.to_hex(), epoch_no);
     
-                output.send(gasket::messaging::Message::from(crdt))?;
+                    let crdt = model::CRDTCommand::GrowOnlySetAdd(key, addr.to_string());
+        
+                    output.send(gasket::messaging::Message::from(crdt))?;
+                }
+                _ => {
+                    if let Some(contr_addr) = contract_address.to_bech32().ok() {
+                        let key = self.config_key(&contr_addr, epoch_no);
+        
+                        let crdt = model::CRDTCommand::GrowOnlySetAdd(key, addr.to_string());
+            
+                        output.send(gasket::messaging::Message::from(crdt))?;
+                    }
+                }
             }
         }
 
