@@ -49,7 +49,8 @@ pub mod unique_addresses_by_script;
 pub mod volume_by_address;
 #[cfg(feature = "unstable")]
 pub mod fees_by_script;
-
+#[cfg(feature = "unstable")]
+pub mod transaction_size_by_script;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -92,6 +93,8 @@ pub enum Config {
     VolumeByAddress(volume_by_address::Config),
     #[cfg(feature = "unstable")]
     FeesByScript(fees_by_script::Config),
+    #[cfg(feature = "unstable")]
+    TransactionSizeByScript(transaction_size_by_script::Config),
 }
 
 impl Config {
@@ -139,6 +142,8 @@ impl Config {
             Config::VolumeByAddress(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::FeesByScript(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TransactionSizeByScript(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -227,6 +232,8 @@ pub enum Reducer {
     VolumeByAddress(volume_by_address::Reducer),
     #[cfg(feature = "unstable")]
     FeesByScript(fees_by_script::Reducer),
+    #[cfg(feature = "unstable")]
+    TransactionSizeByScript(transaction_size_by_script::Reducer),
 }
 
 impl Reducer {
@@ -275,6 +282,8 @@ impl Reducer {
             Reducer::VolumeByAddress(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::FeesByScript(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TransactionSizeByScript(x) => x.reduce_block(block, ctx, output),
         }
 }
 }
