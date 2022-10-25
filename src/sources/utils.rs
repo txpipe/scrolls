@@ -1,56 +1,54 @@
-use pallas::network::{
-    miniprotocols::{chainsync::TipFinder, run_agent, Point},
-    multiplexer::StdChannelBuffer,
+use std::convert::TryInto;
+
+use pallas::{
+    codec::Fragment,
+    network::{
+        miniprotocols::{chainsync, Point},
+        multiplexer::StdChannel,
+    },
 };
 
 use crate::{crosscut, storage};
 
-pub fn find_end_of_chain(
-    chain: &crosscut::ChainWellKnownInfo,
-    channel: &mut StdChannelBuffer,
-) -> Result<Point, crate::Error> {
-    let point = Point::Specific(
-        chain.shelley_known_slot,
-        hex::decode(&chain.shelley_known_hash)
-            .map_err(|_| crate::Error::config("can't decode shelley known hash"))?,
-    );
-
-    let agent = TipFinder::initial(point);
-    let agent = run_agent(agent, channel).map_err(crate::Error::ouroboros)?;
-
-    match agent.output {
-        Some(tip) => Ok(tip.0),
-        None => Err(crate::Error::message("failure acquiring end of chain")),
-    }
-}
-
-pub fn define_chainsync_start(
-    chain: &crosscut::ChainWellKnownInfo,
+pub fn define_chainsync_start<C: Fragment>(
     intersect: &crosscut::IntersectConfig,
     cursor: &mut storage::Cursor,
-    channel: &mut StdChannelBuffer,
-) -> Result<Option<Vec<Point>>, crate::Error> {
+    client: &mut chainsync::Client<StdChannel, C>,
+) -> Result<Option<Point>, crate::Error> {
     match cursor.last_point()? {
         Some(x) => {
             log::info!("found existing cursor in storage plugin: {:?}", x);
-            return Ok(Some(vec![x.clone().try_into()?]));
+            let point = x.try_into()?;
+            let (point, _) = client
+                .find_intersect(vec![point])
+                .map_err(crate::Error::ouroboros)?;
+            return Ok(point);
         }
         None => log::info!("no cursor found in storage plugin"),
     };
 
     match &intersect {
-        crosscut::IntersectConfig::Origin => Ok(None),
+        crosscut::IntersectConfig::Origin => {
+            let point = client.intersect_origin().map_err(crate::Error::ouroboros)?;
+            Ok(Some(point))
+        }
         crosscut::IntersectConfig::Tip => {
-            let tip = find_end_of_chain(chain, channel)?;
-            Ok(Some(vec![tip]))
+            let point = client.intersect_tip().map_err(crate::Error::ouroboros)?;
+            Ok(Some(point))
         }
         crosscut::IntersectConfig::Point(_, _) => {
             let point = intersect.get_point().expect("point value");
-            Ok(Some(vec![point]))
+            let (point, _) = client
+                .find_intersect(vec![point])
+                .map_err(crate::Error::ouroboros)?;
+            Ok(point)
         }
         crosscut::IntersectConfig::Fallbacks(_) => {
             let points = intersect.get_fallbacks().expect("fallback values");
-            Ok(Some(points))
+            let (point, _) = client
+                .find_intersect(points)
+                .map_err(crate::Error::ouroboros)?;
+            Ok(point)
         }
     }
 }
