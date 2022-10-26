@@ -24,10 +24,11 @@ impl Config {
         chain: &crosscut::ChainWellKnownInfo,
         intersect: &crosscut::IntersectConfig,
         finalize: &Option<crosscut::FinalizeConfig>,
+        policy: &crosscut::policies::RuntimePolicy,
     ) -> Bootstrapper {
         match self {
-            Config::N2N(c) => Bootstrapper::N2N(c.bootstrapper(chain, intersect, finalize)),
-            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, intersect, finalize)),
+            Config::N2N(c) => Bootstrapper::N2N(c.bootstrapper(chain, intersect, finalize, policy)),
+            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, intersect, finalize, policy)),
         }
     }
 }

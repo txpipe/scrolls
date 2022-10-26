@@ -108,7 +108,7 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
 
     let source = config
         .source
-        .bootstrapper(&chain, &config.intersect, &config.finalize);
+        .bootstrapper(&chain, &config.intersect, &config.finalize, &policy);
 
     let enrich = config.enrich.unwrap_or_default().bootstrapper(&policy);
 
