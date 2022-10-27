@@ -45,6 +45,9 @@ tokio = { version = "1.21.1", features = ["rt-multi-thread"], optional = true }
 # elastic feature
 elasticsearch = { version = "8.4.0-alpha.1", optional = true }
 
+# mongodb feature
+mongodb = { version = "2.3.1", optional = true }
+
 # tui feature
 indicatif = { version = "0.17.0-rc.11", optional = true }
 
@@ -54,6 +57,7 @@ openssl = { version = "0.10", optional = true, features = ["vendored"] }
 [features]
 async = ["futures", "tokio"]
 elastic = ["elasticsearch", "async", "openssl"]
+storage-mongodb = ["mongodb", "async"]
 unstable = ["elastic"]
 tui = ["indicatif"]
 default = ["tui"]

@@ -4,6 +4,9 @@ pub mod skip;
 #[cfg(feature = "elastic")]
 pub mod elastic;
 
+#[cfg(feature = "storage-mongodb")]
+pub mod mongodb;
+
 use gasket::messaging::TwoPhaseInputPort;
 use serde::Deserialize;
 
@@ -21,6 +24,9 @@ pub enum Config {
 
     #[cfg(feature = "elastic")]
     Elastic(elastic::Config),
+
+    #[cfg(feature = "storage-mongodb")]
+    MongoDb(mongodb::Config),
 }
 
 impl Config {
@@ -36,6 +42,9 @@ impl Config {
 
             #[cfg(feature = "elastic")]
             Config::Elastic(c) => Bootstrapper::Elastic(c.bootstrapper(chain, intersect, policy)),
+
+            #[cfg(feature = "storage-mongodb")]
+            Config::MongoDb(c) => Bootstrapper::MongoDb(c.bootstrapper(chain, intersect, policy)),
         }
     }
 }
@@ -46,6 +55,9 @@ pub enum Bootstrapper {
 
     #[cfg(feature = "elastic")]
     Elastic(elastic::Bootstrapper),
+
+    #[cfg(feature = "storage-mongodb")]
+    MongoDb(mongodb::Bootstrapper),
 }
 
 impl Bootstrapper {
@@ -56,6 +68,9 @@ impl Bootstrapper {
 
             #[cfg(feature = "elastic")]
             Bootstrapper::Elastic(x) => x.borrow_input_port(),
+
+            #[cfg(feature = "storage-mongodb")]
+            Bootstrapper::MongoDb(x) => x.borrow_input_port(),
         }
     }
 
@@ -66,6 +81,9 @@ impl Bootstrapper {
 
             #[cfg(feature = "elastic")]
             Bootstrapper::Elastic(x) => Cursor::Elastic(x.build_cursor()),
+
+            #[cfg(feature = "storage-mongodb")]
+            Bootstrapper::MongoDb(x) => Cursor::MongoDb(x.build_cursor()),
         }
     }
 
@@ -76,6 +94,9 @@ impl Bootstrapper {
 
             #[cfg(feature = "elastic")]
             Bootstrapper::Elastic(x) => x.spawn_stages(pipeline),
+
+            #[cfg(feature = "storage-mongodb")]
+            Bootstrapper::MongoDb(x) => x.spawn_stages(pipeline),
         }
     }
 }
@@ -86,6 +107,9 @@ pub enum Cursor {
 
     #[cfg(feature = "elastic")]
     Elastic(elastic::Cursor),
+
+    #[cfg(feature = "storage-mongodb")]
+    MongoDb(mongodb::Cursor),
 }
 
 impl Cursor {
@@ -96,6 +120,9 @@ impl Cursor {
 
             #[cfg(feature = "elastic")]
             Cursor::Elastic(x) => x.last_point(),
+
+            #[cfg(feature = "storage-mongodb")]
+            Cursor::MongoDb(x) => x.last_point(),
         }
     }
 }
