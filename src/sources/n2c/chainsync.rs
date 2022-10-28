@@ -104,6 +104,59 @@ impl Worker {
 
         Ok(())
     }
+
+    fn request_next(&mut self) -> Result<(), gasket::error::Error> {
+        log::info!("requesting next block");
+
+        let next = self
+            .chainsync
+            .as_mut()
+            .unwrap()
+            .request_next()
+            .or_restart()?;
+
+        match next {
+            chainsync::NextResponse::RollForward(h, t) => {
+                self.on_roll_forward(h)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            chainsync::NextResponse::RollBackward(p, t) => {
+                self.on_rollback(&p)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            chainsync::NextResponse::Await => {
+                log::info!("chain-sync reached the tip of the chain");
+                Ok(())
+            }
+        }
+    }
+
+    fn await_next(&mut self) -> Result<(), gasket::error::Error> {
+        log::info!("awaiting next block (blocking)");
+
+        let next = self
+            .chainsync
+            .as_mut()
+            .unwrap()
+            .recv_while_must_reply()
+            .or_restart()?;
+
+        match next {
+            chainsync::NextResponse::RollForward(h, t) => {
+                self.on_roll_forward(h)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            chainsync::NextResponse::RollBackward(p, t) => {
+                self.on_rollback(&p)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            _ => unreachable!("protocol invariant not respected in chain-sync state machine"),
+        }
+    }
 }
 
 impl gasket::runtime::Worker for Worker {
@@ -133,23 +186,9 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let next = self
-            .chainsync
-            .as_mut()
-            .unwrap()
-            .request_next()
-            .or_restart()?;
-
-        match next {
-            chainsync::NextResponse::RollForward(h, t) => {
-                self.on_roll_forward(h)?;
-                self.chain_tip.set(t.1 as i64);
-            }
-            chainsync::NextResponse::RollBackward(p, t) => {
-                self.on_rollback(&p)?;
-                self.chain_tip.set(t.1 as i64);
-            }
-            _ => (),
+        match self.chainsync.as_ref().unwrap().has_agency() {
+            true => self.request_next()?,
+            false => self.await_next()?,
         };
 
         // see if we have points that already reached certain depth
