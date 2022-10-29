@@ -20,11 +20,13 @@ impl Config {
         chain: &crosscut::ChainWellKnownInfo,
         intersect: &crosscut::IntersectConfig,
         finalize: &Option<crosscut::FinalizeConfig>,
+        policy: &crosscut::policies::RuntimePolicy,
     ) -> Bootstrapper {
         Bootstrapper {
             config: self,
             intersect: intersect.clone(),
             finalize: finalize.clone(),
+            policy: policy.clone(),
             chain: chain.clone(),
             output: Default::default(),
         }
@@ -35,6 +37,7 @@ pub struct Bootstrapper {
     config: Config,
     intersect: crosscut::IntersectConfig,
     finalize: Option<crosscut::FinalizeConfig>,
+    policy: crosscut::policies::RuntimePolicy,
     chain: crosscut::ChainWellKnownInfo,
     output: OutputPort<model::RawBlockPayload>,
 }
@@ -49,6 +52,7 @@ impl Bootstrapper {
             self::chainsync::Worker::new(
                 self.config.path.clone(),
                 self.config.min_depth.unwrap_or(0),
+                self.policy,
                 self.chain,
                 self.intersect,
                 self.finalize,

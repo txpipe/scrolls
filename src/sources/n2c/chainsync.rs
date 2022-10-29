@@ -1,95 +1,94 @@
-use std::{collections::HashMap, ops::Deref};
-
+use gasket::error::AsWorkError;
 use pallas::ledger::traverse::MultiEraBlock;
-use pallas::network::miniprotocols::{self, chainsync, Agent, Point};
+use pallas::network::miniprotocols::chainsync::BlockContent;
+use pallas::network::miniprotocols::{chainsync, Point};
+use pallas::network::multiplexer::StdChannel;
+use std::collections::HashMap;
 
-use gasket::{
-    error::AsWorkError,
-    metrics::{Counter, Gauge},
-};
-
-use crate::{crosscut, model, sources::utils, storage};
+use crate::prelude::*;
+use crate::{crosscut, model, sources::utils, storage, Error};
 
 use super::transport::Transport;
 
-struct ChainObserver {
-    min_depth: usize,
-    output: OutputPort,
-    chain_buffer: chainsync::RollbackBuffer,
-    blocks: HashMap<Point, Vec<u8>>,
-    block_count: Counter,
-    chain_tip: Gauge,
-    finalize_config: Option<crosscut::FinalizeConfig>,
+fn to_traverse<'b>(block: &'b BlockContent) -> Result<MultiEraBlock<'b>, Error> {
+    MultiEraBlock::decode(&block).map_err(Error::cbor)
 }
 
-impl ChainObserver {
-    fn new(min_depth: usize, 
-        block_count: Counter,
-        chain_tip: Gauge,
+type OutputPort = gasket::messaging::OutputPort<model::RawBlockPayload>;
+
+pub struct Worker {
+    socket: String,
+    min_depth: usize,
+    policy: crosscut::policies::RuntimePolicy,
+    chain_buffer: chainsync::RollbackBuffer,
+    blocks: HashMap<Point, chainsync::BlockContent>,
+    chain: crosscut::ChainWellKnownInfo,
+    intersect: crosscut::IntersectConfig,
+    cursor: storage::Cursor,
+    finalize: Option<crosscut::FinalizeConfig>,
+    chainsync: Option<chainsync::N2CClient<StdChannel>>,
+
+    output: OutputPort,
+    block_count: gasket::metrics::Counter,
+    chain_tip: gasket::metrics::Gauge,
+}
+
+impl Worker {
+    pub fn new(
+        socket: String,
+        min_depth: usize,
+        policy: crosscut::policies::RuntimePolicy,
+        chain: crosscut::ChainWellKnownInfo,
+        intersect: crosscut::IntersectConfig,
+        finalize: Option<crosscut::FinalizeConfig>,
+        cursor: storage::Cursor,
         output: OutputPort,
-        finalize_config: Option<crosscut::FinalizeConfig>,
     ) -> Self {
         Self {
+            socket,
             min_depth,
-            block_count,
-            chain_tip,
+            policy,
+            chain,
+            intersect,
+            finalize,
+            cursor,
             output,
-            chain_buffer: Default::default(),
-            blocks: Default::default(),
-            finalize_config
+            chainsync: None,
+            block_count: Default::default(),
+            chain_tip: Default::default(),
+            chain_buffer: chainsync::RollbackBuffer::new(),
+            blocks: HashMap::new(),
         }
     }
-}
 
-impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
     fn on_roll_forward(
         &mut self,
         content: chainsync::BlockContent,
-        tip: &chainsync::Tip,
-    ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
-        // parse the block and extract the point of the chain
-        let cbor = Vec::from(content.deref());
-        let block = MultiEraBlock::decode(&cbor)?;
+    ) -> Result<(), gasket::error::Error> {
+        // parse the header and extract the point of the chain
+        let block = to_traverse(&content)
+            .apply_policy(&self.policy)
+            .or_panic()?;
+
+        let block = match block {
+            Some(x) => x,
+            None => return Ok(()),
+        };
+
         let point = Point::Specific(block.slot(), block.hash().to_vec());
 
         // store the block for later retrieval
-        self.blocks.insert(point.clone(), cbor);
+        // TODO: MEMORY LEAK POTENTIAL
+        self.blocks.insert(point.clone(), content);
 
         // track the new point in our memory buffer
         log::debug!("rolling forward to point {:?}", point);
         self.chain_buffer.roll_forward(point);
 
-        // see if we have points that already reached certain depth
-        let ready = self.chain_buffer.pop_with_depth(self.min_depth);
-        log::debug!("found {} points with required min depth", ready.len());
-
-        // find confirmed block in memory and send down the pipeline
-        for point in ready {
-            let block = self
-                .blocks
-                .remove(&point)
-                .expect("required block not found in memory");
-
-            self.output
-                .send(model::RawBlockPayload::roll_forward(block))?;
-            self.block_count.inc(1);
-            
-            // evaluate if we should finalize the thread according to config
-            if crosscut::should_finalize(&self.finalize_config, &point) {
-                return Ok(chainsync::Continuation::DropOut);
-            }
-        }
-
-        // notify chain tip to the pipeline metrics
-        self.chain_tip.set(tip.1 as i64);
-
-        Ok(chainsync::Continuation::Proceed)
+        Ok(())
     }
 
-    fn on_rollback(
-        &mut self,
-        point: &Point,
-    ) -> Result<chainsync::Continuation, Box<dyn std::error::Error>> {
+    fn on_rollback(&mut self, point: &Point) -> Result<(), gasket::error::Error> {
         log::debug!("rolling block to point {:?}", point);
 
         match self.chain_buffer.roll_back(point) {
@@ -103,49 +102,59 @@ impl chainsync::Observer<chainsync::BlockContent> for ChainObserver {
             }
         }
 
-        Ok(chainsync::Continuation::Proceed)
+        Ok(())
     }
-}
 
-type OutputPort = gasket::messaging::OutputPort<model::RawBlockPayload>;
-type MyAgent = chainsync::BlockConsumer<ChainObserver>;
+    fn request_next(&mut self) -> Result<(), gasket::error::Error> {
+        log::info!("requesting next block");
 
-pub struct Worker {
-    socket: String,
-    min_depth: usize,
-    chain: crosscut::ChainWellKnownInfo,
-    intersect: crosscut::IntersectConfig,
-    finalize: Option<crosscut::FinalizeConfig>,
-    cursor: storage::Cursor,
-    agent: Option<MyAgent>,
-    transport: Option<Transport>,
-    output: OutputPort,
-    block_count: gasket::metrics::Counter,
-    chain_tip: gasket::metrics::Gauge,
-}
+        let next = self
+            .chainsync
+            .as_mut()
+            .unwrap()
+            .request_next()
+            .or_restart()?;
 
-impl Worker {
-    pub fn new(
-        socket: String,
-        min_depth: usize,
-        chain: crosscut::ChainWellKnownInfo,
-        intersect: crosscut::IntersectConfig,
-        finalize: Option<crosscut::FinalizeConfig>,
-        cursor: storage::Cursor,
-        output: OutputPort,
-    ) -> Self {
-        Self {
-            socket,
-            min_depth,
-            chain,
-            intersect,
-            finalize,
-            cursor,
-            output,
-            agent: None,
-            transport: None,
-            block_count: Default::default(),
-            chain_tip: Default::default(),
+        match next {
+            chainsync::NextResponse::RollForward(h, t) => {
+                self.on_roll_forward(h)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            chainsync::NextResponse::RollBackward(p, t) => {
+                self.on_rollback(&p)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            chainsync::NextResponse::Await => {
+                log::info!("chain-sync reached the tip of the chain");
+                Ok(())
+            }
+        }
+    }
+
+    fn await_next(&mut self) -> Result<(), gasket::error::Error> {
+        log::info!("awaiting next block (blocking)");
+
+        let next = self
+            .chainsync
+            .as_mut()
+            .unwrap()
+            .recv_while_must_reply()
+            .or_restart()?;
+
+        match next {
+            chainsync::NextResponse::RollForward(h, t) => {
+                self.on_roll_forward(h)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            chainsync::NextResponse::RollBackward(p, t) => {
+                self.on_rollback(&p)?;
+                self.chain_tip.set(t.1 as i64);
+                Ok(())
+            }
+            _ => unreachable!("protocol invariant not respected in chain-sync state machine"),
         }
     }
 }
@@ -159,49 +168,51 @@ impl gasket::runtime::Worker for Worker {
     }
 
     fn bootstrap(&mut self) -> Result<(), gasket::error::Error> {
-        let mut transport = Transport::setup(&self.socket, self.chain.magic).or_retry()?;
+        let transport = Transport::setup(&self.socket, self.chain.magic).or_retry()?;
 
-        let known_points = utils::define_chainsync_start(
-            &self.chain,
-            &self.intersect,
-            &mut self.cursor,
-            &mut transport.channel5,
-        )
-        .or_retry()?;
+        let mut chainsync = chainsync::N2CClient::new(transport.channel5);
 
-        let agent = MyAgent::initial(
-            known_points,
-            ChainObserver::new(
-                self.min_depth,
-                self.block_count.clone(),
-                self.chain_tip.clone(),
-                self.output.clone(),
-                self.finalize.clone(),
-            ),
-        )
-        .apply_start()
-        .or_retry()?;
+        let start =
+            utils::define_chainsync_start(&self.intersect, &mut self.cursor, &mut chainsync)
+                .or_retry()?;
 
-        self.agent = Some(agent);
-        self.transport = Some(transport);
+        let start = start.ok_or(Error::IntersectNotFound).or_panic()?;
+
+        log::info!("chain-sync intersection is {:?}", start);
+
+        self.chainsync = Some(chainsync);
 
         Ok(())
     }
 
     fn work(&mut self) -> gasket::runtime::WorkResult {
-        let agent = self.agent.take().unwrap();
-        let mut transport = self.transport.take().unwrap();
+        match self.chainsync.as_ref().unwrap().has_agency() {
+            true => self.request_next()?,
+            false => self.await_next()?,
+        };
 
-        let agent = miniprotocols::run_agent_step(agent, &mut transport.channel5).or_restart()?;
+        // see if we have points that already reached certain depth
+        let ready = self.chain_buffer.pop_with_depth(self.min_depth);
+        log::debug!("found {} points with required min depth", ready.len());
 
-        let is_done = agent.is_done();
+        // find confirmed block in memory and send down the pipeline
+        for point in ready {
+            let block = self
+                .blocks
+                .remove(&point)
+                .expect("required block not found in memory");
 
-        self.agent = Some(agent);
-        self.transport = Some(transport);
+            self.output
+                .send(model::RawBlockPayload::roll_forward(block.into()))?;
 
-        match is_done {
-            true => Ok(gasket::runtime::WorkOutcome::Done),
-            false => Ok(gasket::runtime::WorkOutcome::Partial),
+            self.block_count.inc(1);
+
+            // evaluate if we should finalize the thread according to config
+            if crosscut::should_finalize(&self.finalize, &point) {
+                return Ok(gasket::runtime::WorkOutcome::Done);
+            }
         }
+
+        Ok(gasket::runtime::WorkOutcome::Partial)
     }
 }

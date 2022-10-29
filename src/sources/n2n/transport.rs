@@ -1,29 +1,29 @@
-use pallas::network::{
-    miniprotocols::{self, handshake},
-    multiplexer,
-};
+use pallas::network::{miniprotocols::handshake, multiplexer};
 
 pub struct Transport {
-    pub channel2: multiplexer::StdChannelBuffer,
-    pub channel3: multiplexer::StdChannelBuffer,
+    pub channel2: multiplexer::StdChannel,
+    pub channel3: multiplexer::StdChannel,
     pub version: handshake::VersionNumber,
 }
 
 impl Transport {
     fn do_handshake(
-        channel: &mut multiplexer::StdChannelBuffer,
+        channel: multiplexer::StdChannel,
         magic: u64,
     ) -> Result<handshake::VersionNumber, crate::Error> {
         log::debug!("doing handshake");
 
         let versions = handshake::n2n::VersionTable::v6_and_above(magic);
-        let agent = miniprotocols::run_agent(handshake::Initiator::initial(versions), channel)
+        let mut client = handshake::Client::new(channel);
+
+        let output = client
+            .handshake(versions)
             .map_err(crate::Error::ouroboros)?;
 
-        log::info!("handshake output: {:?}", agent.output);
+        log::info!("handshake output: {:?}", output);
 
-        match agent.output {
-            handshake::Output::Accepted(version, _) => Ok(version),
+        match output {
+            handshake::Confirmation::Accepted(version, _) => Ok(version),
             _ => Err(crate::Error::ouroboros(
                 "couldn't agree on handshake version",
             )),
@@ -37,14 +37,14 @@ impl Transport {
             multiplexer::bearers::Bearer::connect_tcp(address).map_err(crate::Error::network)?;
         let mut plexer = multiplexer::StdPlexer::new(bearer);
 
-        let mut channel0 = plexer.use_channel(0).into();
-        let channel2 = plexer.use_channel(2).into();
-        let channel3 = plexer.use_channel(3).into();
+        let channel0 = plexer.use_channel(0);
+        let channel2 = plexer.use_channel(2);
+        let channel3 = plexer.use_channel(3);
 
         plexer.muxer.spawn();
         plexer.demuxer.spawn();
 
-        let version = Self::do_handshake(&mut channel0, magic)?;
+        let version = Self::do_handshake(channel0, magic)?;
 
         Ok(Self {
             channel2,

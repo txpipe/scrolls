@@ -37,6 +37,9 @@ pub enum Error {
     #[error("ledger error: {0}")]
     StorageError(String),
 
+    #[error("chain-sync intersect not found")]
+    IntersectNotFound,
+
     #[error("{0}")]
     Message(String),
 
