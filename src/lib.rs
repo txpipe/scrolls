@@ -34,7 +34,7 @@ pub enum Error {
     #[error("source error: {0}")]
     SourceError(String),
 
-    #[error("ledger error: {0}")]
+    #[error("storage error: {0}")]
     StorageError(String),
 
     #[error("chain-sync intersect not found")]
