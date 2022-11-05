@@ -1,0 +1,12 @@
+[intersect]
+type = "Point"
+value = [
+    21243299,
+    "4100ba6296f8e8437032c308ee24920027d96f00467a46ad36711bed23e10459",
+]
+
+[storage]
+cursor_key = "_cursor_c"
+
+[finalize]
+until_hash = "5f78088805e8ff56bdd2c11d13944d5d8ce99df041922711789dec346979256f"
