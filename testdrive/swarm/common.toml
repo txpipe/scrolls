@@ -1,0 +1,17 @@
+[source]
+type = "N2N"
+address = "relays-new.cardano-mainnet.iohk.io:3001"
+
+[[reducers]]
+type = "AddressByTxo"
+key_prefix = "c1"
+
+[storage]
+type = "Redis"
+connection_params = "redis://redis:6379"
+
+[chain]
+type = "Mainnet"
+
+[policy]
+missing_data = "Skip"
