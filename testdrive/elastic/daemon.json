@@ -1,0 +1,30 @@
+{
+    "source": {
+        "type": "N2N",
+        "address": "preprod-node.world.dev.cardano.org:30000",
+        "min-depth": 6
+    },
+    "reducers": [
+        {
+            "type": "TxByHash",
+            "key_prefix": "c1"
+        }
+    ],
+    "storage": {
+        "type": "Elastic",
+        "connection_url": "https://localhost:9200"
+    },
+    "intersect": {
+        "type": "Point",
+        "value": [
+            4640968,
+            "6e34a427366fea85f26fe1660bf9f2b9726478a58e5cd67d01dcd7ca86245e78"
+        ]
+    },
+    "chain": {
+        "type": "PreProd"
+    },
+    "policy": {
+        "missing_data": "Skip"
+    }
+}

@@ -1,0 +1,39 @@
+{
+    "source": {
+        "type": "N2N",
+        "address": "relays-new.cardano-mainnet.iohk.io:3001"
+    },
+    "reducers": [
+        {
+            "type": "TransactionsCountByAddress",
+            "key_prefix": "c1",
+            "filter": {
+                "any_of": [
+                    {
+                        "output_address": {
+                            "exact": "addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c"
+                        }
+                    },
+                    {
+                        "input_address": {
+                            "exact": "addr1q8fukvydr8m5y3gztte3d4tnw0v5myvshusmu45phf20h395kqnygcykgjy42m29tksmwnd0js0z8p3swm5ntryhfu8sg7835c"
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "storage": {
+        "type": "Skip"
+    },
+    "intersect": {
+        "type": "Point",
+        "value": [
+            57867490,
+            "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"
+        ]
+    },
+    "chain": {
+        "type": "Mainnet"
+    }
+}
