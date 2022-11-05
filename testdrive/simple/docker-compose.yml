@@ -1,0 +1,18 @@
+version: "3.7"
+
+services:
+  scrolls:
+    image: ghcr.io/txpipe/scrolls:latest
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./daemon.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  redis:
+    image: redis
+    volumes:
+      - ./data:/data
+    ports:
+      - "6379:6379"
