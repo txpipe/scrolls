@@ -1,5 +1,5 @@
 use pallas::codec::utils::KeepRaw;
-use pallas::ledger::primitives::babbage::PlutusData;
+use pallas::ledger::primitives::babbage::{DatumOption, PlutusData};
 use pallas::ledger::primitives::{Fragment, ToCanonicalJson};
 use pallas::ledger::traverse::{MultiEraBlock, OriginalHash};
 use serde::Deserialize;
@@ -56,6 +56,12 @@ impl Reducer {
         for tx in block.txs().into_iter() {
             for datum in tx.plutus_data() {
                 self.process_datum(datum, output)?;
+            }
+
+            for tx_out in tx.outputs() {
+                if let Some(DatumOption::Data(datum)) = tx_out.datum().clone() {
+                    self.process_datum(datum.deref(), output);
+                }
             }
         }
 
