@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use pallas::{
-    ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, OutputRef},
+    ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, MultiEraTx, OutputRef},
     network::miniprotocols::Point,
 };
 
-use crate::Error;
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub enum RawBlockPayload {
@@ -48,6 +48,25 @@ impl BlockContext {
 
     pub fn get_all_keys(&self) -> Vec<String> {
         self.utxos.keys().map(|x| x.clone()).collect()
+    }
+
+    pub fn find_consumed_txos(
+        &self,
+        tx: &MultiEraTx,
+        policy: &RuntimePolicy,
+    ) -> Result<Vec<(u64, MultiEraOutput)>, Error> {
+        let items = tx
+            .consumes()
+            .iter()
+            .map(|i| i.output_ref())
+            .map(|r| self.find_utxo(&r).map(|u| (r.index(), u)))
+            .map(|r| r.apply_policy(policy))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        Ok(items)
     }
 }
 
@@ -145,6 +164,34 @@ impl CRDTCommand {
         };
 
         CRDTCommand::SetRemove(key, member)
+    }
+
+    pub fn sorted_set_add(
+        prefix: Option<&str>,
+        key: &str,
+        member: String,
+        delta: i64,
+    ) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::SortedSetAdd(key, member, delta)
+    }
+
+    pub fn sorted_set_remove(
+        prefix: Option<&str>,
+        key: &str,
+        member: String,
+        delta: i64,
+    ) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::SortedSetRemove(key, member, delta)
     }
 
     pub fn any_write_wins<K, V>(prefix: Option<&str>, key: K, value: V) -> CRDTCommand
