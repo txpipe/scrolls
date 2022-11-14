@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - "testdrive"
+      - "tmp/utxobynft"
 
 env:
   REGISTRY: ghcr.io
