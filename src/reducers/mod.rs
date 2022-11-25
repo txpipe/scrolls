@@ -213,7 +213,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::UtxoByNft(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::AddressByStake(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressByStake(x) => x.reduce_block(block, output),
         }
     }
 }
