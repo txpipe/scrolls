@@ -35,6 +35,8 @@ pub mod tx_count_by_address;
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
 pub mod utxo_by_nft;
+#[cfg(feature = "unstable")]
+pub mod address_by_stake;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -63,6 +65,8 @@ pub enum Config {
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
     #[cfg(feature = "unstable")]
     UtxoByNft(utxo_by_nft::Config),
+    #[cfg(feature = "unstable")]
+    AddressByStake(address_by_stake::Config)
 }
 
 impl Config {
@@ -96,6 +100,8 @@ impl Config {
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::UtxoByNft(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::AddressByStake(c) => c.plugin(),
         }
     }
 }
@@ -170,6 +176,8 @@ pub enum Reducer {
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
     #[cfg(feature = "unstable")]
     UtxoByNft(utxo_by_nft::Reducer),
+    #[cfg(feature = "unstable")]
+    AddressByStake(address_by_stake::Reducer),
 }
 
 impl Reducer {
@@ -204,6 +212,8 @@ impl Reducer {
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::UtxoByNft(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AddressByStake(x) => x.reduce_block(block, output),
         }
     }
 }
