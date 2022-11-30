@@ -15,11 +15,13 @@ macro_rules! filter_matches_block {
             Some(x) => {
                 // match the block if any of the contained txs satisfy the predicates
                 let mut ret = false;
-                
+
                 for tx in $block.txs().into_iter() {
-                    ret |= crosscut::filters::eval_predicate(x, $block, &tx, $ctx, &$reducer.policy).or_panic()?;
+                    ret |=
+                        crosscut::filters::eval_predicate(x, $block, &tx, $ctx, &$reducer.policy)
+                            .or_panic()?;
                 }
-                
+
                 ret
             }
             // if we don't have a filter, everything goes through
