@@ -3,15 +3,15 @@ type = "N2N"
 address = "relays-new.cardano-mainnet.iohk.io:3001"
 
 [[reducers]]
-type = "UtxoByAddress"
+type = "PointByTx"
 key_prefix = "c1"
 
 [[reducers]]
-type = "PointByTx"
+type = "PoolByStake"
 key_prefix = "c2"
 
 [[reducers]]
-type = "PoolByStake"
+type = "AddressByTxo"
 key_prefix = "c3"
 
 [storage]
@@ -19,8 +19,7 @@ type = "Redis"
 connection_params = "redis://redis:6379"
 
 [intersect]
-type = "Point"
-value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
+type = "Origin"
 
 [chain]
 type = "Mainnet"

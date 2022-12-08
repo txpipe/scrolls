@@ -20,6 +20,8 @@ pub mod address_by_ada_handle;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
+pub mod asset_holders_by_asset_id;
+#[cfg(feature = "unstable")]
 pub mod balance_by_address;
 #[cfg(feature = "unstable")]
 pub mod block_header_by_hash;
@@ -32,7 +34,7 @@ pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
-pub mod asset_holders_by_asset_id;
+pub mod utxos_by_asset;
 
 // CRFA
 #[cfg(feature = "unstable")]
@@ -77,6 +79,8 @@ pub enum Config {
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
     #[cfg(feature = "unstable")]
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
+    #[cfg(feature = "unstable")]
+    UtxosByAsset(utxos_by_asset::Config),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -126,6 +130,8 @@ impl Config {
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::UtxosByAsset(c) => c.plugin(policy),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -216,6 +222,8 @@ pub enum Reducer {
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
     #[cfg(feature = "unstable")]
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
+    #[cfg(feature = "unstable")]
+    UtxosByAsset(utxos_by_asset::Reducer),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -266,6 +274,8 @@ impl Reducer {
             Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -285,5 +295,5 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TransactionSizeByScript(x) => x.reduce_block(block, ctx, output),
         }
-}
+    }
 }

@@ -1,0 +1,75 @@
+version: "3.7"
+
+services:
+  scrolls-a:
+    image: ghcr.io/txpipe/scrolls-testdrive:testdrive
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    working_dir: "/"
+    volumes:
+      - ./daemon-a.toml:/scrolls.toml
+      - ./common.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  scrolls-b:
+    image: ghcr.io/txpipe/scrolls-testdrive:testdrive
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    working_dir: "/"
+    volumes:
+      - ./daemon-b.toml:/scrolls.toml
+      - ./common.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  scrolls-c:
+    image: ghcr.io/txpipe/scrolls-testdrive:testdrive
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    working_dir: "/"
+    volumes:
+      - ./daemon-c.toml:/scrolls.toml
+      - ./common.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  scrolls-d:
+    image: ghcr.io/txpipe/scrolls-testdrive:testdrive
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    working_dir: "/"
+    volumes:
+      - ./daemon-d.toml:/scrolls.toml
+      - ./common.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  scrolls-e:
+    image: ghcr.io/txpipe/scrolls-testdrive:testdrive
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    working_dir: "/"
+    volumes:
+      - ./daemon-e.toml:/scrolls.toml
+      - ./common.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  scrolls-f:
+    image: ghcr.io/txpipe/scrolls-testdrive:testdrive
+    command: [ "daemon" ]
+    environment:
+      - RUST_LOG=info
+    working_dir: "/"
+    volumes:
+      - ./daemon-f.toml:/scrolls.toml
+      - ./common.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  redis:
+    image: redis
+    volumes:
+      - ./data:/data
+    ports:
+      - "6379:6379"

@@ -29,6 +29,7 @@ impl ToRedisArgs for model::Value {
 #[derive(Deserialize, Clone)]
 pub struct Config {
     pub connection_params: String,
+    pub cursor_key: Option<String>,
 }
 
 impl Config {
@@ -41,6 +42,10 @@ impl Config {
             config: self,
             input: Default::default(),
         }
+    }
+
+    pub fn cursor_key(&self) -> &str {
+        self.cursor_key.as_deref().unwrap_or("_cursor")
     }
 }
 
@@ -56,7 +61,7 @@ impl Bootstrapper {
 
     pub fn build_cursor(&self) -> Cursor {
         Cursor {
-            connection_params: self.config.connection_params.clone(),
+            config: self.config.clone(),
         }
     }
 
@@ -86,16 +91,18 @@ impl Bootstrapper {
 }
 
 pub struct Cursor {
-    connection_params: String,
+    config: Config,
 }
 
 impl Cursor {
     pub fn last_point(&mut self) -> Result<Option<crosscut::PointArg>, crate::Error> {
-        let mut connection = redis::Client::open(self.connection_params.clone())
+        let mut connection = redis::Client::open(self.config.connection_params.clone())
             .and_then(|x| x.get_connection())
             .map_err(crate::Error::storage)?;
 
-        let raw: Option<String> = connection.get("_cursor").map_err(crate::Error::storage)?;
+        let raw: Option<String> = connection
+            .get(&self.config.cursor_key())
+            .map_err(crate::Error::storage)?;
 
         let point = match raw {
             Some(x) => Some(crosscut::PointArg::from_str(&x)?),
@@ -183,7 +190,12 @@ impl gasket::runtime::Worker for Worker {
                     .or_restart()?;
             }
             model::CRDTCommand::SortedSetAdd(key, value, delta) => {
-                log::debug!("sorted set add [{}], value [{}], delta [{}]", key, value, delta);
+                log::debug!(
+                    "sorted set add [{}], value [{}], delta [{}]",
+                    key,
+                    value,
+                    delta
+                );
 
                 self.connection
                     .as_mut()
@@ -192,7 +204,12 @@ impl gasket::runtime::Worker for Worker {
                     .or_restart()?;
             }
             model::CRDTCommand::SortedSetRemove(key, value, delta) => {
-                log::debug!("sorted set remove [{}], value [{}], delta [{}]", key, value, delta);
+                log::debug!(
+                    "sorted set remove [{}], value [{}], delta [{}]",
+                    key,
+                    value,
+                    delta
+                );
 
                 self.connection
                     .as_mut()
@@ -200,8 +217,8 @@ impl gasket::runtime::Worker for Worker {
                     .zincr(&key, value, delta)
                     .or_restart()?;
 
-                    // removal of dangling scores  (aka garage collection)
-                    self.connection
+                // removal of dangling scores  (aka garage collection)
+                self.connection
                     .as_mut()
                     .unwrap()
                     .zrembyscore(&key, 0, 0)
@@ -231,10 +248,14 @@ impl gasket::runtime::Worker for Worker {
                 self.connection
                     .as_mut()
                     .unwrap()
-                    .set("_cursor", &cursor_str)
+                    .set(self.config.cursor_key(), &cursor_str)
                     .or_restart()?;
 
-                log::info!("new cursor saved to redis {}", &cursor_str);
+                log::info!(
+                    "new cursor saved to redis {} {}",
+                    &self.config.cursor_key(),
+                    &cursor_str
+                );
 
                 // end redis transaction
                 redis::cmd("EXEC")
