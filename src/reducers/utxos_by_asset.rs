@@ -25,6 +25,7 @@ impl Reducer {
             None => true,
         };
     }
+
     fn process_asset(
         &mut self,
         tx: &MultiEraTx,
@@ -35,7 +36,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if !self.is_policy_id_accepted(&policy) {
-            return ()
+            return ();
         }
         let tx_hash = tx.hash();
         let prefix = self.config.key_prefix.as_deref();
