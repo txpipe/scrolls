@@ -82,7 +82,7 @@ impl Reducer {
 
 impl Config {
     pub fn plugin(self) -> super::Reducer {
-        let convert_to_ascii = self.convert_to_ascii.unwrap_or(true);
+        let convert_to_ascii = self.convert_to_ascii.unwrap_or(false);
         let reducer = Reducer {
             config: self,
             convert_to_ascii,
