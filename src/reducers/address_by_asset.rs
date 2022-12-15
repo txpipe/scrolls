@@ -9,16 +9,25 @@ pub struct Config {
     pub key_prefix: Option<String>,
     pub filter: Option<Vec<String>>,
     pub policy_id_hex: String,
+    // bool convert to ascii, default true
+    pub convert_to_ascii: Option<bool>,
 }
 
 pub struct Reducer {
     config: Config,
+    convert_to_ascii: bool,
 }
 
 impl Reducer {
-    fn to_ada_handle(&self, asset: Asset) -> Option<String> {
+    fn to_string_output(&self, asset: Asset) -> Option<String> {
         match asset.policy_hex() {
-            Some(policy_id) if policy_id.eq(&self.config.policy_id_hex) => asset.ascii_name(),
+            Some(policy_id) if policy_id.eq(&self.config.policy_id_hex) => {
+                if self.convert_to_ascii {
+                    asset.ascii_name()
+                } else {
+                    asset.name()
+                }
+            }
             _ => None,
         }
     }
@@ -28,24 +37,24 @@ impl Reducer {
         txo: &MultiEraOutput,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let handles: Vec<_> = txo
+        let asset_names: Vec<_> = txo
             .non_ada_assets()
             .into_iter()
-            .filter_map(|x| self.to_ada_handle(x))
+            .filter_map(|x| self.to_string_output(x))
             .collect();
 
-        if handles.is_empty() {
+        if asset_names.is_empty() {
             return Ok(());
         }
 
         let address = txo.address().map(|x| x.to_string()).or_panic()?;
 
-        for handle in handles {
-            log::debug!("ada handle match found: ${handle}=>{address}");
+        for asset in asset_names {
+            log::debug!("asset match found: ${asset}=>{address}");
 
             let crdt = model::CRDTCommand::any_write_wins(
                 self.config.key_prefix.as_deref(),
-                handle,
+                asset,
                 address.clone(),
             );
 
@@ -73,8 +82,12 @@ impl Reducer {
 
 impl Config {
     pub fn plugin(self) -> super::Reducer {
-        let reducer = Reducer { config: self };
+        let convert_to_ascii = self.convert_to_ascii.unwrap_or(true);
+        let reducer = Reducer {
+            config: self,
+            convert_to_ascii,
+        };
 
-        super::Reducer::AddressByAdaHandle(reducer)
+        super::Reducer::AddressByAsset(reducer)
     }
 }
