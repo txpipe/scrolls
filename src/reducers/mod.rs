@@ -16,7 +16,7 @@ pub mod utxo_by_address;
 mod worker;
 
 #[cfg(feature = "unstable")]
-pub mod address_by_ada_handle;
+pub mod address_by_asset;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
@@ -54,7 +54,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
-    AddressByAdaHandle(address_by_ada_handle::Config),
+    AddressByAsset(address_by_asset::Config),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
     #[cfg(feature = "unstable")]
@@ -87,7 +87,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::AddressByAdaHandle(c) => c.plugin(),
+            Config::AddressByAsset(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
@@ -161,7 +161,7 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
-    AddressByAdaHandle(address_by_ada_handle::Reducer),
+    AddressByAsset(address_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
     #[cfg(feature = "unstable")]
@@ -195,7 +195,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
