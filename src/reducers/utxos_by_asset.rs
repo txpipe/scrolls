@@ -9,14 +9,23 @@ use crate::{crosscut, model};
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
+    pub policy_ids_hex: Option<Vec<String>>,
 }
 
 pub struct Reducer {
     config: Config,
     policy: crosscut::policies::RuntimePolicy,
+    policy_ids: Option<Vec<Hash<28>>>,
 }
 
 impl Reducer {
+    fn is_policy_id_accepted(&self, policy_id: &Hash<28>) -> bool {
+        return match &self.policy_ids {
+            Some(pids) => pids.contains(&policy_id),
+            None => true,
+        };
+    }
+
     fn process_asset(
         &mut self,
         tx: &MultiEraTx,
@@ -26,6 +35,9 @@ impl Reducer {
         delta: i64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if !self.is_policy_id_accepted(&policy) {
+            return ();
+        }
         let tx_hash = tx.hash();
         let prefix = self.config.key_prefix.as_deref();
         let key = &format!("{}{}", policy, hex::encode(asset));
@@ -69,9 +81,21 @@ impl Reducer {
 
 impl Config {
     pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
+        let policy_ids: Option<Vec<Hash<28>>> = match &self.policy_ids_hex {
+            Some(pids) => {
+                let ps = pids
+                    .iter()
+                    .map(|pid| Hash::<28>::from_str(pid).expect("invalid policy_id"))
+                    .collect();
+
+                Some(ps)
+            }
+            None => None,
+        };
         let reducer = Reducer {
             config: self,
             policy: policy.clone(),
+            policy_ids: policy_ids.clone(),
         };
 
         super::Reducer::UtxosByAsset(reducer)
