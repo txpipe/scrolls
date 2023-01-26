@@ -21,13 +21,13 @@ pub struct Reducer {
 impl Reducer {
     fn to_string_output(&self, asset: Asset) -> Option<String> {
         match asset.policy_hex() {
-            Some(policy_id) if policy_id.eq(&self.config.policy_id_hex) => {
-                if self.convert_to_ascii {
-                    asset.ascii_name()
-                } else {
-                    asset.name()
-                }
-            }
+            Some(policy_id) if policy_id.eq(&self.config.policy_id_hex) => match asset {
+                Asset::NativeAsset(_, name, _) => match self.convert_to_ascii {
+                    true => String::from_utf8(name).ok(),
+                    false => Some(hex::encode(name)),
+                },
+                _ => None,
+            },
             _ => None,
         }
     }

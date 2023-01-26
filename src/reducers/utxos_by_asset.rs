@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use gasket::error::AsWorkError;
 use pallas::crypto::hash::Hash;
 use pallas::ledger::traverse::Asset;
@@ -36,7 +38,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if !self.is_policy_id_accepted(&policy) {
-            return ();
+            return Ok(());
         }
         let tx_hash = tx.hash();
         let prefix = self.config.key_prefix.as_deref();
