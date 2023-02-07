@@ -37,6 +37,8 @@ pub mod tx_count_by_native_token_policy_id;
 pub mod utxos_by_asset;
 #[cfg(feature = "unstable")]
 pub mod utxos_by_stake;
+#[cfg(feature = "unstable")]
+pub mod supply_by_asset;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -67,6 +69,8 @@ pub enum Config {
     UtxosByAsset(utxos_by_asset::Config),
     #[cfg(feature = "unstable")]
     UtxoByStake(utxo_by_stake::Config),
+    #[cfg(feature = "unstable")]
+    SupplyByAsset(supply_by_asset::Config),
 }
 
 impl Config {
@@ -102,6 +106,8 @@ impl Config {
             Config::UtxosByAsset(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::UtxoByStake(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::SupplyByAsset(c) => c.plugin(policy),
         }
     }
 }
@@ -178,6 +184,8 @@ pub enum Reducer {
     UtxosByAsset(utxos_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     UtxoByStake(utxo_by_stake::Reducer),
+    #[cfg(feature = "unstable")]
+    SupplyByAsset(supply_by_asset::Reducer),
 }
 
 impl Reducer {
@@ -214,6 +222,8 @@ impl Reducer {
             Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
