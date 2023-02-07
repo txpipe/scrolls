@@ -34,9 +34,9 @@ pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
-pub mod utxos_by_asset;
+pub mod utxo_by_stake;
 #[cfg(feature = "unstable")]
-pub mod utxos_by_stake;
+pub mod utxos_by_asset;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
