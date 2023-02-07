@@ -1,5 +1,6 @@
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
 use serde::Deserialize;
+use serde_json::json;
 
 use crate::prelude::*;
 use crate::{crosscut, model};
@@ -26,11 +27,13 @@ pub struct Config {
 pub struct Reducer {
     config: Config,
     policy: crosscut::policies::RuntimePolicy,
+    time: crosscut::time::NaiveProvider,
 }
 
 impl Reducer {
     fn send(
         &mut self,
+        block: &MultiEraBlock,
         tx: &MultiEraTx,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -40,7 +43,13 @@ impl Reducer {
                 let cbor = tx.encode();
                 model::CRDTCommand::any_write_wins(key_prefix, tx.hash(), cbor)
             }
-            Projection::Json => todo!(),
+            Projection::Json => {
+                let cbor = tx.encode();
+                let slot = block.slot();
+                let ts = self.time.slot_to_wallclock(slot);
+                let json = json!({ "cbor": hex::encode(cbor), "slot": slot, "time": ts});
+                model::CRDTCommand::any_write_wins(key_prefix, tx.hash(), json.to_string())
+            }
         };
 
         output.send(gasket::messaging::Message::from(crdt))?;
@@ -56,7 +65,7 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in &block.txs() {
             if filter_matches!(self, block, &tx, ctx) {
-                self.send(tx, output)?;
+                self.send(block, tx, output)?;
             }
         }
 
@@ -65,10 +74,15 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
+    pub fn plugin(
+        self,
+        chain: &crosscut::ChainWellKnownInfo,
+        policy: &crosscut::policies::RuntimePolicy,
+    ) -> super::Reducer {
         let worker = Reducer {
             config: self,
             policy: policy.clone(),
+            time: crosscut::time::NaiveProvider::new(chain.clone()),
         };
         super::Reducer::TxByHash(worker)
     }

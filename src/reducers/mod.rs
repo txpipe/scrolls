@@ -85,7 +85,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TxByHash(c) => c.plugin(policy),
+            Config::TxByHash(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TxCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]

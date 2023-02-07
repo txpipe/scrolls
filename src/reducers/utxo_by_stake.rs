@@ -29,7 +29,7 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let stake_address = self.get_stake_from_utxo(&utxo);
+        let stake_address = self.get_stake_from_utxo(&utxo)?;
 
         let stake_address = match stake_address {
             Some(x) => x,
@@ -59,7 +59,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        let stake_address = self.get_stake_from_utxo(tx_output);
+        let stake_address = self.get_stake_from_utxo(tx_output)?;
 
         let stake_address = match stake_address {
             Some(x) => x,
@@ -81,16 +81,26 @@ impl Reducer {
         output.send(crdt.into())
     }
 
-    fn get_stake_from_utxo(&mut self, output: &MultiEraOutput) -> Option<String> {
-        let stake_address = match output.address().unwrap() {
-            pallas::ledger::addresses::Address::Shelley(shelley_addr) => {
-                Some(shelley_addr.delegation().to_bech32().unwrap())
-            }
-            pallas::ledger::addresses::Address::Byron(_) => None,
-            pallas::ledger::addresses::Address::Stake(_) => None,
-        };
+    fn get_stake_from_utxo(
+        &mut self,
+        output: &MultiEraOutput,
+    ) -> Result<Option<String>, gasket::error::Error> {
+        let address = output
+            .address()
+            .map_err(crate::Error::cbor)
+            .apply_policy(&self.policy)
+            .or_panic()?;
 
-        stake_address
+        match address {
+            Some(x) => match x {
+                pallas::ledger::addresses::Address::Shelley(shelley_addr) => {
+                    Ok(Some(shelley_addr.delegation().to_bech32().unwrap()))
+                }
+                pallas::ledger::addresses::Address::Byron(_) => Ok(None),
+                pallas::ledger::addresses::Address::Stake(_) => Ok(None),
+            },
+            None => Ok(None),
+        }
     }
 
     pub fn reduce_block<'b>(
