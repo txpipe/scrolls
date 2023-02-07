@@ -16,7 +16,7 @@ pub mod utxo_by_address;
 mod worker;
 
 #[cfg(feature = "unstable")]
-pub mod address_by_ada_handle;
+pub mod address_by_asset;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
@@ -35,6 +35,8 @@ pub mod tx_count_by_address;
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
 pub mod utxos_by_asset;
+#[cfg(feature = "unstable")]
+pub mod utxos_by_stake;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -54,7 +56,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
-    AddressByAdaHandle(address_by_ada_handle::Config),
+    AddressByAsset(address_by_asset::Config),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
     #[cfg(feature = "unstable")]
@@ -63,6 +65,8 @@ pub enum Config {
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
     #[cfg(feature = "unstable")]
     UtxosByAsset(utxos_by_asset::Config),
+    #[cfg(feature = "unstable")]
+    UtxoByStake(utxo_by_stake::Config),
 }
 
 impl Config {
@@ -87,7 +91,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::AddressByAdaHandle(c) => c.plugin(),
+            Config::AddressByAsset(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
@@ -96,6 +100,8 @@ impl Config {
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::UtxosByAsset(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::UtxoByStake(c) => c.plugin(policy),
         }
     }
 }
@@ -161,7 +167,7 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
-    AddressByAdaHandle(address_by_ada_handle::Reducer),
+    AddressByAsset(address_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
     #[cfg(feature = "unstable")]
@@ -170,6 +176,8 @@ pub enum Reducer {
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
     #[cfg(feature = "unstable")]
     UtxosByAsset(utxos_by_asset::Reducer),
+    #[cfg(feature = "unstable")]
+    UtxoByStake(utxo_by_stake::Reducer),
 }
 
 impl Reducer {
@@ -195,7 +203,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
@@ -204,6 +212,8 @@ impl Reducer {
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
