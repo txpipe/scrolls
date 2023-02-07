@@ -1,3 +1,4 @@
+use pallas::ledger::addresses::{self, Address};
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
@@ -85,22 +86,27 @@ impl Reducer {
         &mut self,
         output: &MultiEraOutput,
     ) -> Result<Option<String>, gasket::error::Error> {
-        let address = output
-            .address()
-            .map_err(crate::Error::cbor)
-            .apply_policy(&self.policy)
-            .or_panic()?;
+        let address = output.address().or_panic()?;
 
-        match address {
-            Some(x) => match x {
-                pallas::ledger::addresses::Address::Shelley(shelley_addr) => {
-                    Ok(Some(shelley_addr.delegation().to_bech32().unwrap()))
+        let stake = match address {
+            Address::Shelley(s) => {
+                let delegation = s.delegation();
+
+                match delegation {
+                    addresses::ShelleyDelegationPart::Key(_) => {
+                        Some(delegation.to_bech32().or_panic()?)
+                    }
+                    addresses::ShelleyDelegationPart::Script(_) => {
+                        Some(delegation.to_bech32().or_panic()?)
+                    }
+                    _ => None,
                 }
-                pallas::ledger::addresses::Address::Byron(_) => Ok(None),
-                pallas::ledger::addresses::Address::Stake(_) => Ok(None),
-            },
-            None => Ok(None),
-        }
+            }
+            Address::Byron(_) => None,
+            Address::Stake(_) => None,
+        };
+
+        Ok(stake)
     }
 
     pub fn reduce_block<'b>(
