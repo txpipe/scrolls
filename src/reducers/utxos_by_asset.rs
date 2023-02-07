@@ -30,7 +30,7 @@ impl Reducer {
 
     fn process_asset(
         &mut self,
-        tx: &MultiEraTx,
+        tx_hash: Hash<32>,
         txo_idx: u64,
         policy: Hash<28>,
         asset: Vec<u8>,
@@ -40,7 +40,6 @@ impl Reducer {
         if !self.is_policy_id_accepted(&policy) {
             return Ok(());
         }
-        let tx_hash = tx.hash();
         let prefix = self.config.key_prefix.as_deref();
         let key = &format!("{}{}", policy, hex::encode(asset));
         let member = format!("{}#{}", tx_hash, txo_idx);
@@ -60,10 +59,10 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            for (idx, txo) in ctx.find_consumed_txos(&tx, &self.policy).or_panic()? {
-                for asset in txo.assets() {
+            for (tx_ref, tx_output) in ctx.find_consumed_txos(&tx, &self.policy).or_panic()? {
+                for asset in tx_output.assets() {
                     if let Asset::NativeAsset(policy, asset, delta) = asset {
-                        self.process_asset(&tx, idx, policy, asset, -1 * delta as i64, output)?;
+                        self.process_asset(tx_ref.hash(), tx_ref.index(), policy, asset, -1 * delta as i64, output)?;
                     }
                 }
             }
@@ -71,7 +70,7 @@ impl Reducer {
             for (idx, txo) in tx.produces() {
                 for asset in txo.assets() {
                     if let Asset::NativeAsset(policy, asset, delta) = asset {
-                        self.process_asset(&tx, idx as u64, policy, asset, delta as i64, output)?;
+                        self.process_asset(tx.hash(), idx as u64, policy, asset, delta as i64, output)?;
                     }
                 }
             }
