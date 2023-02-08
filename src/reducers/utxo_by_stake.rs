@@ -1,3 +1,4 @@
+use pallas::ledger::addresses::{self, Address};
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
@@ -29,7 +30,7 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let stake_address = self.get_stake_from_utxo(&utxo);
+        let stake_address = self.get_stake_from_utxo(&utxo)?;
 
         let stake_address = match stake_address {
             Some(x) => x,
@@ -59,7 +60,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        let stake_address = self.get_stake_from_utxo(tx_output);
+        let stake_address = self.get_stake_from_utxo(tx_output)?;
 
         let stake_address = match stake_address {
             Some(x) => x,
@@ -81,16 +82,31 @@ impl Reducer {
         output.send(crdt.into())
     }
 
-    fn get_stake_from_utxo(&mut self, output: &MultiEraOutput) -> Option<String> {
-        let stake_address = match output.address().unwrap() {
-            pallas::ledger::addresses::Address::Shelley(shelley_addr) => {
-                Some(shelley_addr.delegation().to_bech32().unwrap())
+    fn get_stake_from_utxo(
+        &mut self,
+        output: &MultiEraOutput,
+    ) -> Result<Option<String>, gasket::error::Error> {
+        let address = output.address().or_panic()?;
+
+        let stake = match address {
+            Address::Shelley(s) => {
+                let delegation = s.delegation();
+
+                match delegation {
+                    addresses::ShelleyDelegationPart::Key(_) => {
+                        Some(delegation.to_bech32().or_panic()?)
+                    }
+                    addresses::ShelleyDelegationPart::Script(_) => {
+                        Some(delegation.to_bech32().or_panic()?)
+                    }
+                    _ => None,
+                }
             }
-            pallas::ledger::addresses::Address::Byron(_) => None,
-            pallas::ledger::addresses::Address::Stake(_) => None,
+            Address::Byron(_) => None,
+            Address::Stake(_) => None,
         };
 
-        stake_address
+        Ok(stake)
     }
 
     pub fn reduce_block<'b>(
