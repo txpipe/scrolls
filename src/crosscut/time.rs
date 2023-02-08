@@ -27,7 +27,6 @@ fn compute_era_epoch(era_slot: u64, era_slot_length: u64, era_epoch_length: u64)
 #[derive(Clone)]
 pub(crate) struct NaiveProvider {
     config: ChainWellKnownInfo,
-    shelley_start_epoch: u64,
 }
 
 impl NaiveProvider {
@@ -48,10 +47,7 @@ impl NaiveProvider {
             config.byron_epoch_length as u64,
         );
 
-        NaiveProvider {
-            config,
-            shelley_start_epoch,
-        }
+        NaiveProvider { config }
     }
 
     pub fn slot_to_wallclock(&self, slot: u64) -> u64 {
