@@ -1,4 +1,4 @@
-use pallas::ledger::addresses::{self, Address};
+use pallas::ledger::addresses::{self, Address, StakeAddress};
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
@@ -16,6 +16,17 @@ pub struct Reducer {
     policy: crosscut::policies::RuntimePolicy,
 }
 
+fn any_address_to_stake_bech32(address: Address) -> Option<String> {
+    match address {
+        Address::Shelley(s) => match StakeAddress::try_from(s).ok() {
+            Some(x) => x.to_bech32().ok(),
+            _ => None,
+        },
+        Address::Byron(_) => None,
+        Address::Stake(_) => None,
+    }
+}
+
 impl Reducer {
     fn process_consumed_txo(
         &mut self,
@@ -30,7 +41,8 @@ impl Reducer {
             None => return Ok(()),
         };
 
-        let stake_address = self.get_stake_from_utxo(&utxo)?;
+        let address = utxo.address().or_panic()?;
+        let stake_address = any_address_to_stake_bech32(address);
 
         let stake_address = match stake_address {
             Some(x) => x,
@@ -60,7 +72,8 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        let stake_address = self.get_stake_from_utxo(tx_output)?;
+        let address = tx_output.address().or_panic()?;
+        let stake_address = any_address_to_stake_bech32(address);
 
         let stake_address = match stake_address {
             Some(x) => x,
@@ -80,33 +93,6 @@ impl Reducer {
         );
 
         output.send(crdt.into())
-    }
-
-    fn get_stake_from_utxo(
-        &mut self,
-        output: &MultiEraOutput,
-    ) -> Result<Option<String>, gasket::error::Error> {
-        let address = output.address().or_panic()?;
-
-        let stake = match address {
-            Address::Shelley(s) => {
-                let delegation = s.delegation();
-
-                match delegation {
-                    addresses::ShelleyDelegationPart::Key(_) => {
-                        Some(delegation.to_bech32().or_panic()?)
-                    }
-                    addresses::ShelleyDelegationPart::Script(_) => {
-                        Some(delegation.to_bech32().or_panic()?)
-                    }
-                    _ => None,
-                }
-            }
-            Address::Byron(_) => None,
-            Address::Stake(_) => None,
-        };
-
-        Ok(stake)
     }
 
     pub fn reduce_block<'b>(
@@ -137,5 +123,21 @@ impl Config {
         };
 
         super::Reducer::UtxoByStake(reducer)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::any_address_to_stake_bech32;
+    use pallas::ledger::addresses::Address;
+
+    #[test]
+    fn stake_bech32() {
+        let addr = Address::from_bech32("addr1q86gknmykuldcngv0atyy56ex598p6m8f24nf9nmehmgpgfcmswqs6wnpls37lh7s3du977cxw67a9dpndnmafjs08asyqxe39").unwrap();
+        let stake_bech32 = any_address_to_stake_bech32(addr).unwrap();
+        assert_eq!(
+            stake_bech32,
+            "stake1uyudc8qgd8fslcgl0mlggk7zl0vr8d0wjksekea75eg8n7cw33m0s"
+        );
     }
 }
