@@ -253,7 +253,7 @@ impl gasket::runtime::Worker for Worker {
                 // end redis transaction
                 redis::cmd("EXEC")
                     .query(self.connection.as_mut().unwrap())
-                    .or_restart()?;
+                    .or_panic()?;
             }
         };
 
