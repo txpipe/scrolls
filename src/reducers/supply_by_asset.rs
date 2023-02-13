@@ -58,18 +58,12 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            for (_, txo) in ctx.find_consumed_txos(&tx, &self.policy).or_panic()? {
-                for asset in txo.assets() {
-                    if let Asset::NativeAsset(policy, asset, qty) = asset {
-                        self.process_asset(policy, asset, -1 * qty as i64, output)?;
-                    }
-                }
-            }
-
-            for (_, txo) in tx.produces() {
-                for asset in txo.assets() {
-                    if let Asset::NativeAsset(policy, asset, qty) = asset {
-                        self.process_asset(policy, asset, qty as i64, output)?;
+            if let Some(mints) = tx.mint().as_alonzo() {
+                for (_, assets) in mints.iter() {
+                    for asset in assets {
+                        if let Asset::NativeAsset(policy, asset, qty) = asset {
+                            self.process_asset(policy, asset, qty as i64, output)?;
+                        }
                     }
                 }
             }
