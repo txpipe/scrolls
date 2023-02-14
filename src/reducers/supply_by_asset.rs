@@ -30,8 +30,8 @@ impl Reducer {
 
     fn process_asset(
         &mut self,
-        policy: Hash<28>,
-        asset: Vec<u8>,
+        policy: &Hash<28>,
+        asset: &Vec<u8>,
         qty: i64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -59,11 +59,9 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             if let Some(mints) = tx.mint().as_alonzo() {
-                for (_, assets) in mints.iter() {
-                    for asset in assets {
-                        if let Asset::NativeAsset(policy, asset, qty) = asset {
-                            self.process_asset(policy, asset, qty as i64, output)?;
-                        }
+                for (policy, assets) in mints.iter() {
+                    for (name, amount) in assets.iter() {
+                        self.process_asset(policy, name, *amount, output)?;
                     }
                 }
             }

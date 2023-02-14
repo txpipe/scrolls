@@ -1,6 +1,5 @@
-use pallas::ledger::addresses::{self, Address, StakeAddress};
-use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
+use pallas::ledger::addresses::{Address, StakeAddress};
+use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};
@@ -28,15 +27,12 @@ fn any_address_to_stake_bech32(address: Address) -> Option<String> {
 }
 
 impl Reducer {
-    fn process_produced_txo(
+    fn process_address(
         &mut self,
-        tx: &MultiEraTx,
-        tx_output: &MultiEraOutput,
-        output_idx: usize,
+        address: Address,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let tx_hash = tx.hash();
-        let address = tx_output.address().or_panic()?;
+        let full_address = address.to_bech32().or_panic()?;
         let stake_address = any_address_to_stake_bech32(address);
 
         let stake_address = match stake_address {
@@ -53,7 +49,7 @@ impl Reducer {
         let crdt = model::CRDTCommand::set_add(
             self.config.key_prefix.as_deref(),
             &stake_address,
-            address.to_bech32()
+            full_address,
         );
 
         output.send(crdt.into())
@@ -67,7 +63,8 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             for (idx, produced) in tx.produces() {
-                self.process_produced_txo(&tx, &produced, idx, output)?;
+                let address = produced.address().or_panic()?;
+                self.process_address(address, output)?;
             }
         }
 
