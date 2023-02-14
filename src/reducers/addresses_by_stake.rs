@@ -32,7 +32,12 @@ impl Reducer {
         address: Address,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        let full_address = address.to_bech32().or_panic()?;
+        // exit early since we don't care about Byron
+        if matches!(address, Address::Byron(_)) {
+            return Ok(());
+        }
+
+        let full_address = address.to_string();
         let stake_address = any_address_to_stake_bech32(address);
 
         let stake_address = match stake_address {
