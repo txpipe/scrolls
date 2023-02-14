@@ -1,8 +1,0 @@
-[[reducers]]
-type = "UtxoByAddress"
-key_prefix = "minswap.order"
-# Order Contract address
-filter = ["addr1wxn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uwc0h43gt"]
-
-# Pool Contract address
-pool_contract_address = "addr1z8snz7c4974vzdpxu65ruphl3zjdvtxw8strf2c2tmqnxz2j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq0xmsha"
