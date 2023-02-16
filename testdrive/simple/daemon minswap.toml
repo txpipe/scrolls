@@ -1,0 +1,26 @@
+
+# TOML for minswap
+[source]
+type = "N2N"
+address = "preprod-node.world.dev.cardano.org:30000"
+magic = "preprod"
+
+[[reducers]]
+type = "UtxoByAddress"
+key_prefix = "minswap.order"
+filter = ["addr_test1wzn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uwc5lpd8w"]
+
+[storage]
+type = "Redis"
+connection_params = "redis://redis:6379"
+
+[intersect]
+type = "Point"
+value = [20777328, "ad7dd87435c018d19f57eee5ada00447edfc32e216ee8fd7b916bc935614d24a"]
+
+[chain]
+type = "PreProd"
+
+[policy]
+missing_data = "Skip"
+
