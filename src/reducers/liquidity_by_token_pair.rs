@@ -118,6 +118,6 @@ impl Config {
             policy: policy.clone(),
         };
 
-        super::Reducer::UtxoByAddress(reducer)
+        super::Reducer::LiquidityByTokenPair(reducer)
     }
 }

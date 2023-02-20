@@ -13,6 +13,7 @@ pub mod macros;
 pub mod point_by_tx;
 pub mod pool_by_stake;
 pub mod utxo_by_address;
+pub mod liquidity_by_token_pair;
 mod worker;
 
 #[cfg(feature = "unstable")]
@@ -44,6 +45,8 @@ pub enum Config {
     UtxoByAddress(utxo_by_address::Config),
     PointByTx(point_by_tx::Config),
     PoolByStake(pool_by_stake::Config),
+
+    LiquidityByTokenPair(liquidity_by_token_pair::Config),
 
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Config),
@@ -79,6 +82,8 @@ impl Config {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
             Config::PoolByStake(c) => c.plugin(),
+            
+            Config::LiquidityByTokenPair(c) => c.plugin(policy),
 
             #[cfg(feature = "unstable")]
             Config::AddressByTxo(c) => c.plugin(policy),
@@ -155,6 +160,8 @@ pub enum Reducer {
     UtxoByAddress(utxo_by_address::Reducer),
     PointByTx(point_by_tx::Reducer),
     PoolByStake(pool_by_stake::Reducer),
+    
+    LiquidityByTokenPair(liquidity_by_token_pair::Reducer),
 
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Reducer),
@@ -191,6 +198,8 @@ impl Reducer {
             Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
             Reducer::PointByTx(x) => x.reduce_block(block, output),
             Reducer::PoolByStake(x) => x.reduce_block(block, output),
+            
+            Reducer::LiquidityByTokenPair(x) => x.reduce_block(block, ctx, output),
 
             #[cfg(feature = "unstable")]
             Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
