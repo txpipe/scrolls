@@ -16,7 +16,7 @@ pub mod utxo_by_address;
 mod worker;
 
 #[cfg(feature = "unstable")]
-pub mod address_by_ada_handle;
+pub mod address_by_asset;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
@@ -28,13 +28,19 @@ pub mod block_header_by_hash;
 #[cfg(feature = "unstable")]
 pub mod last_block_parameters;
 #[cfg(feature = "unstable")]
+pub mod supply_by_asset;
+#[cfg(feature = "unstable")]
 pub mod tx_by_hash;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
+pub mod utxo_by_stake;
+#[cfg(feature = "unstable")]
 pub mod utxos_by_asset;
+#[cfg(feature = "unstable")]
+pub mod addresses_by_stake;
 
 // CRFA
 #[cfg(feature = "unstable")]
@@ -72,7 +78,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
-    AddressByAdaHandle(address_by_ada_handle::Config),
+    AddressByAsset(address_by_asset::Config),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Config),
     #[cfg(feature = "unstable")]
@@ -99,6 +105,12 @@ pub enum Config {
     FeesByScript(fees_by_script::Config),
     #[cfg(feature = "unstable")]
     TransactionSizeByScript(transaction_size_by_script::Config),
+    #[cfg(feature = "unstable")]
+    UtxoByStake(utxo_by_stake::Config),
+    #[cfg(feature = "unstable")]
+    SupplyByAsset(supply_by_asset::Config),
+    #[cfg(feature = "unstable")]
+    AddressesByStake(addresses_by_stake::Config),
 }
 
 impl Config {
@@ -117,13 +129,13 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TxByHash(c) => c.plugin(policy),
+            Config::TxByHash(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TxCountByAddress(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::AddressByAdaHandle(c) => c.plugin(),
+            Config::AddressByAsset(c) => c.plugin(),
             #[cfg(feature = "unstable")]
             Config::LastBlockParameters(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
@@ -150,6 +162,12 @@ impl Config {
             Config::FeesByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TransactionSizeByScript(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::UtxoByStake(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::SupplyByAsset(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::AddressesByStake(c) => c.plugin(policy),
         }
     }
 }
@@ -199,6 +217,7 @@ impl Bootstrapper {
     }
 }
 
+
 pub enum Reducer {
     UtxoByAddress(utxo_by_address::Reducer),
     PointByTx(point_by_tx::Reducer),
@@ -215,7 +234,7 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
-    AddressByAdaHandle(address_by_ada_handle::Reducer),
+    AddressByAsset(address_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     LastBlockParameters(last_block_parameters::Reducer),
     #[cfg(feature = "unstable")]
@@ -242,6 +261,12 @@ pub enum Reducer {
     FeesByScript(fees_by_script::Reducer),
     #[cfg(feature = "unstable")]
     TransactionSizeByScript(transaction_size_by_script::Reducer),
+    #[cfg(feature = "unstable")]
+    UtxoByStake(utxo_by_stake::Reducer),
+    #[cfg(feature = "unstable")]
+    SupplyByAsset(supply_by_asset::Reducer),
+    #[cfg(feature = "unstable")]
+    AddressesByStake(addresses_by_stake::Reducer),
 }
 
 impl Reducer {
@@ -267,7 +292,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
-            Reducer::AddressByAdaHandle(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
@@ -294,6 +319,12 @@ impl Reducer {
             Reducer::FeesByScript(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TransactionSizeByScript(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
         }
     }
 }

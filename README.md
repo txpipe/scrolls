@@ -34,7 +34,7 @@ TODO: explain future plan to leverage CRDTs for rollback checkpoints.
 
 ## Accessing the Data
 
-_Scrolls_ doesn't provide any custom client for accesing the data, it relies on the fact that the canonical clients of the selected backends are ubiquitous, battle-tested and relatively easy to use. By knowing the structure of the stored keys/values, a developer should be able to query the data directly from Redis.
+_Scrolls_ doesn't provide any custom client for accessing the data, it relies on the fact that the canonical clients of the selected backends are ubiquitous, battle-tested and relatively easy to use. By knowing the structure of the stored keys/values, a developer should be able to query the data directly from Redis.
 
 TODO: reference specs for each key/value
 
@@ -223,7 +223,7 @@ Assuming you're using Redis as a storage backend (only one available ATM), we re
 {b'2548228522837ea580bc55a3e6a09479deca499b5e7f3c08602a1f3191a178e7:20', b'04086c503512833c7a0c11fc85f7d0f0422db9d14b31275b3d4327c40c6fd73b:25'}
 ```
 
- The Redis operation being used is `smembers` which return the list of members of a set stored under a particular key. In this case, we query by the value `c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz`, where `c1` is the key prefix specified in the config for our particular collection and `addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz` is the address we're intereted in querying. The response from redis is the list of UTXOs (in the format `{tx-hash}:{output-index}`) that are associated with that particular address.
+ The Redis operation being used is `smembers` which return the list of members of a set stored under a particular key. In this case, we query by the value `c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz`, where `c1` is the key prefix specified in the config for our particular collection and `addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz` is the address we're interested in querying. The response from redis is the list of UTXOs (in the format `{tx-hash}:{output-index}`) that are associated with that particular address.
 
 ### How do I read the data using NodeJS?
 
@@ -231,6 +231,6 @@ TODO
 
 ### What is "swarm mode"?
 
-Swarm mode is a way to speed up the process of rebuidling collection from scratch by splitting the tasks into concurrent instances of the _Scrolls_ daemon by partitioning the history of the chain into smaller fragments.
+Swarm mode is a way to speed up the process of rebuilding collection from scratch by splitting the tasks into concurrent instances of the _Scrolls_ daemon by partitioning the history of the chain into smaller fragments.
 
 ![swarm mode diagram](assets/swarm.svg)
