@@ -22,11 +22,6 @@ impl Reducer {
         input: &OutputRef,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        
-        log::info!(
-            "process_consumed_txo"
-        );
-
         let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
 
         let utxo = match utxo {
@@ -58,11 +53,6 @@ impl Reducer {
         output_idx: usize,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-        
-        log::info!(
-            "process_produced_txo"
-        ); 
-
         let tx_hash = tx.hash();
         let address = tx_output.address().map(|addr| addr.to_string()).or_panic()?;
 
@@ -87,11 +77,6 @@ impl Reducer {
         ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
-
-        log::info!(
-            "reduce_block"
-        ); 
-        
         for tx in block.txs().into_iter() {
             for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
                 self.process_consumed_txo(&ctx, &consumed, output)?;
@@ -108,11 +93,6 @@ impl Reducer {
 
 impl Config {
     pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
-
-        log::info!(
-            "plugin"
-        ); 
-
         let reducer = Reducer {
             config: self,
             policy: policy.clone(),
