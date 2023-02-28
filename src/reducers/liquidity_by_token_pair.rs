@@ -34,12 +34,14 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let utxo = ctx.find_utxo(input).apply_policy(&self.policy).or_panic()?;
+        // Skip invalid or byron era outputs
         let utxo = match utxo {
-            Some(x) => x,
             None => return Ok(()),
+            Some(MultiEraOutput::Byron(_)) => return Ok(()),
+            Some(x) => x,
         };
 
-        // Skip over any spending transaction that has no symbol of an identifiable liquidity source
+        // Skip any spending transaction that has no currency symbol of an identifiable liquidity source
         if !contains_currency_symbol(
             &self.config.pool_currency_symbol,
             utxo.non_ada_assets().as_ref(),
