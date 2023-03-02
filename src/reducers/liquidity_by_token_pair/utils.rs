@@ -1,4 +1,9 @@
-use pallas::ledger::{primitives::babbage::PolicyId, traverse::Asset};
+use pallas::ledger::{
+    primitives::babbage::{AssetName, PolicyId},
+    traverse::Asset,
+};
+
+use super::model::PoolAsset;
 
 pub fn policy_id_from_str(str: &Vec<u8>) -> PolicyId {
     let mut pid: [u8; 28] = [0; 28];
@@ -34,6 +39,24 @@ pub fn filter_by_native_fungible(assets: Vec<Asset>) -> Vec<Asset> {
         }
     }
     result
+}
+
+pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) -> Option<PoolAsset> {
+    if hex_currency_symbol.len() == 0 && hex_asset_name.len() == 0 {
+        return Some(PoolAsset::Ada);
+    }
+
+    if let (Some(pid), Some(tkn)) = (
+        hex::decode(hex_currency_symbol).ok(),
+        hex::decode(hex_asset_name).ok(),
+    ) {
+        return Some(PoolAsset::AssetClass(
+            policy_id_from_str(&pid),
+            AssetName::from(tkn),
+        ));
+    }
+
+    None
 }
 
 #[cfg(test)]
