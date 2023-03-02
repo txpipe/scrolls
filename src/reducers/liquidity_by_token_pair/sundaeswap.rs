@@ -5,13 +5,13 @@ use pallas::ledger::primitives::babbage::PlutusData;
 use super::model::{PoolAsset, TokenPair};
 
 #[derive(Debug, PartialEq)]
-pub struct SundaeTokenPair {
+pub struct SundaePoolDatum {
     pub coin_a: PoolAsset,
     pub coin_b: PoolAsset,
     pub fee: f32,
 }
 
-impl TryFrom<&PlutusData> for SundaeTokenPair {
+impl TryFrom<&PlutusData> for SundaePoolDatum {
     type Error = ();
 
     fn try_from(value: &PlutusData) -> Result<Self, Self::Error> {
@@ -46,7 +46,7 @@ impl TryFrom<&PlutusData> for SundaeTokenPair {
     }
 }
 
-impl std::fmt::Display for SundaeTokenPair {
+impl std::fmt::Display for SundaePoolDatum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -61,7 +61,7 @@ mod test {
     use pallas::ledger::primitives::{babbage::PlutusData, Fragment};
 
     use crate::reducers::liquidity_by_token_pair::{
-        model::PoolAsset, sundaeswap::SundaeTokenPair, utils::pool_asset_from,
+        model::PoolAsset, sundaeswap::SundaePoolDatum, utils::pool_asset_from,
     };
 
     #[test]
@@ -69,7 +69,7 @@ mod test {
         let hex_pool_datum = "d8799fd8799fd8799f4040ffd8799f581c9a9693a9a37912a5097918f97918d15240c92ab729a0b7c4aa144d774653554e444145ffff41081b0000105a99e0fa59d8799f031903e8ffff";
         let data = hex::decode(hex_pool_datum).unwrap();
         let plutus_data = PlutusData::decode_fragment(&data).unwrap();
-        let pool_datum = SundaeTokenPair::try_from(&plutus_data).unwrap();
+        let pool_datum = SundaePoolDatum::try_from(&plutus_data).unwrap();
         assert_eq!(PoolAsset::Ada, pool_datum.coin_a);
 
         let sundae_token = pool_asset_from(
