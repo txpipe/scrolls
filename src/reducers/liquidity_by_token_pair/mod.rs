@@ -5,10 +5,11 @@ pub mod minswap;
 pub mod model;
 pub mod sundaeswap;
 pub mod utils;
+pub mod wingriders;
 
 use crate::{crosscut, prelude::*};
 
-use self::utils::{contains_currency_symbol, filter_by_native_fungible};
+use self::utils::contains_currency_symbol;
 
 #[derive(Deserialize)]
 pub struct Config {
