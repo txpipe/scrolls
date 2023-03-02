@@ -3,6 +3,7 @@ use serde::Deserialize;
 
 pub mod minswap;
 pub mod model;
+pub mod sundaeswap;
 pub mod utils;
 
 use crate::{crosscut, prelude::*};
