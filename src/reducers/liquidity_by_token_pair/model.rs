@@ -2,7 +2,32 @@ use lazy_static::__Deref;
 use pallas::ledger::primitives::babbage::{AssetName, PlutusData, PolicyId};
 use std::fmt;
 
-use super::utils::policy_id_from_str;
+use super::{
+    minswap::MinSwapPoolDatum, sundaeswap::SundaePoolDatum, utils::policy_id_from_str,
+    wingriders::WingriderPoolDatum,
+};
+
+pub enum PoolDatum {
+    Minswap(MinSwapPoolDatum),
+    Sundaeswap(SundaePoolDatum),
+    Wingriders(WingriderPoolDatum),
+}
+
+impl TryFrom<&PlutusData> for PoolDatum {
+    type Error = ();
+
+    fn try_from(value: &PlutusData) -> Result<Self, Self::Error> {
+        if let Some(minswap_tp) = MinSwapPoolDatum::try_from(value).ok() {
+            return Ok(PoolDatum::Minswap(minswap_tp));
+        } else if let Some(sundae_tp) = SundaePoolDatum::try_from(value).ok() {
+            return Ok(PoolDatum::Sundaeswap(sundae_tp));
+        } else if let Some(wingriders_tp) = WingriderPoolDatum::try_from(value).ok() {
+            return Ok(PoolDatum::Wingriders(wingriders_tp));
+        }
+
+        Err(())
+    }
+}
 
 #[derive(PartialEq, Debug)]
 pub struct TokenPair {
@@ -75,7 +100,7 @@ impl std::fmt::Debug for PoolAsset {
                 write!(
                     f,
                     "AssetClass {{ policy: '{}', name: '{}' }}",
-                    hex::encode(pid.to_ascii_lowercase()),
+                    hex::encode(pid.to_vec()),
                     hex::encode(tkn.to_vec())
                 )
             }
