@@ -35,6 +35,38 @@ pub struct TokenPair {
     pub coin_b: PoolAsset,
 }
 
+impl TokenPair {
+    pub fn key(&self) -> Option<String> {
+        match (&self.coin_a, &self.coin_b) {
+            (PoolAsset::Ada, PoolAsset::AssetClass(cs, tkn))
+            | (PoolAsset::AssetClass(cs, tkn), PoolAsset::Ada) => Some(format!(
+                "{}.{}",
+                hex::encode(cs.to_vec()),
+                hex::encode(tkn.to_vec())
+            )),
+            (PoolAsset::AssetClass(cs1, tkn1), PoolAsset::AssetClass(cs2, tkn2)) => {
+                let asset_id_1 = format!(
+                    "{}.{}",
+                    hex::encode(cs1.to_vec()),
+                    hex::encode(tkn1.to_vec())
+                );
+                let asset_id_2 = format!(
+                    "{}.{}",
+                    hex::encode(cs2.to_vec()),
+                    hex::encode(tkn2.to_vec())
+                );
+
+                match asset_id_1.cmp(&asset_id_2) {
+                    std::cmp::Ordering::Less => Some(format!("{}:{}", asset_id_1, asset_id_2,)),
+                    std::cmp::Ordering::Greater => Some(format!("{}:{}", asset_id_2, asset_id_1,)),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
 impl TryFrom<&PlutusData> for TokenPair {
     type Error = ();
 

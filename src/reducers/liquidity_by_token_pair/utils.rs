@@ -3,7 +3,7 @@ use pallas::ledger::{
     traverse::Asset,
 };
 
-use super::model::{PoolAsset, TokenPair};
+use super::model::PoolAsset;
 
 pub fn policy_id_from_str(str: &Vec<u8>) -> PolicyId {
     let mut pid: [u8; 28] = [0; 28];
@@ -46,36 +46,6 @@ pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) ->
     None
 }
 
-pub fn key(token_pair: TokenPair) -> Option<String> {
-    match (token_pair.coin_a, token_pair.coin_b) {
-        (PoolAsset::Ada, PoolAsset::AssetClass(cs, tkn))
-        | (PoolAsset::AssetClass(cs, tkn), PoolAsset::Ada) => Some(format!(
-            "{}.{}",
-            hex::encode(cs.to_vec()),
-            hex::encode(tkn.to_vec())
-        )),
-        (PoolAsset::AssetClass(cs1, tkn1), PoolAsset::AssetClass(cs2, tkn2)) => {
-            let asset_id_1 = format!(
-                "{}.{}",
-                hex::encode(cs1.to_vec()),
-                hex::encode(tkn1.to_vec())
-            );
-            let asset_id_2 = format!(
-                "{}.{}",
-                hex::encode(cs2.to_vec()),
-                hex::encode(tkn2.to_vec())
-            );
-
-            match asset_id_1.cmp(&asset_id_2) {
-                std::cmp::Ordering::Less => Some(format!("{}:{}", asset_id_1, asset_id_2,)),
-                std::cmp::Ordering::Greater => Some(format!("{}:{}", asset_id_2, asset_id_1,)),
-                _ => None,
-            }
-        }
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
@@ -92,8 +62,6 @@ mod test {
         model::{PoolAsset, TokenPair},
         utils::contains_currency_symbol,
     };
-
-    use super::key;
 
     static CURRENCY_SYMBOL_1: &str = "93744265ed9762d8fa52c4aacacc703aa8c81de9f6d1a59f2299235b";
     static CURRENCY_SYMBOL_2: &str = "158fd94afa7ee07055ccdee0ba68637fe0e700d0e58e8d12eca5be46";
@@ -142,7 +110,7 @@ mod test {
         let data = hex::decode(hex_pool_datum).unwrap();
         let plutus_data = PlutusData::decode_fragment(&data).unwrap();
         let token_pair = TokenPair::try_from(&plutus_data).unwrap();
-        let key = key(token_pair);
+        let key = token_pair.key();
         assert_eq!(true, key.is_some());
         assert_eq!(
             "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6.4d494e",
@@ -160,7 +128,7 @@ mod test {
             coin_a: tp.coin_b,
             coin_b: tp.coin_a,
         };
-        let key = key(token_pair);
+        let key = token_pair.key();
         assert_eq!(true, key.is_some());
         assert_eq!(
             "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6.4d494e",
@@ -180,14 +148,14 @@ mod test {
             coin_a: tp1.coin_b,
             coin_b: tp2.coin_b,
         };
-        let key1 = key(tp1_invalid);
+        let key1 = tp1_invalid.key();
         assert_eq!(true, key1.is_none());
 
         let tp2_invalid = TokenPair {
             coin_a: tp1.coin_a,
             coin_b: tp2.coin_a,
         };
-        let key2 = key(tp2_invalid);
+        let key2 = tp2_invalid.key();
         assert_eq!(true, key2.is_none());
     }
 
@@ -198,7 +166,7 @@ mod test {
         let plutus_data = PlutusData::decode_fragment(&data).unwrap();
         let token_pair = TokenPair::try_from(&plutus_data).unwrap();
 
-        let key = key(token_pair);
+        let key = token_pair.key();
         assert_eq!(true, key.is_some());
         assert_eq!("29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6.4d494e:8db269c3ec630e06ae29f74bc39edd1f87c819f1056206e879a1cd61.446a65644d6963726f555344", key.unwrap());
     }
@@ -209,7 +177,7 @@ mod test {
             coin_a: PoolAsset::Ada,
             coin_b: PoolAsset::Ada,
         };
-        let key = key(token_pair);
+        let key = token_pair.key();
         assert_eq!(true, key.is_none());
     }
 }
