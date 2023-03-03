@@ -1,5 +1,3 @@
-use core::f32;
-
 use pallas::ledger::primitives::babbage::PlutusData;
 
 use super::model::{PoolAsset, TokenPair};
@@ -8,7 +6,7 @@ use super::model::{PoolAsset, TokenPair};
 pub struct SundaePoolDatum {
     pub coin_a: PoolAsset,
     pub coin_b: PoolAsset,
-    pub fee: f32,
+    pub fee: f64,
 }
 
 impl TryFrom<&PlutusData> for SundaePoolDatum {
@@ -34,7 +32,7 @@ impl TryFrom<&PlutusData> for SundaePoolDatum {
                         Ok(Self {
                             coin_a: token_pair.coin_a,
                             coin_b: token_pair.coin_b,
-                            fee: (n as f32) / (d as f32),
+                            fee: (n as f64) / (d as f64),
                         })
                     }
                     _ => Err(()),
@@ -78,6 +76,6 @@ mod test {
         )
         .unwrap();
         assert_eq!(sundae_token, pool_datum.coin_b);
-        assert_eq!(f32::from(0.003), pool_datum.fee);
+        assert_eq!(f64::from(0.003), pool_datum.fee);
     }
 }
