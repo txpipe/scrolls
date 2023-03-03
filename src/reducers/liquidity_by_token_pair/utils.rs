@@ -2,8 +2,9 @@ use pallas::ledger::{
     primitives::babbage::{AssetName, PolicyId},
     traverse::Asset,
 };
+use serde_json::json;
 
-use super::model::PoolAsset;
+use super::model::{PoolAsset, TokenPair};
 
 pub fn policy_id_from_str(str: &Vec<u8>) -> PolicyId {
     let mut pid: [u8; 28] = [0; 28];
@@ -43,6 +44,72 @@ pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) ->
         ));
     }
 
+    None
+}
+
+pub fn serialize_value(
+    dex_prefix: &Option<String>,
+    coin_a_amt_opt: Option<u64>,
+    coin_b_amt_opt: Option<u64>,
+    fee_opt: Option<f64>,
+    output_json_value: bool,
+) -> Option<String> {
+    let coin_a_amt = coin_a_amt_opt?;
+    let coin_b_amt = coin_b_amt_opt?;
+
+    if output_json_value {
+        let mut result = json!({
+            "coin_a": coin_a_amt,
+            "coin_b": coin_b_amt,
+        });
+
+        if let Some(dex_prefix) = dex_prefix {
+            result["dex"] = serde_json::Value::String(String::from(dex_prefix.as_str()));
+        }
+
+        if let Some(fee) = fee_opt {
+            if let Some(n) = serde_json::Number::from_f64(fee) {
+                result["fee"] = serde_json::Value::Number(n);
+            }
+        }
+
+        return Some(result.to_string());
+    } else {
+        let mut result: Vec<String> = Vec::new();
+        if let Some(prefix) = dex_prefix {
+            result.push(String::from(prefix.as_str()));
+        }
+        result.push(coin_a_amt.to_string());
+        result.push(coin_b_amt.to_string());
+
+        if let Some(fee) = fee_opt {
+            result.push(fee.to_string());
+        }
+
+        return Some(result.join(":"));
+    }
+}
+
+pub fn build_key_value_pair(
+    token_pair: TokenPair,
+    dex_prefix: &Option<String>,
+    coin_a_amt_opt: Option<u64>,
+    coin_b_amt_opt: Option<u64>,
+    fee_opt: Option<f64>,
+    output_json_value: bool,
+) -> Option<(String, String)> {
+    if let (Some(key), Some(value)) = (
+        token_pair.key(),
+        serialize_value(
+            dex_prefix,
+            coin_a_amt_opt,
+            coin_b_amt_opt,
+            fee_opt,
+            output_json_value,
+        ),
+    ) {
+        return Some((key, value));
+    }
     None
 }
 
