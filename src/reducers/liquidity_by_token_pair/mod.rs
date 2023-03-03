@@ -19,7 +19,7 @@ use crate::{crosscut, prelude::*};
 use self::{
     model::{PoolAsset, PoolDatum, TokenPair},
     sundaeswap::SundaePoolDatum,
-    utils::contains_currency_symbol,
+    utils::{build_key_value_pair, contains_currency_symbol},
     wingriders::WingriderPoolDatum,
 };
 
@@ -28,6 +28,7 @@ pub struct Config {
     pub pool_prefix: Option<String>,
     pub dex_prefix: Option<String>,
     pub pool_currency_symbol: String,
+    pub json_value: Option<bool>,
 }
 
 pub struct Reducer {
@@ -73,37 +74,42 @@ impl Reducer {
         if let Some(DatumOption::Data(CborWrap(pd))) = utxo.datum() {
             if let Some(pool_datum) = PoolDatum::try_from(&pd).ok() {
                 let assets = utxo.assets();
-                return match pool_datum {
+                match pool_datum {
                     PoolDatum::Minswap(TokenPair { coin_a, coin_b })
                     | PoolDatum::Wingriders(WingriderPoolDatum { coin_a, coin_b }) => {
-                        if let (Some(coin_a_amt), Some(coin_b_amt), Some(key)) = (
-                            get_asset_amount(&coin_a, &assets),
-                            get_asset_amount(&coin_b, &assets),
-                            TokenPair { coin_a, coin_b }.key(),
-                        ) {
-                            return Ok((key, format!("{}:{}", coin_a_amt, coin_b_amt)));
-                        }
-
-                        Err(())
+                        let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
+                        let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
+                        return build_key_value_pair(
+                            TokenPair { coin_a, coin_b },
+                            &self.config.dex_prefix,
+                            coin_a_amt_opt,
+                            coin_b_amt_opt,
+                            None,
+                            self.config.json_value.unwrap_or_else(|| false),
+                        )
+                        .ok_or(());
                     }
                     PoolDatum::Sundaeswap(SundaePoolDatum {
                         coin_a,
                         coin_b,
                         fee,
                     }) => {
-                        if let (Some(coin_a_amt), Some(coin_b_amt), Some(key)) = (
-                            get_asset_amount(&coin_a, &assets),
-                            get_asset_amount(&coin_b, &assets),
-                            TokenPair { coin_a, coin_b }.key(),
-                        ) {
-                            return Ok((key, format!("{}:{}:{}", coin_a_amt, coin_b_amt, fee)));
-                        }
-
-                        Err(())
+                        let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
+                        let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
+                        return build_key_value_pair(
+                            TokenPair { coin_a, coin_b },
+                            &self.config.dex_prefix,
+                            coin_a_amt_opt,
+                            coin_b_amt_opt,
+                            Some(fee),
+                            self.config.json_value.unwrap_or_else(|| false),
+                        )
+                        .ok_or(());
                     }
                 };
             }
         }
+
         Err(())
     }
 
