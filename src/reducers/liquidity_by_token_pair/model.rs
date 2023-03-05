@@ -140,6 +140,22 @@ impl std::fmt::Debug for PoolAsset {
     }
 }
 
+impl std::fmt::Display for PoolAsset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.clone() {
+            PoolAsset::Ada => write!(f, ""),
+            &PoolAsset::AssetClass(pid, tkn) => {
+                write!(
+                    f,
+                    "{}.{}",
+                    hex::encode(pid.to_vec()),
+                    hex::encode(tkn.to_vec())
+                )
+            }
+        }
+    }
+}
+
 impl PartialEq for PoolAsset {
     fn eq(&self, other: &Self) -> bool {
         match (&self.clone(), &other.clone()) {
