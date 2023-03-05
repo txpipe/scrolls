@@ -1,11 +1,5 @@
 use lazy_static::__Deref;
-use pallas::{
-    codec::utils::CborWrap,
-    ledger::{
-        primitives::babbage::DatumOption,
-        traverse::{Asset, MultiEraBlock, MultiEraOutput},
-    },
-};
+use pallas::ledger::traverse::{Asset, MultiEraBlock, MultiEraOutput, MultiEraTx};
 use serde::Deserialize;
 
 pub mod minswap;
@@ -17,9 +11,9 @@ pub mod wingriders;
 use crate::{crosscut, prelude::*};
 
 use self::{
-    model::{PoolAsset, PoolDatum, TokenPair},
+    model::{LiquidityPoolDatum, PoolAsset, TokenPair},
     sundaeswap::SundaePoolDatum,
-    utils::{build_key_value_pair, contains_currency_symbol},
+    utils::{build_key_value_pair, contains_currency_symbol, resolve_datum},
     wingriders::WingriderPoolDatum,
 };
 
@@ -62,55 +56,53 @@ fn get_asset_amount(asset: &PoolAsset, assets: &Vec<Asset>) -> Option<u64> {
 }
 
 impl Reducer {
-    fn get_key_value_pair(&self, utxo: &MultiEraOutput) -> Result<(String, String), ()> {
-        if !contains_currency_symbol(
-            &self.config.pool_currency_symbol,
-            utxo.non_ada_assets().as_ref(),
-        ) {
+    fn get_key_value_pair(
+        &self,
+        tx: &MultiEraTx,
+        utxo: &MultiEraOutput,
+    ) -> Result<(String, String), ()> {
+        if !contains_currency_symbol(&self.config.pool_currency_symbol, &utxo.non_ada_assets()) {
             return Err(());
         }
 
-        // Try to get embedded datum & decode datum data to supported pool datum
-        if let Some(DatumOption::Data(CborWrap(pd))) = utxo.datum() {
-            if let Some(pool_datum) = PoolDatum::try_from(&pd).ok() {
-                let assets = utxo.assets();
-                match pool_datum {
-                    PoolDatum::Minswap(TokenPair { coin_a, coin_b })
-                    | PoolDatum::Wingriders(WingriderPoolDatum { coin_a, coin_b }) => {
-                        let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
-                        let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
-                        return build_key_value_pair(
-                            TokenPair { coin_a, coin_b },
-                            &self.config.dex_prefix,
-                            coin_a_amt_opt,
-                            coin_b_amt_opt,
-                            None,
-                            self.config.json_value.unwrap_or_else(|| false),
-                        )
-                        .ok_or(());
-                    }
-                    PoolDatum::Sundaeswap(SundaePoolDatum {
-                        coin_a,
-                        coin_b,
-                        fee,
-                    }) => {
-                        let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
-                        let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
-                        return build_key_value_pair(
-                            TokenPair { coin_a, coin_b },
-                            &self.config.dex_prefix,
-                            coin_a_amt_opt,
-                            coin_b_amt_opt,
-                            Some(fee),
-                            self.config.json_value.unwrap_or_else(|| false),
-                        )
-                        .ok_or(());
-                    }
-                };
+        // Get embedded datum for txIns or inline datums if applicable
+        let plutus_data = resolve_datum(utxo, tx)?;
+        // Try to decode datum as known liquidity pool datum
+        let pool_datum = LiquidityPoolDatum::try_from(&plutus_data)?;
+        let assets = utxo.assets();
+        match pool_datum {
+            LiquidityPoolDatum::Minswap(TokenPair { coin_a, coin_b })
+            | LiquidityPoolDatum::Wingriders(WingriderPoolDatum { coin_a, coin_b }) => {
+                let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
+                let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
+                return build_key_value_pair(
+                    TokenPair { coin_a, coin_b },
+                    &self.config.dex_prefix,
+                    coin_a_amt_opt,
+                    coin_b_amt_opt,
+                    None,
+                    self.config.json_value.unwrap_or_else(|| false),
+                )
+                .ok_or(());
             }
-        }
-
-        Err(())
+            LiquidityPoolDatum::Sundaeswap(SundaePoolDatum {
+                coin_a,
+                coin_b,
+                fee,
+            }) => {
+                let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
+                let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
+                return build_key_value_pair(
+                    TokenPair { coin_a, coin_b },
+                    &self.config.dex_prefix,
+                    coin_a_amt_opt,
+                    coin_b_amt_opt,
+                    Some(fee),
+                    self.config.json_value.unwrap_or_else(|| false),
+                )
+                .ok_or(());
+            }
+        };
     }
 
     pub fn reduce_block<'b>(
@@ -122,12 +114,8 @@ impl Reducer {
         let pool_prefix = self.config.pool_prefix.as_deref();
         for tx in block.txs().into_iter() {
             for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
-                if let Some(utxo) = ctx
-                    .find_utxo(&consumed)
-                    .apply_policy(&self.policy)
-                    .or_panic()?
-                {
-                    if let Some((k, v)) = self.get_key_value_pair(&utxo).ok() {
+                if let Some(Some(utxo)) = ctx.find_utxo(&consumed).apply_policy(&self.policy).ok() {
+                    if let Some((k, v)) = self.get_key_value_pair(&tx, &utxo).ok() {
                         output.send(
                             crate::model::CRDTCommand::set_remove(pool_prefix, &k, v).into(),
                         )?;
@@ -136,8 +124,10 @@ impl Reducer {
             }
 
             for (_, produced) in tx.produces() {
-                if let Some((k, v)) = self.get_key_value_pair(&produced).ok() {
-                    output.send(crate::model::CRDTCommand::set_add(pool_prefix, &k, v).into())?;
+                if let Some((k, v)) = self.get_key_value_pair(&tx, &produced).ok() {
+                    output.send(
+                        crate::model::CRDTCommand::set_add(pool_prefix, &k.as_str(), v).into(),
+                    )?;
                 }
             }
         }
