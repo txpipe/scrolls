@@ -1,0 +1,24 @@
+[source]
+type = "N2N"
+address = "preprod-node.world.dev.cardano.org:30000"
+
+[enrich]
+type = "Sled"
+db_path = "./data/sled_db"
+
+[[reducers]]
+type = "FullUtxosByAddress"
+address = "addr_test1xqtcjvyzs7t9c7zx9tks9ss682dymljr6kaxv0mgu2ljvhlhsecqwccjvxczaqetf20lt5vsxagku2cd5umjrewrgkfqagvy5e"
+
+[storage]
+type = "Redis"
+connection_params = "redis://redis:6379"
+
+[intersect]
+type = "Tip"
+
+[chain]
+type = "PreProd"
+
+[policy]
+missing_data = "Skip"
