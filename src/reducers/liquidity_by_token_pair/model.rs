@@ -7,22 +7,22 @@ use super::{
     wingriders::WingriderPoolDatum,
 };
 
-pub enum PoolDatum {
+pub enum LiquidityPoolDatum {
     Minswap(MinSwapPoolDatum),
     Sundaeswap(SundaePoolDatum),
     Wingriders(WingriderPoolDatum),
 }
 
-impl TryFrom<&PlutusData> for PoolDatum {
+impl TryFrom<&PlutusData> for LiquidityPoolDatum {
     type Error = ();
 
     fn try_from(value: &PlutusData) -> Result<Self, Self::Error> {
         if let Some(minswap_tp) = MinSwapPoolDatum::try_from(value).ok() {
-            return Ok(PoolDatum::Minswap(minswap_tp));
+            return Ok(LiquidityPoolDatum::Minswap(minswap_tp));
         } else if let Some(sundae_tp) = SundaePoolDatum::try_from(value).ok() {
-            return Ok(PoolDatum::Sundaeswap(sundae_tp));
+            return Ok(LiquidityPoolDatum::Sundaeswap(sundae_tp));
         } else if let Some(wingriders_tp) = WingriderPoolDatum::try_from(value).ok() {
-            return Ok(PoolDatum::Wingriders(wingriders_tp));
+            return Ok(LiquidityPoolDatum::Wingriders(wingriders_tp));
         }
 
         Err(())
