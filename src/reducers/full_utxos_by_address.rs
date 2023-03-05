@@ -39,10 +39,7 @@ impl Reducer {
     fn get_key_value(&self, utxo: &MultiEraOutput, tx: &MultiEraTx) -> Option<(String, String)> {
         if let Some(address) = utxo.address().map(|addr| addr.to_string()).ok() {
             if address.eq(&self.config.address) {
-                let mut data = json!({
-                    "lovelace": utxo.lovelace_amount(),
-                });
-
+                let mut data = serde_json::Value::Object(serde_json::Map::new());
                 if let Some(datum) = resolve_datum(utxo, tx).ok() {
                     data["datum"] = serde_json::Value::String(hex::encode(
                         datum.encode_fragment().ok().unwrap(),
@@ -54,6 +51,15 @@ impl Reducer {
                 let mut assets: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
                 for asset in utxo.non_ada_assets() {
                     match asset {
+                        Asset::Ada(lovelace_amt) => {
+                            assets.insert(
+                                String::from("lovelace"),
+                                json!({
+                                    "unit": "lovelace",
+                                    "quantity": format!("{}", lovelace_amt)
+                                }),
+                            );
+                        }
                         Asset::NativeAsset(cs, tkn, amt) => {
                             let unit = format!("{}{}", hex::encode(cs.to_vec()), hex::encode(tkn));
                             assets.insert(
@@ -64,7 +70,6 @@ impl Reducer {
                                 }),
                             );
                         }
-                        _ => continue,
                     }
                 }
 
