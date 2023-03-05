@@ -1,6 +1,9 @@
-use pallas::ledger::{
-    primitives::babbage::{AssetName, PolicyId},
-    traverse::Asset,
+use pallas::{
+    codec::utils::CborWrap,
+    ledger::{
+        primitives::babbage::{AssetName, DatumOption, PlutusData, PolicyId},
+        traverse::{Asset, MultiEraOutput, MultiEraTx, OriginalHash},
+    },
 };
 use serde_json::json;
 
@@ -25,7 +28,7 @@ pub fn contains_currency_symbol(currency_symbol: &String, assets: &Vec<Asset>) -
             .or(Some(String::new())) // in case ADA is part of the vector
             .unwrap()
             .as_str()
-            .eq(currency_symbol)
+            .eq(currency_symbol.as_str())
     })
 }
 
@@ -45,6 +48,22 @@ pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) ->
     }
 
     None
+}
+
+pub fn resolve_datum(utxo: &MultiEraOutput, tx: &MultiEraTx) -> Result<PlutusData, ()> {
+    match utxo.datum() {
+        Some(DatumOption::Data(CborWrap(pd))) => Ok(pd),
+        Some(DatumOption::Hash(datum_hash)) => {
+            for raw_datum in tx.clone().plutus_data() {
+                if raw_datum.original_hash().eq(&datum_hash) {
+                    return Ok(raw_datum.clone().unwrap());
+                }
+            }
+
+            return Err(());
+        }
+        _ => Err(()),
+    }
 }
 
 pub fn serialize_value(
@@ -159,6 +178,10 @@ mod test {
         let mock_assets = mock_assets();
         assert_eq!(
             contains_currency_symbol(&CURRENCY_SYMBOL_1.to_string(), &mock_assets),
+            true
+        );
+        assert_eq!(
+            contains_currency_symbol(&CURRENCY_SYMBOL_2.to_string(), &mock_assets),
             true
         );
         assert_eq!(
