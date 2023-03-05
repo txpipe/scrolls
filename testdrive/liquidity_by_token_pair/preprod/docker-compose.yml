@@ -1,0 +1,19 @@
+version: "3.7"
+
+services:
+  scrolls:
+    # change this back to official repo instead of local image/ fork repo
+    image: ghcr.io/txpipe/scrolls:latest
+    command: ["daemon"]
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./daemon.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  redis:
+    image: redis
+    volumes:
+      - ./data:/data
+    ports:
+      - "6379:6379"

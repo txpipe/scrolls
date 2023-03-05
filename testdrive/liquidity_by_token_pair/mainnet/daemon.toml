@@ -1,0 +1,53 @@
+[source]
+type = "N2N"
+address = "relays-new.cardano-mainnet.iohk.io:3001"
+
+[chain]
+type = "Mainnet"
+
+[enrich]
+type = "Sled"
+db_path = "./data/sled_db"
+
+[[reducers]]
+type = "LiquidityByTokenPair"
+# optional redis key prefix
+pool_prefix = "pool"
+# optional redis member prefix
+dex_prefix = "min"
+# mandatory native asset policy id that marks valid liquidity pools
+pool_currency_symbol = "0be55d262b29f564998ff81efe21bdc0022621c12f15af08d0f2ddb1"
+# serialization format for redis members, by default false resulting in ':' separated values
+# json_value = true
+
+[[reducers]]
+type = "LiquidityByTokenPair"
+# optional redis key prefix
+pool_prefix = "pool"
+# optional redis member prefix
+dex_prefix = "sun"
+# mandatory native asset policy id that marks valid liquidity pools
+pool_currency_symbol = "0029cb7c88c7567b63d1a512c0ed626aa169688ec980730c0473b913"
+# serialization format for redis members, by default false resulting in ':' separated values
+# json_value = true
+
+[[reducers]]
+type = "LiquidityByTokenPair"
+# optional redis key prefix
+pool_prefix = "pool"
+# optional redis member prefix
+dex_prefix = "wrt"
+# mandatory native asset policy id that marks valid liquidity pools
+pool_currency_symbol = "026a18d04a0c642759bb3d83b12e3344894e5c1c7b2aeb1a2113a570"
+# serialization format for redis members, by default false resulting in ':' separated values
+# json_value = true
+
+[policy]
+missing_data = "Skip"
+
+[storage]
+type = "Redis"
+connection_params = "redis://redis:6379"
+
+[intersect]
+type = "Tip" # or "Origin" to get all available liquidity pools
