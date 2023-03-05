@@ -76,7 +76,7 @@ impl Reducer {
                 let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
                 let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
                 return build_key_value_pair(
-                    TokenPair { coin_a, coin_b },
+                    &TokenPair { coin_a, coin_b },
                     &self.config.dex_prefix,
                     coin_a_amt_opt,
                     coin_b_amt_opt,
@@ -93,7 +93,7 @@ impl Reducer {
                 let coin_a_amt_opt = get_asset_amount(&coin_a, &assets);
                 let coin_b_amt_opt = get_asset_amount(&coin_b, &assets);
                 return build_key_value_pair(
-                    TokenPair { coin_a, coin_b },
+                    &TokenPair { coin_a, coin_b },
                     &self.config.dex_prefix,
                     coin_a_amt_opt,
                     coin_b_amt_opt,

@@ -110,23 +110,63 @@ pub fn serialize_value(
 }
 
 pub fn build_key_value_pair(
-    token_pair: TokenPair,
+    token_pair: &TokenPair,
     dex_prefix: &Option<String>,
     coin_a_amt_opt: Option<u64>,
     coin_b_amt_opt: Option<u64>,
     fee_opt: Option<f64>,
     output_json_value: bool,
 ) -> Option<(String, String)> {
-    if let (Some(key), Some(value)) = (
-        token_pair.key(),
-        serialize_value(
+    let value: Option<String> = match (&token_pair.coin_a, &token_pair.coin_b) {
+        (PoolAsset::Ada, PoolAsset::AssetClass(_, _)) => serialize_value(
             dex_prefix,
             coin_a_amt_opt,
             coin_b_amt_opt,
             fee_opt,
             output_json_value,
         ),
-    ) {
+        (PoolAsset::AssetClass(_, _), PoolAsset::Ada) => {
+            serialize_value(
+                dex_prefix,
+                coin_b_amt_opt, // swapped
+                coin_a_amt_opt, // swapped
+                fee_opt,
+                output_json_value,
+            )
+        }
+        (PoolAsset::AssetClass(cs1, tkn1), PoolAsset::AssetClass(cs2, tkn2)) => {
+            let asset_id_1 = format!(
+                "{}.{}",
+                hex::encode(cs1.to_vec()),
+                hex::encode(tkn1.to_vec())
+            );
+            let asset_id_2 = format!(
+                "{}.{}",
+                hex::encode(cs2.to_vec()),
+                hex::encode(tkn2.to_vec())
+            );
+            match asset_id_1.cmp(&asset_id_2) {
+                std::cmp::Ordering::Less => serialize_value(
+                    dex_prefix,
+                    coin_a_amt_opt,
+                    coin_b_amt_opt,
+                    fee_opt,
+                    output_json_value,
+                ),
+                std::cmp::Ordering::Greater => serialize_value(
+                    dex_prefix,
+                    coin_b_amt_opt, // swapped
+                    coin_a_amt_opt, // swapped
+                    fee_opt,
+                    output_json_value,
+                ),
+                _ => None,
+            }
+        }
+        _ => None,
+    };
+
+    if let (Some(key), Some(value)) = (token_pair.key(), value) {
         return Some((key, value));
     }
     None
@@ -146,7 +186,7 @@ mod test {
 
     use crate::reducers::liquidity_by_token_pair::{
         model::{PoolAsset, TokenPair},
-        utils::contains_currency_symbol,
+        utils::{build_key_value_pair, contains_currency_symbol, serialize_value},
     };
 
     static CURRENCY_SYMBOL_1: &str = "93744265ed9762d8fa52c4aacacc703aa8c81de9f6d1a59f2299235b";
@@ -259,6 +299,54 @@ mod test {
         let key = token_pair.key();
         assert_eq!(true, key.is_some());
         assert_eq!("29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6.4d494e:8db269c3ec630e06ae29f74bc39edd1f87c819f1056206e879a1cd61.446a65644d6963726f555344", key.unwrap());
+
+        assert_eq!(
+            "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6.4d494e",
+            token_pair.coin_a.to_string()
+        );
+        assert_eq!(
+            "8db269c3ec630e06ae29f74bc39edd1f87c819f1056206e879a1cd61.446a65644d6963726f555344",
+            token_pair.coin_b.to_string()
+        );
+
+        let member = serialize_value(
+            &Some(String::from("min")),
+            Some(10),
+            Some(20),
+            Some(0.005),
+            false,
+        );
+        assert_eq!(true, member.is_some());
+        assert_eq!("min:10:20:0.005", member.unwrap());
+
+        let swapped_token_pair = TokenPair {
+            coin_a: token_pair.coin_b.clone(),
+            coin_b: token_pair.coin_a.clone(),
+        };
+
+        assert_eq!(token_pair.key(), swapped_token_pair.key());
+        assert_eq!(
+            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005), false),
+            build_key_value_pair(
+                &swapped_token_pair,
+                &None,
+                Some(20),
+                Some(10),
+                Some(0.005),
+                false
+            ),
+        );
+        assert_eq!(
+            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005), true),
+            build_key_value_pair(
+                &swapped_token_pair,
+                &None,
+                Some(20),
+                Some(10),
+                Some(0.005),
+                true
+            ),
+        );
     }
 
     #[test]

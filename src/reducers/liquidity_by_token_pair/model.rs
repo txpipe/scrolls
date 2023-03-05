@@ -29,7 +29,7 @@ impl TryFrom<&PlutusData> for LiquidityPoolDatum {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub struct TokenPair {
     pub coin_a: PoolAsset,
     pub coin_b: PoolAsset,
@@ -89,7 +89,7 @@ impl TryFrom<&PlutusData> for TokenPair {
     }
 }
 
-#[derive(core::cmp::PartialOrd)]
+#[derive(Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum PoolAsset {
     Ada,
     AssetClass(PolicyId, AssetName),
@@ -124,27 +124,11 @@ impl TryFrom<&PlutusData> for PoolAsset {
     }
 }
 
-impl std::fmt::Debug for PoolAsset {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.clone() {
-            PoolAsset::Ada => write!(f, "Ada"),
-            &PoolAsset::AssetClass(pid, tkn) => {
-                write!(
-                    f,
-                    "AssetClass {{ policy: '{}', name: '{}' }}",
-                    hex::encode(pid.to_vec()),
-                    hex::encode(tkn.to_vec())
-                )
-            }
-        }
-    }
-}
-
 impl std::fmt::Display for PoolAsset {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.clone() {
+        match self.clone() {
             PoolAsset::Ada => write!(f, ""),
-            &PoolAsset::AssetClass(pid, tkn) => {
+            PoolAsset::AssetClass(pid, tkn) => {
                 write!(
                     f,
                     "{}.{}",
@@ -156,17 +140,6 @@ impl std::fmt::Display for PoolAsset {
     }
 }
 
-impl PartialEq for PoolAsset {
-    fn eq(&self, other: &Self) -> bool {
-        match (&self.clone(), &other.clone()) {
-            (&PoolAsset::Ada, &PoolAsset::Ada) => true,
-            (&PoolAsset::AssetClass(a_pid, a_tkn), &PoolAsset::AssetClass(b_pid, b_tkn)) => {
-                a_pid.deref() == b_pid.deref() && a_tkn == b_tkn
-            }
-            _ => false,
-        }
-    }
-}
 #[derive(core::cmp::PartialOrd, Debug)]
 pub struct AssetClass {
     currency_symbol: PolicyId,
