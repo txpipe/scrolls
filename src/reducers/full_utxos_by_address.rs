@@ -1,7 +1,8 @@
 use pallas::codec::utils::CborWrap;
+use pallas::crypto::hash::Hash;
 use pallas::ledger::primitives::babbage::{DatumOption, PlutusData};
 use pallas::ledger::primitives::Fragment;
-use pallas::ledger::traverse::{Asset, MultiEraBlock, MultiEraTx};
+use pallas::ledger::traverse::{Asset, MultiEraBlock, MultiEraTx, OutputRef};
 use pallas::ledger::traverse::{MultiEraOutput, OriginalHash};
 use serde::Deserialize;
 use serde_json::json;
@@ -36,10 +37,20 @@ pub fn resolve_datum(utxo: &MultiEraOutput, tx: &MultiEraTx) -> Result<PlutusDat
 }
 
 impl Reducer {
-    fn get_key_value(&self, utxo: &MultiEraOutput, tx: &MultiEraTx) -> Option<(String, String)> {
+    fn get_key_value(
+        &self,
+        utxo: &MultiEraOutput,
+        tx: &MultiEraTx,
+        output_ref: &(Hash<32>, u64),
+    ) -> Option<(String, String)> {
         if let Some(address) = utxo.address().map(|addr| addr.to_string()).ok() {
             if address.eq(&self.config.address) {
                 let mut data = serde_json::Value::Object(serde_json::Map::new());
+
+                data["tx_hash"] = serde_json::Value::String(hex::encode(output_ref.0.to_vec()));
+                data["output_index"] =
+                    serde_json::Value::from(serde_json::Number::from(output_ref.1));
+
                 if let Some(datum) = resolve_datum(utxo, tx).ok() {
                     data["datum"] = serde_json::Value::String(hex::encode(
                         datum.encode_fragment().ok().unwrap(),
@@ -91,7 +102,9 @@ impl Reducer {
         for tx in block.txs().into_iter() {
             for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
                 if let Some(Some(utxo)) = ctx.find_utxo(&consumed).apply_policy(&self.policy).ok() {
-                    if let Some((key, value)) = self.get_key_value(&utxo, &tx) {
+                    if let Some((key, value)) =
+                        self.get_key_value(&utxo, &tx, &(consumed.hash().clone(), consumed.index()))
+                    {
                         output.send(
                             model::CRDTCommand::set_remove(prefix, &key.as_str(), value).into(),
                         )?;
@@ -99,8 +112,9 @@ impl Reducer {
                 }
             }
 
-            for (_, produced) in tx.produces() {
-                if let Some((key, value)) = self.get_key_value(&produced, &tx) {
+            for (index, produced) in tx.produces() {
+                let output_ref = (tx.hash().clone(), index as u64);
+                if let Some((key, value)) = self.get_key_value(&produced, &tx, &output_ref) {
                     output.send(model::CRDTCommand::set_add(None, &key, value).into())?;
                 }
             }
