@@ -2,7 +2,7 @@ use pallas::codec::utils::CborWrap;
 use pallas::crypto::hash::Hash;
 use pallas::ledger::primitives::babbage::{DatumOption, PlutusData};
 use pallas::ledger::primitives::Fragment;
-use pallas::ledger::traverse::{Asset, MultiEraBlock, MultiEraTx, OutputRef};
+use pallas::ledger::traverse::{Asset, MultiEraBlock, MultiEraTx};
 use pallas::ledger::traverse::{MultiEraOutput, OriginalHash};
 use serde::Deserialize;
 use serde_json::json;
@@ -59,32 +59,26 @@ impl Reducer {
                     data["datum_hash"] = serde_json::Value::String(hex::encode(h.to_vec()));
                 }
 
-                let mut assets: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
+                let mut assets: Vec<serde_json::Value> = Vec::new();
                 for asset in utxo.non_ada_assets() {
                     match asset {
                         Asset::Ada(lovelace_amt) => {
-                            assets.insert(
-                                String::from("lovelace"),
-                                json!({
-                                    "unit": "lovelace",
-                                    "quantity": format!("{}", lovelace_amt)
-                                }),
-                            );
+                            assets.push(json!({
+                                "unit": "lovelace",
+                                "quantity": format!("{}", lovelace_amt)
+                            }));
                         }
                         Asset::NativeAsset(cs, tkn, amt) => {
                             let unit = format!("{}{}", hex::encode(cs.to_vec()), hex::encode(tkn));
-                            assets.insert(
-                                unit.clone(),
-                                json!({
-                                    "unit": unit,
-                                    "quantity": format!("{}", amt)
-                                }),
-                            );
+                            assets.push(json!({
+                                "unit": unit,
+                                "quantity": format!("{}", amt)
+                            }));
                         }
                     }
                 }
 
-                data["amount"] = serde_json::Value::Object(assets);
+                data["amount"] = serde_json::Value::Array(assets);
                 return Some((address, data.to_string()));
             }
         }
