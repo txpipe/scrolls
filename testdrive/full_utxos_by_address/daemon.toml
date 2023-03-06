@@ -1,6 +1,6 @@
 [source]
 type = "N2N"
-address = "preprod-node.world.dev.cardano.org:30000"
+address = "relays-new.cardano-mainnet.iohk.io:3001"
 
 [enrich]
 type = "Sled"
@@ -8,7 +8,7 @@ db_path = "./data/sled_db"
 
 [[reducers]]
 type = "FullUtxosByAddress"
-address = "addr_test1xqtcjvyzs7t9c7zx9tks9ss682dymljr6kaxv0mgu2ljvhlhsecqwccjvxczaqetf20lt5vsxagku2cd5umjrewrgkfqagvy5e"
+address = "addr1z8snz7c4974vzdpxu65ruphl3zjdvtxw8strf2c2tmqnxz2j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq0xmsha"
 
 [storage]
 type = "Redis"
@@ -18,7 +18,7 @@ connection_params = "redis://redis:6379"
 type = "Tip"
 
 [chain]
-type = "PreProd"
+type = "Mainnet"
 
 [policy]
 missing_data = "Skip"
