@@ -71,42 +71,26 @@ pub fn serialize_value(
     coin_a_amt_opt: Option<u64>,
     coin_b_amt_opt: Option<u64>,
     fee_opt: Option<f64>,
-    output_json_value: bool,
 ) -> Option<String> {
     let coin_a_amt = coin_a_amt_opt?;
     let coin_b_amt = coin_b_amt_opt?;
 
-    if output_json_value {
-        let mut result = json!({
-            "coin_a": coin_a_amt,
-            "coin_b": coin_b_amt,
-        });
+    let mut result = json!({
+        "token_a": coin_a_amt,
+        "token_b": coin_b_amt,
+    });
 
-        if let Some(dex_prefix) = dex_prefix {
-            result["dex"] = serde_json::Value::String(String::from(dex_prefix.as_str()));
-        }
-
-        if let Some(fee) = fee_opt {
-            if let Some(n) = serde_json::Number::from_f64(fee) {
-                result["fee"] = serde_json::Value::Number(n);
-            }
-        }
-
-        return Some(result.to_string());
-    } else {
-        let mut result: Vec<String> = Vec::new();
-        if let Some(prefix) = dex_prefix {
-            result.push(String::from(prefix.as_str()));
-        }
-        result.push(coin_a_amt.to_string());
-        result.push(coin_b_amt.to_string());
-
-        if let Some(fee) = fee_opt {
-            result.push(fee.to_string());
-        }
-
-        return Some(result.join(":"));
+    if let Some(dex_prefix) = dex_prefix {
+        result["dex"] = serde_json::Value::String(String::from(dex_prefix.as_str()));
     }
+
+    if let Some(fee) = fee_opt {
+        if let Some(n) = serde_json::Number::from_f64(fee) {
+            result["fee"] = serde_json::Value::Number(n);
+        }
+    }
+
+    Some(result.to_string())
 }
 
 pub fn build_key_value_pair(
@@ -115,23 +99,17 @@ pub fn build_key_value_pair(
     coin_a_amt_opt: Option<u64>,
     coin_b_amt_opt: Option<u64>,
     fee_opt: Option<f64>,
-    output_json_value: bool,
 ) -> Option<(String, String)> {
     let value: Option<String> = match (&token_pair.coin_a, &token_pair.coin_b) {
-        (PoolAsset::Ada, PoolAsset::AssetClass(_, _)) => serialize_value(
-            dex_prefix,
-            coin_a_amt_opt,
-            coin_b_amt_opt,
-            fee_opt,
-            output_json_value,
-        ),
+        (PoolAsset::Ada, PoolAsset::AssetClass(_, _)) => {
+            serialize_value(dex_prefix, coin_a_amt_opt, coin_b_amt_opt, fee_opt)
+        }
         (PoolAsset::AssetClass(_, _), PoolAsset::Ada) => {
             serialize_value(
                 dex_prefix,
                 coin_b_amt_opt, // swapped
                 coin_a_amt_opt, // swapped
                 fee_opt,
-                output_json_value,
             )
         }
         (PoolAsset::AssetClass(cs1, tkn1), PoolAsset::AssetClass(cs2, tkn2)) => {
@@ -146,19 +124,14 @@ pub fn build_key_value_pair(
                 hex::encode(tkn2.to_vec())
             );
             match asset_id_1.cmp(&asset_id_2) {
-                std::cmp::Ordering::Less => serialize_value(
-                    dex_prefix,
-                    coin_a_amt_opt,
-                    coin_b_amt_opt,
-                    fee_opt,
-                    output_json_value,
-                ),
+                std::cmp::Ordering::Less => {
+                    serialize_value(dex_prefix, coin_a_amt_opt, coin_b_amt_opt, fee_opt)
+                }
                 std::cmp::Ordering::Greater => serialize_value(
                     dex_prefix,
                     coin_b_amt_opt, // swapped
                     coin_a_amt_opt, // swapped
                     fee_opt,
-                    output_json_value,
                 ),
                 _ => None,
             }
@@ -309,13 +282,7 @@ mod test {
             token_pair.coin_b.to_string()
         );
 
-        let member = serialize_value(
-            &Some(String::from("min")),
-            Some(10),
-            Some(20),
-            Some(0.005),
-            false,
-        );
+        let member = serialize_value(&Some(String::from("min")), Some(10), Some(20), Some(0.005));
         assert_eq!(true, member.is_some());
         assert_eq!("min:10:20:0.005", member.unwrap());
 
@@ -326,26 +293,12 @@ mod test {
 
         assert_eq!(token_pair.key(), swapped_token_pair.key());
         assert_eq!(
-            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005), false),
-            build_key_value_pair(
-                &swapped_token_pair,
-                &None,
-                Some(20),
-                Some(10),
-                Some(0.005),
-                false
-            ),
+            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005)),
+            build_key_value_pair(&swapped_token_pair, &None, Some(20), Some(10), Some(0.005),),
         );
         assert_eq!(
-            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005), true),
-            build_key_value_pair(
-                &swapped_token_pair,
-                &None,
-                Some(20),
-                Some(10),
-                Some(0.005),
-                true
-            ),
+            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005)),
+            build_key_value_pair(&swapped_token_pair, &None, Some(20), Some(10), Some(0.005),),
         );
     }
 

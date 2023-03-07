@@ -17,8 +17,6 @@ pool_prefix = "pool"
 dex_prefix = "min" 
 # mandatory native asset policy id that marks valid liquidity pools
 pool_currency_symbol = "0be55d262b29f564998ff81efe21bdc0022621c12f15af08d0f2ddb1"
-# serialization format for redis members, by default false resulting in ':' separated values
-# json_value = true
 
 [[reducers]]
 type = "LiquidityByTokenPair"
@@ -28,8 +26,6 @@ pool_prefix = "pool"
 dex_prefix = "wrt" 
 # mandatory native asset policy id that marks valid liquidity pools
 pool_currency_symbol = "fbaec8dd4d4405a4a42aec11ce5a0160c01e488f3918b082ccbab705"
-# serialization format for redis members, by default false resulting in ':' separated values
-json_value = true
 
 [policy]
 missing_data = "Skip"

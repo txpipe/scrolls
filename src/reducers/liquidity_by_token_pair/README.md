@@ -15,7 +15,6 @@ Note, that Muesliswap is not a pure AMM DEX and therefore, its liquidity for dif
 - `pool_currency_symbol` required hex-encoded currency symbol of the tokent that marks valid liquidity pool unspent transaction outputs (UTxOs)
 - `pool_prefix` optional prefix for Redis key
 - `dex_prefix` optional prefix for Redis members (usually used to prefix different liquidity sources by unique dex prefix)
-- `json_value` an optional flag whether Redis members should be encoded in json or colon-notation (less disk space usage). Defaults to `false`.
 
 ## How it works
 
@@ -42,18 +41,12 @@ https://preprod.cardanoscan.io/token/659ab0b5658687c2e74cd10dba8244015b713bf503b
 
 ### Redis Value Schema
 
-The reducer's value is a set. Each entry is a single liquidity source can either be json encoded or a colon separated string of values. A single member can contains up to four fields:
+The reducer's value is a set. Each entry is a single liquidity source is json encoded. A single member can contains up to four fields:
 
 - dex specific prefix to identift the origin of the liquidity source
 - big integer amount of coin a
 - big integer amount of coin b
 - a decimal number defining the fee of the liquidity source that's paid to liquidity providers
-
-Below you can find the general schema for a colon separated member:
-(`<dex_prefix>:`)?(`<coin_a_amount>:<coin_b_amount>`)(`:<dex_liquidity_provider_fee>`)?
-
-Example ADA/MIN liquidity source from MinSwap DEX:
-`min:31249392392:1323123231221:0.003`
 
 Below you can find the general schema for a JSON encoded member:
 

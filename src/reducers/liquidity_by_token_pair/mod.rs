@@ -22,7 +22,6 @@ pub struct Config {
     pub pool_prefix: Option<String>,
     pub dex_prefix: Option<String>,
     pub pool_currency_symbol: String,
-    pub json_value: Option<bool>,
 }
 
 pub struct Reducer {
@@ -81,7 +80,6 @@ impl Reducer {
                     coin_a_amt_opt,
                     coin_b_amt_opt,
                     None,
-                    self.config.json_value.unwrap_or_else(|| false),
                 )
                 .ok_or(());
             }
@@ -98,7 +96,6 @@ impl Reducer {
                     coin_a_amt_opt,
                     coin_b_amt_opt,
                     Some(fee),
-                    self.config.json_value.unwrap_or_else(|| false),
                 )
                 .ok_or(());
             }
