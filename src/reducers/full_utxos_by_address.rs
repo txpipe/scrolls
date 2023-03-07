@@ -13,6 +13,7 @@ use crate::{crosscut, model, prelude::*};
 pub struct Config {
     pub address: String,
     pub prefix: Option<String>,
+    pub address_as_key: Option<bool>,
 }
 
 pub struct Reducer {
@@ -46,10 +47,18 @@ impl Reducer {
         if let Some(address) = utxo.address().map(|addr| addr.to_string()).ok() {
             if address.eq(&self.config.address) {
                 let mut data = serde_json::Value::Object(serde_json::Map::new());
+                let address_as_key = self.config.address_as_key.unwrap_or(false);
+                let key: String;
 
-                data["tx_hash"] = serde_json::Value::String(hex::encode(output_ref.0.to_vec()));
-                data["output_index"] =
-                    serde_json::Value::from(serde_json::Number::from(output_ref.1));
+                if address_as_key {
+                    key = address;
+                    data["tx_hash"] = serde_json::Value::String(hex::encode(output_ref.0.to_vec()));
+                    data["output_index"] =
+                        serde_json::Value::from(serde_json::Number::from(output_ref.1));
+                } else {
+                    key = format!("{}#{}", hex::encode(output_ref.0.to_vec()), output_ref.1);
+                    data["address"] = serde_json::Value::String(address);
+                }
 
                 if let Some(datum) = resolve_datum(utxo, tx).ok() {
                     data["datum"] = serde_json::Value::String(hex::encode(
@@ -79,7 +88,7 @@ impl Reducer {
                 }
 
                 data["amount"] = serde_json::Value::Array(assets);
-                return Some((address, data.to_string()));
+                return Some((key, data.to_string()));
             }
         }
 
