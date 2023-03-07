@@ -11,7 +11,7 @@ use crate::{crosscut, model, prelude::*};
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub address: String,
+    pub filter: Vec<String>,
     pub prefix: Option<String>,
     pub address_as_key: Option<bool>,
 }
@@ -45,7 +45,7 @@ impl Reducer {
         output_ref: &(Hash<32>, u64),
     ) -> Option<(String, String)> {
         if let Some(address) = utxo.address().map(|addr| addr.to_string()).ok() {
-            if address.eq(&self.config.address) {
+            if self.config.filter.iter().any(|addr| address.eq(addr)) {
                 let mut data = serde_json::Value::Object(serde_json::Map::new());
                 let address_as_key = self.config.address_as_key.unwrap_or(false);
                 let key: String;
