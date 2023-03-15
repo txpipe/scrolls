@@ -8,13 +8,15 @@
     <hr/>
 </div>
 
-## Intro
+## Introduction
 
 _Scrolls_ is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, _Scrolls_ watches the tip of the chain to keep the collections up-to-date.
 
 Examples of collections are: "utxo by address", "chain parameters by epoch", "pool metadata by pool id", "tx cbor by hash", etc.
 
 > In other words, _Scrolls_ is just a map-reduce algorithm that aggregates the history of the chain into use-case-specific, key-value dictionaries.
+
+Check our [documentation](https://txpipe.github.io/scrolls) for detailed information on how to start working with Scrolls.
 
 :warning: this tool is under heavy development. Library API, configuration schema and storage structure may vary drastically. Several important features are still missing. Use at your own peril.
 
@@ -131,15 +133,6 @@ Once you're done with the testdive, you can clean your environment by running:
 ```sh
 docker-compose down
 ```
-
-## Installing
-
-We currently provide the following ways to install _Scrolls_:
-
-- Using one of the pre-compiled binaries shared via [Github Releases](https://github.com/txpipe/scrolls/releases)
-- Using the Docker image shared via [Github Packages](https://github.com/txpipe/scrolls/pkgs/container/scrolls)
-- By compiling from source code using the instructions provided in this README.
-
 
 ## FAQ
 
