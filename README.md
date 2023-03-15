@@ -141,59 +141,6 @@ We currently provide the following ways to install _Scrolls_:
 - By compiling from source code using the instructions provided in this README.
 
 
-## Configuration
-
-This is an example configuration file:
-
-```toml
-# get data from a relay node
-[source]
-type = "N2N"
-address = "relays-new.cardano-mainnet.iohk.io:3001"
-
-# You can optionally enable enrichment (local db with transactions), this is needed for some reducers
-[enrich]
-type = "Sled"
-db_path = "/opt/scrolls/sled_db"
-
-# enable the "UTXO by Address" collection
-[[reducers]]
-type = "UtxoByAddress"
-# you can optionally prefix the keys in the collection
-key_prefix = "c1"
-# you can optionally only process UTXO from a set of predetermined addresses
-filter = ["addr1qy8jecz3nal788f8t2zy6vj2l9ply3trpnkn2xuvv5rgu4m7y853av2nt8wc33agu3kuakvg0kaee0tfqhgelh2eeyyqgxmxw3"]
-
-# enable the "Point by Tx" collection
-[[reducers]]
-type = "PointByTx"
-key_prefix = "c2"
-
-# store the collections in a local Redis
-[storage]
-type = "Redis"
-connection_params = "redis://127.0.0.1:6379"
-
-# start reading from an arbitrary point in the chain
-[intersect]
-type = "Point"
-value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
-
-# let Scrolls know that we're working with mainnet
-[chain]
-type = "Mainnet"
-```
-
-## Compiling from Source
-
-To compile from source, you'll need to have the Rust toolchain available in your development box. Execute the following command to clone and build the project:
-
-```sh
-git clone https://github.com/txpipe/scrolls.git
-cd scrolls
-cargo build
-```
-
 ## FAQ
 
 ### Don't we have tools for this already?
@@ -211,24 +158,6 @@ Yes, we do. We have excellent tools such as: [Kupo](https://github.com/CardanoSo
 There's some overlap between _Oura_ and _Scrolls_. Both tools read on-chain data and output some data results. The main difference is that Oura is meant to **_react_** to events, to watch the chain and actuate upon certain patterns. In contrast, _Scrolls_ is meant to provide a snapshot of the current state of the chain by aggregating the whole history.
 
 They were built to work well together. For example, let's say that you're building an app that uses Oura to process transaction data, you could then integrate _Scrolls_ as a way to lookup the source address of the transaction's input.
-
-### How do I read the data using Python?
-
-Assuming you're using Redis as a storage backend (only one available ATM), we recommend using [redis-py](https://github.com/redis/redis-py) package to talk directly to the Redis instance. This is a very simple code snippet to query a the UTXOs by address.
-
-```python
->>> import redis
->>> r = redis.Redis(host='localhost', port=6379, db=0)
->>> r.smembers("c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz")
-{b'2548228522837ea580bc55a3e6a09479deca499b5e7f3c08602a1f3191a178e7:20', b'04086c503512833c7a0c11fc85f7d0f0422db9d14b31275b3d4327c40c6fd73b:25'}
-```
-
- The Redis operation being used is `smembers` which return the list of members of a set stored under a particular key. In this case, we query by the value `c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz`, where `c1` is the key prefix specified in the config for our particular collection and `addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz` is the address we're interested in querying. The response from redis is the list of UTXOs (in the format `{tx-hash}:{output-index}`) that are associated with that particular address.
-
-### How do I read the data using NodeJS?
-
-TODO
-
 ### What is "swarm mode"?
 
 Swarm mode is a way to speed up the process of rebuilding collection from scratch by splitting the tasks into concurrent instances of the _Scrolls_ daemon by partitioning the history of the chain into smaller fragments.
