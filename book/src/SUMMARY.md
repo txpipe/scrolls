@@ -6,7 +6,7 @@
     - [From Source](./installation/from_source.md)
     - [Docker](./installation/docker.md)
 - [Usage](./usage/README.md)
-    - [Example Configuration](./installation/binary_release.md)
+    - [Example Configuration](./usage/example.md)
 - [Sources](./sources/README.md)
     - [Node-to-Node](./sources/n2n.md)
     - [Node-to-Client](./sources/n2c.md)
@@ -15,5 +15,7 @@
 - [Advanced Features](./advanced/README.md)
     - [Swarm Mode](./advanced/swarm_mode.md)
 - [Guides](./guides/README.md)
-    - [NodeJS](./guides/nodejs.md)
-    - [Python](./guides/python.md)
+    - [Testdrive](./guides/testdrive.md)
+    - [NodeJS Client](./guides/nodejs.md)
+    - [Python Client](./guides/python.md)
+
