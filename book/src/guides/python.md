@@ -1,7 +1,5 @@
 # Python Client
 
-## Read the data using Python
-
 Assuming you're using Redis as a storage backend (only one available ATM), we recommend using [redis-py](https://github.com/redis/redis-py) package to talk directly to the Redis instance. This is a very simple code snippet to query a the UTXOs by address.
 
 ```python
