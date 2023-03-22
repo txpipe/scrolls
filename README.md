@@ -232,7 +232,7 @@ Assuming you're using Redis as a storage backend (only one available ATM), we re
     let r = redis.createClient("redis://127.0.0.1:6379"); // Initialize a redis client
     r.on("ready", () => { //When redis client is ready, run stuff
         r.sMembers("c1.addr1qy8jecz3nal788f8t2zy6vj2l9ply3trpnkn2xuvv5rgu4m7y853av2nt8wc33agu3kuakvg0kaee0tfqhgelh2eeyyqgxmxw3")
-        .then(console.log); // Returns a list of UTXOS associated with specified address
+        .then(console.log);
     })
 ```
 
