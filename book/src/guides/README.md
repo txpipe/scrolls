@@ -1,3 +1,3 @@
 # Guides
 
-Quick informal guides to get starting using Scrlls with external tools.
+Quick informal guides to get starting using Scrolls with external tools.
