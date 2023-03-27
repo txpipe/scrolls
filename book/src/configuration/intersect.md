@@ -16,12 +16,14 @@ Scrolls provides 4 different strategies for finding the intersection point withi
 
 ## Examples
 
+Using **Point**:
 ``` toml
 [intersect]
 type = "Point"
 value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
 ```
 
+Using **Fallbacks**:
 ``` toml
 [intersect]
 type = "Fallbacks"
