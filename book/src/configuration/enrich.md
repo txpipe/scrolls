@@ -2,6 +2,14 @@
 
 ## Fields
 - type: `"Sled" | "Skip"`
-- db_path **(*)**: `"<dirpath>"`
+- db_path (*): `"<dirpath>"`
 
-(*) Available only with `type = "Sled"`
+(*) Use only with `type = "Sled"`
+
+## Example
+
+``` toml
+[enrich]
+type = "Sled"
+db_path = "/opt/scrolls/sled_db"
+```

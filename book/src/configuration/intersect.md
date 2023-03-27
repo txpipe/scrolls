@@ -10,6 +10,23 @@ Scrolls provides 4 different strategies for finding the intersection point withi
 
 ## Fields
 - type: `"Tip" | "Origin" | "Point" | "Fallbacks"`
-- value **(*)**: `(u64, String) | Vec<(u64, String)>`
+- value (*): `(u64, String) | Vec<(u64, String)>`
 
-**(*)** Use `(u64, String)` with `type = "Point"` and `Vec<(u64, String)>` with `type = "Fallbacks"`
+(*) Use value of type `(u64, String)` with `type = "Point"` and value of type `Vec<(u64, String)>` with `type = "Fallbacks"`
+
+## Examples
+
+``` toml
+[intersect]
+type = "Point"
+value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
+```
+
+``` toml
+[intersect]
+type = "Fallbacks"
+value = [
+      [12345678, "this_is_not_a_valid_hash_ff1b93cdfd997d4ea93e7d930908aa5905d788f"],
+      [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f016b"]
+      ]
+```
