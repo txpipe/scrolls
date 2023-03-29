@@ -9,7 +9,8 @@ See our [Redis-cli basics](../guides/redis.md) guide to get started playing with
 ### Fields
 
 - type: `"Redis" | "Skip"` 
-- connection_params (*): `"<uri>"`
+- connection_params (*): `String`
+- cursor_key (*): `Option<String>`
 
 (*) Use only with `type = "Redis"`
 

@@ -9,8 +9,9 @@ The **Node-to-Client (N2C)** source uses Ouroboros mini-protocols to connect to 
 ## Fields
 
 - type: `"N2N" | "N2C"`
-- address (*): `"<cardano_node>"`
-- path (**): `"<socket>"`
+- address (*): `String`
+- path (**): `String`
+- min_depth: `"Option<usize>"`
 
 (*) Use only with `type = "N2N"`
 

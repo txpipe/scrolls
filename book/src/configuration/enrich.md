@@ -3,7 +3,7 @@ Store UTXOs information in a local DB, this is needed for some reducers to work.
 
 ## Fields
 - type: `"Sled" | "Skip"`
-- db_path (*): `"<dirpath>"`
+- db_path (*): `String`
 
 (*) Use only with `type = "Sled"`
 

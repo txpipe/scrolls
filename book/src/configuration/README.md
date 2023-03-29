@@ -41,3 +41,4 @@ value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f
 type = "Mainnet"
 ```
 
+Sometimes it helps to use [toml2json](https://github.com/woodruffw/toml2json) and [jq](https://stedolan.github.io/jq/) if you need to visualize toml files as json. Example: `toml2json ./configuration.toml | jq` 

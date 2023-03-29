@@ -19,6 +19,45 @@
 - [utxos_by_asset](#utxos_by_asset)
 
 
+## Predicates 
+
+Predicates can be used as filters by many reducers.
+
+```
+pub enum Predicate {
+    AllOf(Vec<Predicate>),
+    AnyOf(Vec<Predicate>),
+    Not(Box<Predicate>),
+    Block(BlockPattern),
+    Transaction(TransactionPattern),
+    InputAddress(AddressPattern),
+    OutputAddress(AddressPattern),
+    WithdrawalAddress(AddressPattern),
+    CollateralAddress(AddressPattern),
+    Address(AddressPattern),
+}
+```
+
+```
+pub struct BlockPattern {
+    pub slot_before: Option<u64>,
+    pub slot_after: Option<u64>,
+}
+```
+
+```
+#[derive(Deserialize, Clone, Default)]
+pub struct AddressPattern {
+    pub exact_hex: Option<String>,
+    pub exact_bech32: Option<String>,
+    pub payment_hex: Option<String>,
+    pub payment_bech32: Option<String>,
+    pub stake_hex: Option<String>,
+    pub stake_bech32: Option<String>,
+    pub is_script: Option<bool>,
+}
+```
+
 <br />
 <br />
 <hr />
