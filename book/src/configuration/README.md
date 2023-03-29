@@ -1,6 +1,6 @@
 # Configuration
 
-Scrolls daemon must be configured using a single `.toml` file. For the purpose of testing out Scrolls you can use the provided configuration located in `testdrive/simple/daemon.toml`. See below for an example config with explantions and check the following sections of this book to understand in detail each section of the configuration file.
+Scrolls daemon must be configured using a single `.toml` file. For the purpose of testing out Scrolls you can use the provided configuration located in `testdrive/simple/daemon.toml`. See below for another example config with explantions and check the following sections of this book to understand in detail each section of the configuration file.
 
 ```toml
 # get data from a relay node

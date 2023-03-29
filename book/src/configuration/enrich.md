@@ -1,4 +1,5 @@
 # Enrich
+Store UTXOs information in a local DB, this is needed for some reducers to work. Currently, only [Sled](https://github.com/spacejam/sled) supported.
 
 ## Fields
 - type: `"Sled" | "Skip"`
