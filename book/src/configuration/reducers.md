@@ -19,42 +19,6 @@
 - [utxos_by_asset](#utxos_by_asset)
 
 
-## Predicates 
-
-Following `Predicate`s are available to be used as filters by some reducers.
-
-- all_of: `Vec<Predicate>`
-- any_of: `Vec<Predicate>`
-- not: `Predicate`
-- block: `BlockPattern`
-- transaction: `TransactionPattern`
-- input_address: `AddressPattern`
-- output_address: `AddressPattern`
-- withdrawal_address: `AddressPattern`
-- collateral_address: `AddressPattern`
-- address: `AddressPattern`
-
-
-BlockPattern:
-- slot_before: `Option<u64>`
-- slot_after: `Option<u64>`
-
-TransactionPattern:
-- is_valid: `Option<bool>`
-
-AddressPattern: 
-- exact_hex: `Option<String>`
-- exact_bech32: `Option<String>`
-- payment_hex: `Option<String>`
-- payment_bech32: `Option<String>`
-- stake_hex: `Option<String>`
-- stake_bech32: `Option<String>`
-- is_script: `Option<bool>`
-
-<br />
-<br />
-<hr />
-
 ## address_by_asset
 
 ### Config
@@ -81,7 +45,7 @@ AddressPattern:
 - key_prefix: `Option<String>`
 - filter (*): `Option<Predicate>`
 
-(*) See: [Predicates](#predicates)
+(*) See: [Predicates](./predicates.md)
 
 
 ### Example
@@ -115,7 +79,7 @@ AddressPattern:
 
 - policy_ids_hex: `Option<Vec<String>>`
 
-(*) See: [Predicates](#predicates)
+(*) See: [Predicates](./predicates.md)
 
 (**) Policies to match. If specified only those policy ids as hex will be taken into account, if not all policy ids will be indexed.
 
@@ -132,7 +96,7 @@ AddressPattern:
 - key_prefix: `Option<String>`
 - filter (*): `Option<Predicate>`
 
-(*) See: [Predicates](#predicates)
+(*) See: [Predicates](./predicates.md)
 
 ### Example
 ### Output Format
@@ -147,7 +111,7 @@ AddressPattern:
 - key_prefix: `Option<String>`
 - filter (*): `Option<Predicate>`
 
-(*) See: [Predicates](#predicates)
+(*) See: [Predicates](./predicates.md)
 
 ### Example
 ### Output Format
@@ -212,7 +176,7 @@ AddressPattern:
 - filter (*): `Option<Predicate>`
 - projection: `"Cbor" | "Json"`
 
-(*) See: [Predicates](#predicates)
+(*) See: [Predicates](./predicates.md)
 
 ### Example
 
@@ -234,7 +198,7 @@ key_prefix: "c1"
 - key_prefix: `Option<String>`
 - filter (*): `Option<Predicate>`
 
-(*) See: [Predicates](#predicates)
+(*) See: [Predicates](./predicates.md)
 
 ### Example
 ### Output Format
