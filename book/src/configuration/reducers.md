@@ -21,42 +21,35 @@
 
 ## Predicates 
 
-Predicates can be used as filters by many reducers.
+Following `Predicate`s are available to be used as filters by some reducers.
 
-```
-pub enum Predicate {
-    AllOf(Vec<Predicate>),
-    AnyOf(Vec<Predicate>),
-    Not(Box<Predicate>),
-    Block(BlockPattern),
-    Transaction(TransactionPattern),
-    InputAddress(AddressPattern),
-    OutputAddress(AddressPattern),
-    WithdrawalAddress(AddressPattern),
-    CollateralAddress(AddressPattern),
-    Address(AddressPattern),
-}
-```
+- all_of: `Vec<Predicate>`
+- any_of: `Vec<Predicate>`
+- not: `Predicate`
+- block: `BlockPattern`
+- transaction: `TransactionPattern`
+- input_address: `AddressPattern`
+- output_address: `AddressPattern`
+- withdrawal_address: `AddressPattern`
+- collateral_address: `AddressPattern`
+- address: `AddressPattern`
 
-```
-pub struct BlockPattern {
-    pub slot_before: Option<u64>,
-    pub slot_after: Option<u64>,
-}
-```
 
-```
-#[derive(Deserialize, Clone, Default)]
-pub struct AddressPattern {
-    pub exact_hex: Option<String>,
-    pub exact_bech32: Option<String>,
-    pub payment_hex: Option<String>,
-    pub payment_bech32: Option<String>,
-    pub stake_hex: Option<String>,
-    pub stake_bech32: Option<String>,
-    pub is_script: Option<bool>,
-}
-```
+BlockPattern:
+- slot_before: `Option<u64>`
+- slot_after: `Option<u64>`
+
+TransactionPattern:
+- is_valid: `Option<bool>`
+
+AddressPattern: 
+- exact_hex: `Option<String>`
+- exact_bech32: `Option<String>`
+- payment_hex: `Option<String>`
+- payment_bech32: `Option<String>`
+- stake_hex: `Option<String>`
+- stake_bech32: `Option<String>`
+- is_script: `Option<bool>`
 
 <br />
 <br />
@@ -86,7 +79,10 @@ pub struct AddressPattern {
 ### Config
 
 - key_prefix: `Option<String>`
-- filter: `Option<Predicate>`
+- filter (*): `Option<Predicate>`
+
+(*) See: [Predicates](#predicates)
+
 
 ### Example
 ### Output Format
@@ -114,14 +110,15 @@ pub struct AddressPattern {
 ### Config
 
 - key_prefix: `Option<String>`
-- filter: `Option<Predicate>`
-- aggr_by: `Option<AggrType>`
+- filter (*): `Option<Predicate>`
+- aggr_by (**): `Option<AggrType>`
 
-    /// Policies to match
-    ///
-    /// If specified only those policy ids as hex will be taken into account, if
-    /// not all policy ids will be indexed.
 - policy_ids_hex: `Option<Vec<String>>`
+
+(*) See: [Predicates](#predicates)
+
+(**) Policies to match. If specified only those policy ids as hex will be taken into account, if not all policy ids will be indexed.
+
 ### Example
 ### Output Format
 
@@ -133,7 +130,10 @@ pub struct AddressPattern {
 
 ### Config
 - key_prefix: `Option<String>`
-- filter: `Option<Predicate>`
+- filter (*): `Option<Predicate>`
+
+(*) See: [Predicates](#predicates)
+
 ### Example
 ### Output Format
 
@@ -145,7 +145,9 @@ pub struct AddressPattern {
 
 ### Config
 - key_prefix: `Option<String>`
-- filter: `Option<Predicate>`
+- filter (*): `Option<Predicate>`
+
+(*) See: [Predicates](#predicates)
 
 ### Example
 ### Output Format
@@ -207,8 +209,10 @@ pub struct AddressPattern {
 
 ### Config
 - key_prefix: `Option<String>`
-- filter: `Option<Predicate>`
+- filter (*): `Option<Predicate>`
 - projection: `"Cbor" | "Json"`
+
+(*) See: [Predicates](#predicates)
 
 ### Example
 
@@ -228,7 +232,9 @@ key_prefix: "c1"
 
 ### Config
 - key_prefix: `Option<String>`
-- filter: `Option<Predicate>`
+- filter (*): `Option<Predicate>`
+
+(*) See: [Predicates](#predicates)
 
 ### Example
 ### Output Format
