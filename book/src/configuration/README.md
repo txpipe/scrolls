@@ -1,7 +1,12 @@
 # Configuration
+For the purpose of testing out Scrolls you can use the provided configuration located in `testdrive/simple/daemon.toml`. See below for another example with explanations and check the following sections of this book to understand in detail each section of the configuration file.
 
-Scrolls daemon must be configured using a single `.toml` file. For the purpose of testing out Scrolls you can use the provided configuration located in `testdrive/simple/daemon.toml`. See below for another example config with explantions and check the following sections of this book to understand in detail each section of the configuration file.
+## Format
+Scrolls daemon supports `.toml` and `.json` configuration files. Unlike json, toml supports comments which are very handy to turn declarations on and off, specially during early stages of development, debugging, learning, etc. On the other hand, deeply nested filters can be difficult to understand using toml syntax, so the user can choose to declare the whole configuration with json, or instead to rely on tools like [toml2json](https://github.com/woodruffw/toml2json) and [remarshal](https://github.com/remarshal-project/remarshal) to translate small chunks of json (such as complex deeply nested filters) to be used in toml configuration files.
 
+When working with toml configuration files, sometimes it also helps to translate the whole configuration to json, and use [jq](https://stedolan.github.io/jq/)/[bat](https://github.com/sharkdp/bat) to make the json human friendly. This often helps to understand the structure of the filters. Example: `toml2json ./configuration.toml | jq | bat -l json` 
+
+## Configuration Example
 ```toml
 # get data from a relay node
 [source]
@@ -41,4 +46,3 @@ value = [57867490, "c491c5006192de2c55a95fb3544f60b96bd1665accaf2dfa2ab12fc7191f
 type = "Mainnet"
 ```
 
-Sometimes it helps to use [toml2json](https://github.com/woodruffw/toml2json) and [jq](https://stedolan.github.io/jq/) if you need to visualize toml files as json. Example: `toml2json ./configuration.toml | jq` 

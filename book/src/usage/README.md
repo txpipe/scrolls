@@ -2,6 +2,7 @@
 
 Once you have Scrolls and Redis installed in your system (see [Installation](../installation/index.md)) you can start the daemon with the following command:
 
+
 ``` bash
 /path/to/scrolls daemon --config /path/to/config.toml
 ```

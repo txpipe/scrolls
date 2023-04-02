@@ -17,6 +17,7 @@
     - [Policy](./configuration/policy.md)
 - [Advanced Features](./advanced/README.md)
     - [Swarm Mode](./advanced/swarm_mode.md)
+- [Troubleshooting](./troubleshooting/README.md)
 - [Guides](./guides/README.md)
     - [Testdrive](./guides/testdrive.md)
     - [NodeJS Client](./guides/nodejs.md)
