@@ -36,6 +36,10 @@ pub mod tx_by_hash;
 #[cfg(feature = "unstable")]
 pub mod tx_count_by_address;
 #[cfg(feature = "unstable")]
+pub mod tx_count_by_stake_key;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_asset;
+#[cfg(feature = "unstable")]
 pub mod tx_count_by_native_token_policy_id;
 #[cfg(feature = "unstable")]
 pub mod utxo_by_stake;
@@ -65,6 +69,10 @@ pub enum Config {
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Config),
+    #[cfg(feature = "unstable")]
+    TxCountByStakeKey(tx_count_by_stake_key::Config),
+    #[cfg(feature = "unstable")]
+    TxCountByAsset(tx_count_by_asset::Config),
     #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Config),
     #[cfg(feature = "unstable")]
@@ -110,6 +118,10 @@ impl Config {
             Config::TxByHash(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TxCountByAddress(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByStakeKey(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByAsset(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
@@ -197,6 +209,10 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Reducer),
     #[cfg(feature = "unstable")]
+    TxCountByStakeKey(tx_count_by_stake_key::Reducer),
+    #[cfg(feature = "unstable")]
+    TxCountByAsset(tx_count_by_asset::Reducer),
+    #[cfg(feature = "unstable")]
     BlockHeaderByHash(block_header_by_hash::Reducer),
     #[cfg(feature = "unstable")]
     AddressByAsset(address_by_asset::Reducer),
@@ -242,6 +258,10 @@ impl Reducer {
             Reducer::TxByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByStakeKey(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
