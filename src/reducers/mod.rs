@@ -41,6 +41,10 @@ pub mod utxo_by_stake;
 pub mod utxos_by_asset;
 #[cfg(feature = "unstable")]
 pub mod addresses_by_stake;
+#[cfg(feature = "unstable")]
+pub mod assets_by_address;
+#[cfg(feature = "unstable")]
+pub mod assets_by_stake_key;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -75,6 +79,10 @@ pub enum Config {
     SupplyByAsset(supply_by_asset::Config),
     #[cfg(feature = "unstable")]
     AddressesByStake(addresses_by_stake::Config),
+    #[cfg(feature = "unstable")]
+    AssetsByAddress(assets_by_address::Config),
+    #[cfg(feature = "unstable")]
+    AssetsByStakeKey(assets_by_stake_key::Config),
 }
 
 impl Config {
@@ -114,6 +122,10 @@ impl Config {
             Config::SupplyByAsset(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::AddressesByStake(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::AssetsByAddress(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::AssetsByStakeKey(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -194,6 +206,10 @@ pub enum Reducer {
     SupplyByAsset(supply_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     AddressesByStake(addresses_by_stake::Reducer),
+    #[cfg(feature = "unstable")]
+    AssetsByAddress(assets_by_address::Reducer),
+    #[cfg(feature = "unstable")]
+    AssetsByStakeKey(assets_by_stake_key::Reducer),
 }
 
 impl Reducer {
@@ -234,6 +250,10 @@ impl Reducer {
             Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AssetsByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AssetsByStakeKey(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
