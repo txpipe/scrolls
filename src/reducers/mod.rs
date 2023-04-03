@@ -125,7 +125,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TxCountByStakeKey(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::TxCountByAsset(c) => c.plugin(policy),
+            Config::TxCountByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::BlockHeaderByHash(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
