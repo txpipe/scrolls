@@ -22,6 +22,8 @@ pub mod address_by_txo;
 #[cfg(feature = "unstable")]
 pub mod asset_holders_by_asset_id;
 #[cfg(feature = "unstable")]
+pub mod stake_keys_by_asset;
+#[cfg(feature = "unstable")]
 pub mod balance_by_address;
 #[cfg(feature = "unstable")]
 pub mod balance_by_stake_key;
@@ -84,6 +86,8 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
     #[cfg(feature = "unstable")]
+    StakeKeysByAsset(stake_keys_by_asset::Config),
+    #[cfg(feature = "unstable")]
     UtxosByAsset(utxos_by_asset::Config),
     #[cfg(feature = "unstable")]
     UtxoByStake(utxo_by_stake::Config),
@@ -132,6 +136,8 @@ impl Config {
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::StakeKeysByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::UtxosByAsset(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
@@ -223,6 +229,8 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
     #[cfg(feature = "unstable")]
+    StakeKeysByAsset(stake_keys_by_asset::Reducer),
+    #[cfg(feature = "unstable")]
     UtxosByAsset(utxos_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     UtxoByStake(utxo_by_stake::Reducer),
@@ -272,6 +280,8 @@ impl Reducer {
             Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::StakeKeysByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
