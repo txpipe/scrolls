@@ -20,7 +20,7 @@ pub mod address_by_asset;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
-pub mod asset_holders_by_asset_id;
+pub mod addresses_by_asset;
 #[cfg(feature = "unstable")]
 pub mod stake_keys_by_asset;
 #[cfg(feature = "unstable")]
@@ -84,7 +84,7 @@ pub enum Config {
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
     #[cfg(feature = "unstable")]
-    AssetHoldersByAsset(asset_holders_by_asset_id::Config),
+    AddressesByAsset(addresses_by_asset::Config),
     #[cfg(feature = "unstable")]
     StakeKeysByAsset(stake_keys_by_asset::Config),
     #[cfg(feature = "unstable")]
@@ -135,7 +135,7 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
             #[cfg(feature = "unstable")]
-            Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
+            Config::AddressesByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::StakeKeysByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
@@ -227,7 +227,7 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
     #[cfg(feature = "unstable")]
-    AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
+    AddressesByAsset(addresses_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     StakeKeysByAsset(stake_keys_by_asset::Reducer),
     #[cfg(feature = "unstable")]
@@ -279,7 +279,7 @@ impl Reducer {
             #[cfg(feature = "unstable")]
             Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
             #[cfg(feature = "unstable")]
-            Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressesByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::StakeKeysByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]

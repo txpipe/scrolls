@@ -35,7 +35,7 @@ pub struct Reducer {
 
 impl Reducer {
     fn config_key(&self, subject: String, epoch_no: u64) -> String {
-        let def_key_prefix = "asset_holders_by_asset_id";
+        let def_key_prefix = "addresses_by_asset";
 
         match &self.config.aggr_by {
             Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
@@ -178,7 +178,7 @@ impl Config {
             policy_ids: policy_ids.clone(),
         };
 
-        super::Reducer::AssetHoldersByAssetId(reducer)
+        super::Reducer::AddressesByAsset(reducer)
     }
 }
 
