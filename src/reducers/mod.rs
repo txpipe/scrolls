@@ -24,6 +24,8 @@ pub mod asset_holders_by_asset_id;
 #[cfg(feature = "unstable")]
 pub mod balance_by_address;
 #[cfg(feature = "unstable")]
+pub mod balance_by_stake_key;
+#[cfg(feature = "unstable")]
 pub mod block_header_by_hash;
 #[cfg(feature = "unstable")]
 pub mod last_block_parameters;
@@ -57,6 +59,8 @@ pub enum Config {
     AddressByTxo(address_by_txo::Config),
     #[cfg(feature = "unstable")]
     BalanceByAddress(balance_by_address::Config),
+    #[cfg(feature = "unstable")]
+    BalanceByStakeKey(balance_by_stake_key::Config),
     #[cfg(feature = "unstable")]
     TxByHash(tx_by_hash::Config),
     #[cfg(feature = "unstable")]
@@ -100,6 +104,8 @@ impl Config {
             Config::AddressByTxo(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::BalanceByAddress(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::BalanceByStakeKey(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
             Config::TxByHash(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
@@ -185,6 +191,8 @@ pub enum Reducer {
     #[cfg(feature = "unstable")]
     BalanceByAddress(balance_by_address::Reducer),
     #[cfg(feature = "unstable")]
+    BalanceByStakeKey(balance_by_stake_key::Reducer),
+    #[cfg(feature = "unstable")]
     TxByHash(tx_by_hash::Reducer),
     #[cfg(feature = "unstable")]
     TxCountByAddress(tx_count_by_address::Reducer),
@@ -228,6 +236,8 @@ impl Reducer {
             Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::BalanceByStakeKey(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TxByHash(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
