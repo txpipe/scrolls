@@ -87,6 +87,12 @@ pub enum Config {
     AssetHoldersByAsset(asset_holders_by_asset_id::Config),
     #[cfg(feature = "unstable")]
     UtxosByAsset(utxos_by_asset::Config),
+    #[cfg(feature = "unstable")]
+    UtxoByStake(utxo_by_stake::Config),
+    #[cfg(feature = "unstable")]
+    SupplyByAsset(supply_by_asset::Config),
+    #[cfg(feature = "unstable")]
+    AddressesByStake(addresses_by_stake::Config),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -105,12 +111,6 @@ pub enum Config {
     FeesByScript(fees_by_script::Config),
     #[cfg(feature = "unstable")]
     TransactionSizeByScript(transaction_size_by_script::Config),
-    #[cfg(feature = "unstable")]
-    UtxoByStake(utxo_by_stake::Config),
-    #[cfg(feature = "unstable")]
-    SupplyByAsset(supply_by_asset::Config),
-    #[cfg(feature = "unstable")]
-    AddressesByStake(addresses_by_stake::Config),
 }
 
 impl Config {
@@ -122,7 +122,7 @@ impl Config {
         match self {
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
-            Config::PoolByStake(c) => c.plugin(policy),
+            Config::PoolByStake(c) => c.plugin(),
 
             #[cfg(feature = "unstable")]
             Config::AddressByTxo(c) => c.plugin(policy),
@@ -144,6 +144,12 @@ impl Config {
             Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::UtxosByAsset(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::UtxoByStake(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::SupplyByAsset(c) => c.plugin(policy),
+            #[cfg(feature = "unstable")]
+            Config::AddressesByStake(c) => c.plugin(),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -162,12 +168,6 @@ impl Config {
             Config::FeesByScript(c) => c.plugin(chain, policy),
             #[cfg(feature = "unstable")]
             Config::TransactionSizeByScript(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::UtxoByStake(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::SupplyByAsset(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::AddressesByStake(c) => c.plugin(policy),
         }
     }
 }
@@ -243,6 +243,12 @@ pub enum Reducer {
     AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
     #[cfg(feature = "unstable")]
     UtxosByAsset(utxos_by_asset::Reducer),
+    #[cfg(feature = "unstable")]
+    UtxoByStake(utxo_by_stake::Reducer),
+    #[cfg(feature = "unstable")]
+    SupplyByAsset(supply_by_asset::Reducer),
+    #[cfg(feature = "unstable")]
+    AddressesByStake(addresses_by_stake::Reducer),
 
     // CRFA
     #[cfg(feature = "unstable")]
@@ -261,12 +267,6 @@ pub enum Reducer {
     FeesByScript(fees_by_script::Reducer),
     #[cfg(feature = "unstable")]
     TransactionSizeByScript(transaction_size_by_script::Reducer),
-    #[cfg(feature = "unstable")]
-    UtxoByStake(utxo_by_stake::Reducer),
-    #[cfg(feature = "unstable")]
-    SupplyByAsset(supply_by_asset::Reducer),
-    #[cfg(feature = "unstable")]
-    AddressesByStake(addresses_by_stake::Reducer),
 }
 
 impl Reducer {
@@ -301,6 +301,12 @@ impl Reducer {
             Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
 
             // CRFA
             #[cfg(feature = "unstable")]
@@ -319,12 +325,6 @@ impl Reducer {
             Reducer::FeesByScript(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::TransactionSizeByScript(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
         }
     }
 }

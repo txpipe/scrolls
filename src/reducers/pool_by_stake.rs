@@ -13,7 +13,6 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    policy: crosscut::policies::RuntimePolicy,
 }
 
 impl Reducer {
@@ -46,7 +45,7 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
-        ctx: &model::BlockContext,
+        _ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let slot = block.slot();
@@ -68,12 +67,8 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, 
-        policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
-        let reducer = Reducer { 
-            config: self,
-            policy: policy.clone()
-         };
+    pub fn plugin(self) -> super::Reducer {
+        let reducer = Reducer { config: self };
         super::Reducer::PoolByStake(reducer)
     }
 }

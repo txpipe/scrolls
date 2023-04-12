@@ -1,4 +1,4 @@
-use pallas::ledger::addresses::{self, Address, StakeAddress};
+use pallas::ledger::addresses::{Address, StakeAddress};
 use pallas::ledger::traverse::MultiEraOutput;
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
