@@ -22,29 +22,29 @@ type = "BalanceByAddress"
 [[reducers]]
 type = "TxCountByAddress"
 
-# [[reducers]]
-# type = "AssetsByAddress"
+[[reducers]]
+type = "AssetsByAddress"
 
-# [[reducers]]
-# type = "BalanceByStakeKey"
+[[reducers]]
+type = "BalanceByStakeKey"
 
-# [[reducers]]
-# type = "TxCountByStakeKey"
+[[reducers]]
+type = "TxCountByStakeKey"
 
-# [[reducers]]
-# type = "AssetsByStakeKey"
+[[reducers]]
+type = "AssetsByStakeKey"
 
-# [[reducers]]
-# type = "TxCountByAsset"
+[[reducers]]
+type = "TxCountByAsset"
 
-# [[reducers]]
-# type = "SupplyByAsset"
+[[reducers]]
+type = "SupplyByAsset"
 
-# [[reducers]]
-# type = "AddressesByAsset"
+[[reducers]]
+type = "AddressesByAsset"
 
-# [[reducers]]
-# type = "StakeKeysByAsset"
+[[reducers]]
+type = "StakeKeysByAsset"
 
 [storage]
 type = "Redis"

@@ -1,5 +1,6 @@
 pub mod skip;
 pub mod sled;
+pub mod redis;
 
 use gasket::messaging::{OutputPort, TwoPhaseInputPort};
 use serde::Deserialize;
@@ -11,6 +12,7 @@ use crate::{bootstrap, crosscut, model};
 pub enum Config {
     Skip,
     Sled(sled::Config),
+    Redis(redis::Config)
 }
 
 impl Default for Config {
@@ -24,6 +26,7 @@ impl Config {
         match self {
             Config::Skip => Bootstrapper::Skip(skip::Bootstrapper::default()),
             Config::Sled(c) => Bootstrapper::Sled(c.boostrapper(policy)),
+            Config::Redis(c) => Bootstrapper::Redis(c.boostrapper(policy)),
         }
     }
 }
@@ -31,6 +34,7 @@ impl Config {
 pub enum Bootstrapper {
     Skip(skip::Bootstrapper),
     Sled(sled::Bootstrapper),
+    Redis(redis::Bootstrapper),
 }
 
 impl Bootstrapper {
@@ -38,6 +42,7 @@ impl Bootstrapper {
         match self {
             Bootstrapper::Skip(x) => x.borrow_input_port(),
             Bootstrapper::Sled(x) => x.borrow_input_port(),
+            Bootstrapper::Redis(x) => x.borrow_input_port(),
         }
     }
 
@@ -45,6 +50,7 @@ impl Bootstrapper {
         match self {
             Bootstrapper::Skip(x) => x.borrow_output_port(),
             Bootstrapper::Sled(x) => x.borrow_output_port(),
+            Bootstrapper::Redis(x) => x.borrow_output_port(),
         }
     }
 
@@ -52,6 +58,7 @@ impl Bootstrapper {
         match self {
             Bootstrapper::Skip(x) => x.spawn_stages(pipeline),
             Bootstrapper::Sled(x) => x.spawn_stages(pipeline),
+            Bootstrapper::Redis(x) => x.spawn_stages(pipeline),
         }
     }
 }
