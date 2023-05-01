@@ -201,20 +201,23 @@ impl Reducer {
                                                     meta_payload.clone(),
                                                     timestamp as Delta,
                                                 )
+
                                             } else {
                                                 model::CRDTCommand::AnyWriteWins(
                                                     format!("{}.{}", prefix, fingerprint_str),
                                                     model::Value::String(meta_payload.clone()),
                                                 )
+
                                             };
 
-                                            output.send(gasket::messaging::Message::from(main_meta_command))?;
+                                            output.send(main_meta_command.into())?;
 
                                             if should_keep_asset_index {
                                                 output.send(model::CRDTCommand::SetAdd(
                                                     format!("{}.{}", prefix, policy_id_str),
                                                     fingerprint_str,
                                                 ).into())?;
+
                                             }
 
                                         }
