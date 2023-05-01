@@ -17,8 +17,7 @@ pallas = "0.17.0"
 # pallas = { git = "https://github.com/txpipe/pallas.git" }
 hex = "0.4.3"
 net2 = "0.2.37"
-blake2b = "0.99.0"
-blake2 = "0.9.1"
+blake2 = "0.10.6"
 bech32 = "0.9.1"
 clap = { version = "3.2.6", features = ["derive"] }
 log = "0.4.14"

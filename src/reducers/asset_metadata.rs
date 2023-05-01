@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::string::FromUtf8Error;
 
-use bech32::{self, ToBase32, Variant};
+use bech32::{ToBase32, Variant};
 use blake2::digest::{Update, VariableOutput};
 use blake2::Blake2bVar;
 use hex::{self};
