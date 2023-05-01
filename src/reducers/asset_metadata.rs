@@ -32,7 +32,6 @@ impl Default for Projection {
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
-    pub export_json: Option<bool>,
     pub historical_metadata: Option<bool>,
     pub policy_asset_index: Option<bool>,
     pub filter: Option<crosscut::filters::Predicate>,
@@ -162,7 +161,7 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let prefix = self.config.key_prefix.as_deref().unwrap_or("asset-metadata");
-        let should_export_json = self.config.export_json.unwrap_or(false);
+        let projection = self.config.projection.unwrap_or_default();
         let should_keep_asset_index = self.config.policy_asset_index.unwrap_or(false);
         let should_keep_historical_metadata = self.config.historical_metadata.unwrap_or(false);
 
@@ -187,38 +186,40 @@ impl Reducer {
                                         let timestamp = self.time.slot_to_wallclock(block.slot().to_owned());
                                         let metadata_final = self.get_wrapped_metadata_fragment(asset_name_str.clone(), policy_id_str.clone(), asset_metadata);
 
-                                        let meta_payload = if should_export_json {
-                                            self.get_metadata_fragment(asset_name_str, policy_id_str.clone(), asset_metadata)
-                                        } else {
-                                            let cbor_enc = metadata_final.encode_fragment().unwrap();
-                                            String::from_utf8(cbor_enc).unwrap()
+                                        let meta_payload = match projection {
+                                            Projection::Json => {
+                                                self.get_metadata_fragment(asset_name_str, policy_id_str.clone(), asset_metadata)
+                                            },
+
+                                            Projection::Cbor => {
+                                                let cbor_enc = metadata_final.encode_fragment().unwrap();
+                                                String::from_utf8(cbor_enc).unwrap()
+                                            },
+
                                         };
 
-                                        if !meta_payload.is_empty() {
-                                            let main_meta_command = if should_keep_historical_metadata {
-                                                model::CRDTCommand::SortedSetAdd(
-                                                    format!("{}.{}", prefix, fingerprint_str),
-                                                    meta_payload.clone(),
-                                                    timestamp as Delta,
-                                                )
+                                        let main_meta_command = if should_keep_historical_metadata {
+                                            model::CRDTCommand::SortedSetAdd(
+                                                format!("{}.{}", prefix, fingerprint_str),
+                                                meta_payload.clone(),
+                                                timestamp as Delta,
+                                            )
 
-                                            } else {
-                                                model::CRDTCommand::AnyWriteWins(
-                                                    format!("{}.{}", prefix, fingerprint_str),
-                                                    model::Value::String(meta_payload.clone()),
-                                                )
+                                        } else {
+                                            model::CRDTCommand::AnyWriteWins(
+                                                format!("{}.{}", prefix, fingerprint_str),
+                                                model::Value::String(meta_payload.clone()),
+                                            )
 
-                                            };
+                                        };
 
-                                            output.send(main_meta_command.into())?;
+                                        output.send(main_meta_command.into())?;
 
-                                            if should_keep_asset_index {
-                                                output.send(model::CRDTCommand::BlindSetAdd(
-                                                    format!("{}.{}", prefix, policy_id_str),
-                                                    fingerprint_str,
-                                                ).into())?;
-
-                                            }
+                                        if should_keep_asset_index {
+                                            output.send(model::CRDTCommand::BlindSetAdd(
+                                                format!("{}.{}", prefix, policy_id_str),
+                                                fingerprint_str,
+                                            ).into())?;
 
                                         }
 
