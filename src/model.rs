@@ -138,6 +138,9 @@ pub enum CRDTCommand {
     AnyWriteWins(Key, Value),
     // TODO make sure Value is a generic not stringly typed
     PNCounter(Key, Delta),
+    HashCounter(Member, Key, Delta),
+    HashSetValue(Member, Key, Value),
+    HashUnsetKey(Member, Key),
     BlockFinished(Point),
 }
 
@@ -223,6 +226,46 @@ impl CRDTCommand {
         };
 
         CRDTCommand::LastWriteWins(key, value.into(), ts)
+    }
+
+    pub fn hash_set_value<V>(
+        prefix: Option<&str>,
+        member: String,
+        key: &str,
+        value: V,
+    ) -> CRDTCommand
+        where
+            V: Into<Value>,
+    {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key.to_string()),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::HashSetValue(member, key, value.into())
+    }
+
+    pub fn hash_del_key(prefix: Option<&str>, member: String, key: &str) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key.to_string()),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::HashUnsetKey(member, key)
+    }
+
+    pub fn hash_counter(
+        prefix: Option<&str>,
+        member: String,
+        key: &str,
+        delta: i64,
+    ) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key.to_string()),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::HashCounter(member, key, delta)
     }
 
     pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {

@@ -242,6 +242,33 @@ impl gasket::runtime::Worker for Worker {
                     .incr(key, value)
                     .or_restart()?;
             }
+            model::CRDTCommand::HashSetValue(member, key, value) => {
+                log::debug!("setting hash {} member {}", member, key);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .hset(member, key, value)
+                    .or_restart()?;
+            }
+            model::CRDTCommand::HashCounter(member, key, delta) => {
+                log::debug!("increasing hash {} member {} by {}", member, key, delta);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .hincr(member, key, delta)
+                    .or_restart()?;
+            }
+            model::CRDTCommand::HashUnsetKey(member, key) => {
+                log::debug!("deleting hash member {} key {}", member, key);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .hdel(member, key)
+                    .or_restart()?;
+            }
             model::CRDTCommand::BlockFinished(point) => {
                 let cursor_str = crosscut::PointArg::from(point).to_string();
 
