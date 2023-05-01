@@ -213,7 +213,7 @@ impl Reducer {
                                             output.send(main_meta_command.into())?;
 
                                             if should_keep_asset_index {
-                                                output.send(model::CRDTCommand::SetAdd(
+                                                output.send(model::CRDTCommand::BlindSetAdd(
                                                     format!("{}.{}", prefix, policy_id_str),
                                                     fingerprint_str,
                                                 ).into())?;

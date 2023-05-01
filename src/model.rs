@@ -127,6 +127,7 @@ impl From<serde_json::Value> for Value {
 #[non_exhaustive]
 pub enum CRDTCommand {
     BlockStarting(Point),
+    BlindSetAdd(Set, Member),
     SetAdd(Set, Member),
     SetRemove(Set, Member),
     SortedSetAdd(Set, Member, Delta),
@@ -156,6 +157,15 @@ impl CRDTCommand {
         };
 
         CRDTCommand::SetAdd(key, member)
+    }
+
+    pub fn blind_set_add(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::BlindSetAdd(key, member)
     }
 
     pub fn set_remove(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
