@@ -192,8 +192,8 @@ impl Reducer {
                                             },
 
                                             Projection::Cbor => {
-                                                let cbor_enc = metadata_final.encode_fragment().unwrap();
-                                                String::from_utf8(cbor_enc).unwrap()
+                                                let cbor_enc = metadata_final.encode_fragment().unwrap_or(vec![]);
+                                                String::from_utf8(cbor_enc).unwrap_or("".to_string())
                                             },
 
                                         };
