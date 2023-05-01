@@ -198,28 +198,31 @@ impl Reducer {
 
                                         };
 
-                                        let main_meta_command = if should_keep_historical_metadata {
-                                            model::CRDTCommand::SortedSetAdd(
-                                                format!("{}.{}", prefix, fingerprint_str),
-                                                meta_payload.clone(),
-                                                timestamp as Delta,
-                                            )
+                                        if !meta_payload.is_empty() {
+                                            let main_meta_command = if should_keep_historical_metadata {
+                                                model::CRDTCommand::SortedSetAdd(
+                                                    format!("{}.{}", prefix, fingerprint_str),
+                                                    meta_payload.clone(),
+                                                    timestamp as Delta,
+                                                )
 
-                                        } else {
-                                            model::CRDTCommand::AnyWriteWins(
-                                                format!("{}.{}", prefix, fingerprint_str),
-                                                model::Value::String(meta_payload.clone()),
-                                            )
+                                            } else {
+                                                model::CRDTCommand::AnyWriteWins(
+                                                    format!("{}.{}", prefix, fingerprint_str),
+                                                    model::Value::String(meta_payload.clone()),
+                                                )
 
-                                        };
+                                            };
 
-                                        output.send(main_meta_command.into())?;
+                                            output.send(main_meta_command.into())?;
 
-                                        if should_keep_asset_index {
-                                            output.send(model::CRDTCommand::BlindSetAdd(
-                                                format!("{}.{}", prefix, policy_id_str),
-                                                fingerprint_str,
-                                            ).into())?;
+                                            if should_keep_asset_index {
+                                                output.send(model::CRDTCommand::BlindSetAdd(
+                                                    format!("{}.{}", prefix, policy_id_str),
+                                                    fingerprint_str,
+                                                ).into())?;
+
+                                            }
 
                                         }
 
