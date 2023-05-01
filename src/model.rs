@@ -138,9 +138,9 @@ pub enum CRDTCommand {
     AnyWriteWins(Key, Value),
     // TODO make sure Value is a generic not stringly typed
     PNCounter(Key, Delta),
-    HashCounter(Member, Key, Delta),
-    HashSetValue(Member, Key, Value),
-    HashUnsetKey(Member, Key),
+    HashCounter(Key, Member, Delta),
+    HashSetValue(Key, Member, Value),
+    HashUnsetKey(Key, Member),
     BlockFinished(Point),
 }
 
