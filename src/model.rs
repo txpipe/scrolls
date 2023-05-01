@@ -230,8 +230,8 @@ impl CRDTCommand {
 
     pub fn hash_set_value<V>(
         prefix: Option<&str>,
-        member: String,
         key: &str,
+        member: String,
         value: V,
     ) -> CRDTCommand
         where
@@ -256,8 +256,8 @@ impl CRDTCommand {
 
     pub fn hash_counter(
         prefix: Option<&str>,
-        member: String,
         key: &str,
+        member: String,
         delta: i64,
     ) -> CRDTCommand {
         let key = match prefix {
