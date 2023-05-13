@@ -135,7 +135,7 @@ impl gasket::runtime::Worker for Worker {
                 log::debug!("increasing hash key {} member {} by {}", key, member, delta);
             }
             model::CRDTCommand::HashUnsetKey(key, member) => {
-                log::debug!("deleting hash key {} member {}", member, key);
+                log::debug!("deleting hash key {} member {}", key, member);
             }
             model::CRDTCommand::BlockFinished(point) => {
                 log::debug!("block finished {:?}", point);
