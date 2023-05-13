@@ -97,9 +97,6 @@ impl gasket::runtime::Worker for Worker {
             model::CRDTCommand::TwoPhaseSetRemove(key, value) => {
                 log::debug!("removing from 2-phase set [{}], value [{}]", key, value);
             }
-            model::CRDTCommand::BlindSetAdd(key, value) => {
-                log::debug!("blindly, adding to set [{}], value [{}]", key, value);
-            }
             model::CRDTCommand::SetAdd(key, value) => {
                 log::debug!("adding to set [{}], value [{}]", key, value);
             }
