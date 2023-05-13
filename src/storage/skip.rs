@@ -116,6 +116,9 @@ impl gasket::runtime::Worker for Worker {
                     delta
                 );
             }
+            model::CRDTCommand::SortedSetScoreCounter(key, value, delta) => {
+                log::debug!("increasing set [{}] value [{}] delta [{}]", key, value, delta)
+            }
             model::CRDTCommand::SetRemove(key, value) => {
                 log::debug!("removing from set [{}], value [{}]", key, value);
             }

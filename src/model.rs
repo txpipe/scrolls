@@ -131,6 +131,7 @@ pub enum CRDTCommand {
     SetRemove(Set, Member),
     SortedSetAdd(Set, Member, Delta),
     SortedSetRemove(Set, Member, Delta),
+    SortedSetScoreCounter(Set, Member, Delta),
     TwoPhaseSetAdd(Set, Member),
     TwoPhaseSetRemove(Set, Member),
     GrowOnlySetAdd(Set, Member),
@@ -196,6 +197,20 @@ impl CRDTCommand {
         };
 
         CRDTCommand::SortedSetRemove(key, member, delta)
+    }
+
+    pub fn sorted_set_score_counter(
+        prefix: Option<&str>,
+        key: &str,
+        member: String,
+        delta: i64,
+    ) -> CRDTCommand {
+        let key = match prefix {
+            Some(prefix) => format!("{}.{}", prefix, key),
+            None => key.to_string(),
+        };
+
+        CRDTCommand::SortedSetScoreCounter(key, member, delta)
     }
 
     pub fn any_write_wins<K, V>(prefix: Option<&str>, key: K, value: V) -> CRDTCommand

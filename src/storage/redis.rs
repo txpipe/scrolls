@@ -180,6 +180,15 @@ impl gasket::runtime::Worker for Worker {
                     .srem(key, value)
                     .or_restart()?;
             }
+            model::CRDTCommand::SortedSetScoreCounter(key, value, delta) => {
+                log::debug!("increasing set [{}], member [{}] score by {}", key, value, delta);
+
+                self.connection
+                    .as_mut()
+                    .unwrap()
+                    .zincr(key, value, delta)
+                    .or_restart()?;
+            }
             model::CRDTCommand::LastWriteWins(key, value, ts) => {
                 log::debug!("last write for [{}], slot [{}]", key, ts);
 
