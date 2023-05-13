@@ -227,7 +227,17 @@ Assuming you're using Redis as a storage backend (only one available ATM), we re
 
 ### How do I read the data using NodeJS?
 
-TODO
+```javascript
+    import redis from "redis";
+    let r = redis.createClient("redis://127.0.0.1:6379"); // Initialize a redis client
+    r.on("ready", () => { //When redis client is ready, run stuff
+        r.sMembers("c1.addr1qy8jecz3nal788f8t2zy6vj2l9ply3trpnkn2xuvv5rgu4m7y853av2nt8wc33agu3kuakvg0kaee0tfqhgelh2eeyyqgxmxw3")
+        .then(console.log);
+    })
+```
+
+The Redis operation being used is `sMembers` which return the list of members of a set stored under a particular key. In this case, we query by the value `c1.addr1w8tqqyccvj7402zns2tea78d42etw520fzvf22zmyasjdtsv3e5rz`, where `c1` is the key prefix specified in the config for our particular collection and `addr1qy8jecz3nal788f8t2zy6vj2l9ply3trpnkn2xuvv5rgu4m7y853av2nt8wc33agu3kuakvg0kaee0tfqhgelh2eeyyqgxmxw3` is the address we're interested in querying. The response from redis is the list of UTXOs (in the format `{tx-hash}:{output-index}`) that are associated with that particular address.
+
 
 ### What is "swarm mode"?
 
