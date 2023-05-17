@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::string::FromUtf8Error;
 
@@ -166,6 +167,8 @@ impl Reducer {
         let should_keep_historical_metadata = self.config.historical_metadata.unwrap_or(false);
 
         if let Some(safe_mint) = tx.mint().as_alonzo() {
+            let mut minted_assets_unique: HashMap<String, model::CRDTCommand> = HashMap::new();
+
             for (policy_id, assets) in safe_mint.iter() {
                 let policy_id_str = hex::encode(policy_id);
                 for (asset_name, quantity) in assets.iter() {
@@ -199,29 +202,27 @@ impl Reducer {
                                         };
 
                                         if !meta_payload.is_empty() {
-                                            let main_meta_command = if should_keep_historical_metadata {
-                                                model::CRDTCommand::SortedSetAdd(
-                                                    format!("{}.{}", prefix, fingerprint_str),
+                                            if should_keep_historical_metadata {
+                                                minted_assets_unique.entry(fingerprint_str.clone()).or_insert(model::CRDTCommand::SortedSetAdd(
+                                                    format!("{}.{}", prefix, fingerprint_str.clone()),
                                                     meta_payload.clone(),
                                                     timestamp as Delta,
-                                                )
+                                                ));
 
                                             } else {
-                                                model::CRDTCommand::AnyWriteWins(
-                                                    format!("{}.{}", prefix, fingerprint_str),
+                                                minted_assets_unique.entry(fingerprint_str.clone()).or_insert(model::CRDTCommand::AnyWriteWins(
+                                                    format!("{}.{}", prefix, fingerprint_str.clone()),
                                                     model::Value::String(meta_payload.clone()),
-                                                )
+                                                ));
 
                                             };
 
-                                            output.send(main_meta_command.into())?;
-
                                             if should_keep_asset_index {
-                                                output.send(model::CRDTCommand::SortedSetAdd(
+                                                minted_assets_unique.entry(fingerprint_str.clone()).or_insert(model::CRDTCommand::LastWriteWins(
                                                     format!("{}.{}", prefix, policy_id_str),
-                                                    fingerprint_str,
-                                                    1 as Delta,
-                                                ).into())?;
+                                                    fingerprint_str.clone().into(),
+                                                    timestamp,
+                                                ));
 
                                             }
 
@@ -239,6 +240,10 @@ impl Reducer {
 
                 }
 
+            }
+
+            for (_, cmd) in minted_assets_unique {
+                output.send(gasket::messaging::Message::from(cmd));
             }
 
         }
