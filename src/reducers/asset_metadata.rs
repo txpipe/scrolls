@@ -1,24 +1,23 @@
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::string::FromUtf8Error;
 
 use bech32::{ToBase32, Variant};
 use blake2::digest::{Update, VariableOutput};
 use blake2::Blake2bVar;
-use hex::{self};
 
 use pallas::ledger::primitives::alonzo::{Metadata, Metadatum, MetadatumLabel};
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
 use pallas::codec::utils::{KeyValuePairs};
 use pallas::ledger::primitives::Fragment;
 
-use serde::Deserialize;
-use serde_json::{json, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value};
+
+use hex::{self};
 
 use crate::{crosscut, model};
-use crate::model::Delta;
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub enum Projection {
     Cbor,
     Json,
@@ -26,7 +25,7 @@ pub enum Projection {
 
 impl Default for Projection {
     fn default() -> Self {
-        Self::Cbor
+        Self::Json
     }
 }
 
@@ -35,8 +34,8 @@ pub struct Config {
     pub key_prefix: Option<String>,
     pub historical_metadata: Option<bool>,
     pub policy_asset_index: Option<bool>,
-    pub filter: Option<crosscut::filters::Predicate>,
     pub projection: Option<Projection>,
+    pub filter: Option<crosscut::filters::Predicate>,
 }
 
 pub struct Reducer {
@@ -171,7 +170,7 @@ impl Reducer {
             if let Some((_, Metadatum::Map(asset_metadata))) = filtered_policy_assets {
                 if let Ok(fingerprint_str) = self.asset_fingerprint([&policy_id_str.clone(), hex::encode(&asset_name_str).as_str()]) {
                     let timestamp = self.time.slot_to_wallclock(slot_no);
-                    let metadata_final = self.get_wrapped_metadata_fragment(cip, asset_name_str.clone(), policy_id_str.clone(), asset_metadata);
+                    let metadata_final: Metadata = self.get_wrapped_metadata_fragment(cip, asset_name_str.clone(), policy_id_str.clone(), asset_metadata);
 
                     let meta_payload = match projection {
                         Projection::Json => {
