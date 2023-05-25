@@ -242,16 +242,16 @@ impl CRDTCommand {
             None => key.to_string(),
         };
 
-        CRDTCommand::HashSetValue(member, key, value.into())
+        CRDTCommand::HashSetValue(key, member, value.into())
     }
 
-    pub fn hash_del_key(prefix: Option<&str>, member: String, key: &str) -> CRDTCommand {
+    pub fn hash_del_key(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
         let key = match prefix {
             Some(prefix) => format!("{}.{}", prefix, key.to_string()),
             None => key.to_string(),
         };
 
-        CRDTCommand::HashUnsetKey(member, key)
+        CRDTCommand::HashUnsetKey(key, member)
     }
 
     pub fn hash_counter(
@@ -265,7 +265,7 @@ impl CRDTCommand {
             None => key.to_string(),
         };
 
-        CRDTCommand::HashCounter(member, key, delta)
+        CRDTCommand::HashCounter(key, member, delta)
     }
 
     pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {
