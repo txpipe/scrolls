@@ -2,7 +2,7 @@ use pallas::ledger::addresses::{Address, StakeAddress};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{crosscut, model, prelude::*};
+use crate::{model, prelude::*};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -12,7 +12,6 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    policy: crosscut::policies::RuntimePolicy,
 }
 
 fn any_address_to_stake_bech32(address: Address) -> Option<String> {
@@ -63,11 +62,11 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
-        ctx: &model::BlockContext,
+        _ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            for (idx, produced) in tx.produces() {
+            for (_idx, produced) in tx.produces() {
                 let address = produced.address().or_panic()?;
                 self.process_address(address, output)?;
             }
@@ -78,10 +77,9 @@ impl Reducer {
 }
 
 impl Config {
-    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
+    pub fn plugin(self) -> super::Reducer {
         let reducer = Reducer {
             config: self,
-            policy: policy.clone(),
         };
 
         super::Reducer::AddressesByStake(reducer)

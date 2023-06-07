@@ -16,7 +16,6 @@ pub struct Config {
 
 pub struct Reducer {
     config: Config,
-    policy: crosscut::policies::RuntimePolicy,
     policy_ids: Option<Vec<Hash<28>>>,
 }
 
@@ -54,7 +53,7 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
-        ctx: &model::BlockContext,
+        _ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
@@ -87,7 +86,6 @@ impl Config {
 
         let reducer = Reducer {
             config: self,
-            policy: policy.clone(),
             policy_ids,
         };
 

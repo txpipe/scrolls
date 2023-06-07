@@ -3,11 +3,12 @@ use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::model;
+use crate::{crosscut, model};
 
 #[derive(Deserialize)]
 pub struct Config {
     pub key_prefix: Option<String>,
+    pub filter: Option<crosscut::filters::Predicate>,
 }
 
 pub struct Reducer {
@@ -44,6 +45,7 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
+        _ctx: &model::BlockContext,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let slot = block.slot();

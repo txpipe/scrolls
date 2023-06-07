@@ -43,6 +43,24 @@ pub mod utxo_by_stake;
 #[cfg(feature = "unstable")]
 pub mod utxos_by_asset;
 
+// CRFA
+#[cfg(feature = "unstable")]
+pub mod balance_by_script;
+#[cfg(feature = "unstable")]
+pub mod tx_count_by_script;
+#[cfg(feature = "unstable")]
+pub mod total_tx_count;
+#[cfg(feature = "unstable")]
+pub mod total_balance;
+#[cfg(feature = "unstable")]
+pub mod unique_addresses_by_script;
+#[cfg(feature = "unstable")]
+pub mod volume_by_address;
+#[cfg(feature = "unstable")]
+pub mod fees_by_script;
+#[cfg(feature = "unstable")]
+pub mod transaction_size_by_script;
+
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum Config {
@@ -77,6 +95,24 @@ pub enum Config {
     SupplyByAsset(supply_by_asset::Config),
     #[cfg(feature = "unstable")]
     AddressesByStake(addresses_by_stake::Config),
+
+    // CRFA
+    #[cfg(feature = "unstable")]
+    BalanceByScript(balance_by_script::Config),
+    #[cfg(feature = "unstable")]
+    TxCountByScript(tx_count_by_script::Config),
+    #[cfg(feature = "unstable")]
+    TotalTransactionsCount(total_tx_count::Config),
+    #[cfg(feature = "unstable")]
+    TotalBalance(total_balance::Config),
+    #[cfg(feature = "unstable")]
+    UniqueAddressesByScript(unique_addresses_by_script::Config),
+    #[cfg(feature = "unstable")]
+    VolumeByAddress(volume_by_address::Config),
+    #[cfg(feature = "unstable")]
+    FeesByScript(fees_by_script::Config),
+    #[cfg(feature = "unstable")]
+    TransactionSizeByScript(transaction_size_by_script::Config),
 }
 
 impl Config {
@@ -116,7 +152,25 @@ impl Config {
             #[cfg(feature = "unstable")]
             Config::SupplyByAsset(c) => c.plugin(policy),
             #[cfg(feature = "unstable")]
-            Config::AddressesByStake(c) => c.plugin(policy),
+            Config::AddressesByStake(c) => c.plugin(),
+
+            // CRFA
+            #[cfg(feature = "unstable")]
+            Config::BalanceByScript(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TxCountByScript(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TotalTransactionsCount(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TotalBalance(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::UniqueAddressesByScript(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::VolumeByAddress(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::FeesByScript(c) => c.plugin(chain, policy),
+            #[cfg(feature = "unstable")]
+            Config::TransactionSizeByScript(c) => c.plugin(chain, policy),
         }
     }
 }
@@ -166,6 +220,7 @@ impl Bootstrapper {
     }
 }
 
+
 pub enum Reducer {
     FullUtxosByAddress(full_utxos_by_address::Reducer),
     UtxoByAddress(utxo_by_address::Reducer),
@@ -198,6 +253,24 @@ pub enum Reducer {
     SupplyByAsset(supply_by_asset::Reducer),
     #[cfg(feature = "unstable")]
     AddressesByStake(addresses_by_stake::Reducer),
+
+    // CRFA
+    #[cfg(feature = "unstable")]
+    BalanceByScript(balance_by_script::Reducer),
+    #[cfg(feature = "unstable")]
+    TxCountByScript(tx_count_by_script::Reducer),
+    #[cfg(feature = "unstable")]
+    TotalTransactionsCount(total_tx_count::Reducer),
+    #[cfg(feature = "unstable")]
+    TotalBalance(total_balance::Reducer),
+    #[cfg(feature = "unstable")]
+    UniqueAddressesByScript(unique_addresses_by_script::Reducer),
+    #[cfg(feature = "unstable")]
+    VolumeByAddress(volume_by_address::Reducer),
+    #[cfg(feature = "unstable")]
+    FeesByScript(fees_by_script::Reducer),
+    #[cfg(feature = "unstable")]
+    TransactionSizeByScript(transaction_size_by_script::Reducer),
 }
 
 impl Reducer {
@@ -211,7 +284,7 @@ impl Reducer {
             Reducer::FullUtxosByAddress(x) => x.reduce_block(block, ctx, output),
             Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
             Reducer::PointByTx(x) => x.reduce_block(block, output),
-            Reducer::PoolByStake(x) => x.reduce_block(block, output),
+            Reducer::PoolByStake(x) => x.reduce_block(block, ctx, output),
 
             #[cfg(feature = "unstable")]
             Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
@@ -239,6 +312,24 @@ impl Reducer {
             Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
             #[cfg(feature = "unstable")]
             Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
+
+            // CRFA
+            #[cfg(feature = "unstable")]
+            Reducer::BalanceByScript(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TxCountByScript(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TotalTransactionsCount(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TotalBalance(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::UniqueAddressesByScript(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::VolumeByAddress(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::FeesByScript(x) => x.reduce_block(block, ctx, output),
+            #[cfg(feature = "unstable")]
+            Reducer::TransactionSizeByScript(x) => x.reduce_block(block, ctx, output),
         }
     }
 }
