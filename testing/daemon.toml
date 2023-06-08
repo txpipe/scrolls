@@ -1,0 +1,55 @@
+[source]
+type = "N2N"
+address = "relays-new.cardano-mainnet.iohk.io:3001"
+
+[chain]
+type = "Mainnet"
+
+[intersect]
+type = "Point"
+value = [83548515, "6cec73b3959a07dc4138bd3dc89e1e17544622f9e4171c55b222552a5c3e791e"]
+
+[finalize]
+until_hash = "dcb5733291c907ae6cc9e9b59f93856ec49d60f724adc4f154c6929b57ce060a"
+
+[enrich]
+type = "Sled"
+db_path = "./data/sled"
+
+[[reducers]]
+type = "BalanceByAddress"
+
+[[reducers]]
+type = "TxCountByAddress"
+
+[[reducers]]
+type = "AssetsByAddress"
+
+[[reducers]]
+type = "BalanceByStakeKey"
+
+[[reducers]]
+type = "TxCountByStakeKey"
+
+[[reducers]]
+type = "AssetsByStakeKey"
+
+[[reducers]]
+type = "TxCountByAsset"
+
+[[reducers]]
+type = "SupplyByAsset"
+
+[[reducers]]
+type = "AddressesByAsset"
+
+[[reducers]]
+type = "StakeKeysByAsset"
+
+[storage]
+type = "Redis"
+connection_params = "redis://localhost:6379"
+cursor_key = "_cursor"
+
+[policy]
+missing_data = "Skip"

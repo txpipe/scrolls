@@ -33,7 +33,7 @@ prometheus_exporter = { version = "0.8.4", default-features = false }
 # gasket = { path = "../../construkts/gasket-rs" }
 gasket = { git = "https://github.com/construkts/gasket-rs.git" }
 thiserror = "1.0.30"
-redis = "0.21.5"
+redis = "0.23.0"
 sled = "0.34.7"
 lazy_static = "1.4.0"
 rayon = "1.5.3"

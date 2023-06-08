@@ -18,11 +18,6 @@ pub struct Config {
     pub key_prefix: Option<String>,
     pub filter: Option<crosscut::filters::Predicate>,
     pub aggr_by: Option<AggrType>,
-
-    /// Policies to match
-    ///
-    /// If specified only those policy ids as hex will be taken into account, if
-    /// not all policy ids will be indexed.
     pub policy_ids_hex: Option<Vec<String>>,
 }
 
@@ -34,20 +29,20 @@ pub struct Reducer {
 }
 
 impl Reducer {
-    fn config_key(&self, subject: String, epoch_no: u64) -> String {
-        let def_key_prefix = "asset_holders_by_asset_id";
+    fn config_key(&self, address: String, epoch_no: u64) -> String {
+        let def_key_prefix = "assets_by_address";
 
         match &self.config.aggr_by {
             Some(aggr_type) if matches!(aggr_type, AggrType::Epoch) => {
                 return match &self.config.key_prefix {
-                    Some(prefix) => format!("{}.{}.{}", prefix, subject, epoch_no),
-                    None => format!("{}.{}", def_key_prefix.to_string(), subject),
+                    Some(prefix) => format!("{}.{}.{}", prefix, address, epoch_no),
+                    None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
             }
             _ => {
                 return match &self.config.key_prefix {
-                    Some(prefix) => format!("{}.{}", prefix, subject),
-                    None => format!("{}.{}", def_key_prefix.to_string(), subject),
+                    Some(prefix) => format!("{}.{}", prefix, address),
+                    None => format!("{}.{}", def_key_prefix.to_string(), address),
                 };
             }
         };
@@ -81,11 +76,11 @@ impl Reducer {
                 Asset::NativeAsset(policy_id, _, quantity) => {
                     if self.is_policy_id_accepted(&policy_id) {
                         let subject = asset.subject();
-                        let key = self.config_key(subject, epoch_no);
+                        let key = self.config_key(address.clone(), epoch_no);
                         let delta = quantity as i64 * (-1);
 
                         let crdt =
-                            model::CRDTCommand::SortedSetRemove(key, address.to_string(), delta);
+                            model::CRDTCommand::SortedSetRemove(key, subject, delta);
 
                         output.send(gasket::messaging::Message::from(crdt))?;
                     }
@@ -113,11 +108,11 @@ impl Reducer {
                 Asset::NativeAsset(policy_id, _, quantity) => {
                     if self.is_policy_id_accepted(&policy_id) {
                         let subject = asset.subject();
-                        let key = self.config_key(subject, epoch_no);
+                        let key = self.config_key(address.clone(), epoch_no);
                         let delta = quantity as i64;
 
                         let crdt =
-                            model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
+                            model::CRDTCommand::SortedSetAdd(key, subject, delta);
 
                         output.send(gasket::messaging::Message::from(crdt))?;
                     }
@@ -178,12 +173,6 @@ impl Config {
             policy_ids: policy_ids.clone(),
         };
 
-        super::Reducer::AssetHoldersByAssetId(reducer)
+        super::Reducer::AssetsByAddress(reducer)
     }
 }
-
-// How to query
-// 127.0.0.1:6379> ZRANGEBYSCORE
-// "asset_holders_by_asset_id.
-// 5d9d887de76a2c9d057b3e5d34d5411f7f8dc4d54f0c06e8ed2eb4a9494e4459" 1 +inf
-// 1) "addr1q8lmu79hgm3sppz8dta3aftf0cwh2v2eja56wqvzqy4jj0zjt7qgvj7saxdxve35c4ehuxuam4czlz9fw6ls7zr4as9s609d7u"
