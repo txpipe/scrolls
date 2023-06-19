@@ -69,7 +69,7 @@ impl Reducer {
                 }
 
                 let mut assets: Vec<serde_json::Value> = Vec::new();
-                for asset in utxo.non_ada_assets() {
+                for asset in utxo.assets() {
                     match asset {
                         Asset::Ada(lovelace_amt) => {
                             assets.push(json!({
