@@ -162,7 +162,6 @@ pub struct FinalizeConfig {
 pub fn should_finalize(
     config: &Option<FinalizeConfig>,
     last_point: &Point,
-    // block_count: u64,
 ) -> bool {
     let config = match config {
         Some(x) => x,

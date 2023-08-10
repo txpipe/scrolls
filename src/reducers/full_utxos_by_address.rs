@@ -99,8 +99,13 @@ impl Reducer {
         &mut self,
         block: &'b MultiEraBlock<'b>,
         ctx: &model::BlockContext,
+        rollback: bool,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if rollback {
+            return Ok(());
+        }
+
         let prefix = self.config.prefix.as_deref();
         for tx in block.txs().into_iter() {
             for consumed in tx.consumes().iter().map(|i| i.output_ref()) {

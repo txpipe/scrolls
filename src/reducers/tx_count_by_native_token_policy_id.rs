@@ -48,8 +48,13 @@ impl Reducer {
     pub fn reduce_block(
         &mut self,
         block: &MultiEraBlock,
+        rollback: bool,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if rollback {
+            return Ok(());
+        }
+
         if block.era().has_feature(Feature::MultiAssets) {
 
             let epoch_no = block_epoch(&self.chain, block);
@@ -65,7 +70,7 @@ impl Reducer {
                             let number_of_minted_or_destroyed = assets.len();
 
                             let key = self.config_key(policy_id, epoch_no);
-                            
+
                             let crdt = model::CRDTCommand::PNCounter(
                                 key,
                                 number_of_minted_or_destroyed as i64,
@@ -85,7 +90,7 @@ impl Config {
     pub fn plugin(self,
         chain: &crosscut::ChainWellKnownInfo
     ) -> super::Reducer {
-        let reducer = Reducer { 
+        let reducer = Reducer {
             config: self,
             chain: chain.clone(),
          };

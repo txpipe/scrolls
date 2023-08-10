@@ -27,6 +27,7 @@ pub struct Worker {
     policy: crosscut::policies::RuntimePolicy,
     chain_buffer: chainsync::RollbackBuffer,
     chain: crosscut::ChainWellKnownInfo,
+    blocks: crosscut::blocks::RollbackData,
     intersect: crosscut::IntersectConfig,
     cursor: storage::Cursor,
     finalize: Option<crosscut::FinalizeConfig>,
@@ -43,6 +44,7 @@ impl Worker {
         min_depth: usize,
         policy: crosscut::policies::RuntimePolicy,
         chain: crosscut::ChainWellKnownInfo,
+        blocks: crosscut::blocks::RollbackData,
         intersect: crosscut::IntersectConfig,
         finalize: Option<crosscut::FinalizeConfig>,
         cursor: storage::Cursor,
@@ -53,6 +55,7 @@ impl Worker {
             min_depth,
             policy,
             chain,
+            blocks,
             intersect,
             finalize,
             cursor,
@@ -70,6 +73,7 @@ impl Worker {
         content: chainsync::HeaderContent,
     ) -> Result<(), gasket::error::Error> {
         // parse the header and extract the point of the chain
+
         let header = to_traverse(&content)
             .apply_policy(&self.policy)
             .or_panic()?;
@@ -93,16 +97,14 @@ impl Worker {
 
         match self.chain_buffer.roll_back(point) {
             chainsync::RollbackEffect::Handled => {
-                log::debug!("handled rollback within buffer {:?}", point);
+                log::warn!("handled rollback within buffer {:?}", point);
+                Ok(())
             }
             chainsync::RollbackEffect::OutOfScope => {
-                log::debug!("rollback out of buffer scope, sending event down the pipeline");
-                self.output
-                    .send(model::RawBlockPayload::roll_back(point.clone()))?;
+                self.blocks.enqueue_rollback_batch(point);
+                Ok(())
             }
         }
-
-        Ok(())
     }
 
     fn request_next(&mut self) -> Result<(), gasket::error::Error> {
@@ -195,29 +197,44 @@ impl gasket::runtime::Worker for Worker {
             false => self.await_next()?,
         };
 
-        // see if we have points that already reached certain depth
-        let ready = self.chain_buffer.pop_with_depth(self.min_depth);
-        log::debug!("found {} points with required min depth", ready.len());
+        let starting_len = self.blocks.len();
 
-        // request download of blocks for confirmed points
-        for point in ready {
-            log::debug!("requesting block fetch for point {:?}", point);
-
-            let block = self
-                .blockfetch
-                .as_mut()
-                .unwrap()
-                .fetch_single(point.clone())
-                .or_restart()?;
-
+        // See if we need to roll back
+        if let Some(block) = self.blocks.rollback_pop() {
+            let after_pop_len = self.blocks.len();
             self.output
-                .send(model::RawBlockPayload::roll_forward(block))?;
+                .send(model::RawBlockPayload::roll_back(block))?;
 
-            self.block_count.inc(1);
-
-            // evaluate if we should finalize the thread according to config
-            if crosscut::should_finalize(&self.finalize, &point) {
+            // Finalize if rollbacks are exhausted
+            if after_pop_len == 0 {
                 return Ok(gasket::runtime::WorkOutcome::Done);
+            }
+
+        } else {
+            // see if we have points that already reached certain depth
+            let ready = self.chain_buffer.pop_with_depth(self.min_depth);
+            log::debug!("found {} points with required min depth", ready.len());
+
+            // request download of blocks for confirmed points
+            for point in ready {
+                log::warn!("requesting block fetch for point {:?}", point);
+
+                let block = self
+                    .blockfetch
+                    .as_mut()
+                    .unwrap()
+                    .fetch_single(point.clone())
+                    .or_restart()?;
+
+                self.output
+                    .send(model::RawBlockPayload::roll_forward(block))?;
+
+                self.block_count.inc(1);
+
+                // evaluate if we should finalize the thread according to config
+                if crosscut::should_finalize(&self.finalize, &point) {
+                    return Ok(gasket::runtime::WorkOutcome::Done);
+                }
             }
         }
 

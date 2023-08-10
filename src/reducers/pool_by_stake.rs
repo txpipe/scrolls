@@ -44,8 +44,13 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
+        rollback: bool,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if rollback {
+            return Ok(());
+        }
+
         let slot = block.slot();
 
         for tx in block.txs() {

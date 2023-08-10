@@ -30,7 +30,7 @@ impl Reducer {
         output.send(gasket::messaging::Message::from(crdt))?;
 
         Result::Ok(())
-    } 
+    }
 
     pub fn current_height(
         &mut self,
@@ -43,7 +43,7 @@ impl Reducer {
         output.send(gasket::messaging::Message::from(crdt))?;
 
         Result::Ok(())
-    } 
+    }
 
     pub fn current_slot(
         &mut self,
@@ -56,7 +56,7 @@ impl Reducer {
         output.send(gasket::messaging::Message::from(crdt))?;
 
         Result::Ok(())
-    } 
+    }
 
     pub fn current_block_hash(
         &mut self,
@@ -69,7 +69,7 @@ impl Reducer {
         output.send(gasket::messaging::Message::from(crdt))?;
 
         Result::Ok(())
-    } 
+    }
 
     pub fn current_block_era(
         &mut self,
@@ -82,7 +82,7 @@ impl Reducer {
         output.send(gasket::messaging::Message::from(crdt))?;
 
         Result::Ok(())
-    } 
+    }
 
     pub fn current_block_last_tx_hash(
         &mut self,
@@ -92,11 +92,11 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         if !block.is_empty() {
             let crdt = model::CRDTCommand::AnyWriteWins(format!("{}.{}", key, "first_transaction_hash"), Value::String(block.txs().first().unwrap().hash().to_string()));
-    
+
             output.send(gasket::messaging::Message::from(crdt))?;
 
             let crdt = model::CRDTCommand::AnyWriteWins(format!("{}.{}", key, "last_transaction_hash"), Value::String(block.txs().last().unwrap().hash().to_string()));
-    
+
             output.send(gasket::messaging::Message::from(crdt))?;
         }
 
@@ -119,8 +119,12 @@ impl Reducer {
     pub fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
+        rollback: bool,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if rollback {
+            return Ok(());
+        }
 
         let def_key_prefix = "last_block";
 

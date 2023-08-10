@@ -18,6 +18,7 @@ impl Config {
     pub fn bootstrapper(
         self,
         chain: &crosscut::ChainWellKnownInfo,
+        blocks: &crosscut::blocks::RollbackData,
         intersect: &crosscut::IntersectConfig,
         finalize: &Option<crosscut::FinalizeConfig>,
         policy: &crosscut::policies::RuntimePolicy,
@@ -28,6 +29,7 @@ impl Config {
             finalize: finalize.clone(),
             policy: policy.clone(),
             chain: chain.clone(),
+            blocks: blocks.clone(),
             output: Default::default(),
         }
     }
@@ -39,6 +41,7 @@ pub struct Bootstrapper {
     finalize: Option<crosscut::FinalizeConfig>,
     policy: crosscut::policies::RuntimePolicy,
     chain: crosscut::ChainWellKnownInfo,
+    blocks: crosscut::blocks::RollbackData,
     output: OutputPort<model::RawBlockPayload>,
 }
 
@@ -54,6 +57,7 @@ impl Bootstrapper {
                 self.config.min_depth.unwrap_or(0),
                 self.policy,
                 self.chain,
+                self.blocks,
                 self.intersect,
                 self.finalize,
                 cursor,

@@ -205,40 +205,41 @@ impl Reducer {
         &mut self,
         block: &'b MultiEraBlock<'b>,
         ctx: &model::BlockContext,
+        rollback: bool,
         output: &mut OutputPort,
     ) -> Result<(), gasket::error::Error> {
         match self {
-            Reducer::FullUtxosByAddress(x) => x.reduce_block(block, ctx, output),
-            Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
-            Reducer::PointByTx(x) => x.reduce_block(block, output),
-            Reducer::PoolByStake(x) => x.reduce_block(block, output),
+            Reducer::FullUtxosByAddress(x) => x.reduce_block(block, ctx, rollback, output),
+            Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, rollback, output),
+            Reducer::PointByTx(x) => x.reduce_block(block, rollback, output),
+            Reducer::PoolByStake(x) => x.reduce_block(block, rollback, output),
 
             #[cfg(feature = "unstable")]
-            Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
+            Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::TxByHash(x) => x.reduce_block(block, ctx, output),
+            Reducer::TxByHash(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
+            Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
+            Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::AddressByAsset(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressByAsset(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
+            Reducer::LastBlockParameters(x) => x.reduce_block(block, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
+            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
+            Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
+            Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
+            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
+            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, rollback, output),
             #[cfg(feature = "unstable")]
-            Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
+            Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, rollback, output),
         }
     }
 }

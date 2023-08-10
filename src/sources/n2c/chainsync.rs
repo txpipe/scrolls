@@ -4,6 +4,7 @@ use pallas::network::miniprotocols::chainsync::BlockContent;
 use pallas::network::miniprotocols::{chainsync, Point};
 use pallas::network::multiplexer::StdChannel;
 use std::collections::HashMap;
+use log::error;
 
 use crate::prelude::*;
 use crate::{crosscut, model, sources::utils, storage, Error};
@@ -21,13 +22,12 @@ pub struct Worker {
     min_depth: usize,
     policy: crosscut::policies::RuntimePolicy,
     chain_buffer: chainsync::RollbackBuffer,
-    blocks: HashMap<Point, chainsync::BlockContent>,
     chain: crosscut::ChainWellKnownInfo,
+    blocks: crosscut::blocks::RollbackData,
     intersect: crosscut::IntersectConfig,
     cursor: storage::Cursor,
     finalize: Option<crosscut::FinalizeConfig>,
     chainsync: Option<chainsync::N2CClient<StdChannel>>,
-
     output: OutputPort,
     block_count: gasket::metrics::Counter,
     chain_tip: gasket::metrics::Gauge,
@@ -39,6 +39,7 @@ impl Worker {
         min_depth: usize,
         policy: crosscut::policies::RuntimePolicy,
         chain: crosscut::ChainWellKnownInfo,
+        blocks: crosscut::blocks::RollbackData,
         intersect: crosscut::IntersectConfig,
         finalize: Option<crosscut::FinalizeConfig>,
         cursor: storage::Cursor,
@@ -49,6 +50,7 @@ impl Worker {
             min_depth,
             policy,
             chain,
+            blocks,
             intersect,
             finalize,
             cursor,
@@ -57,7 +59,6 @@ impl Worker {
             block_count: Default::default(),
             chain_tip: Default::default(),
             chain_buffer: chainsync::RollbackBuffer::new(),
-            blocks: HashMap::new(),
         }
     }
 
@@ -77,10 +78,6 @@ impl Worker {
 
         let point = Point::Specific(block.slot(), block.hash().to_vec());
 
-        // store the block for later retrieval
-        // TODO: MEMORY LEAK POTENTIAL
-        self.blocks.insert(point.clone(), content);
-
         // track the new point in our memory buffer
         log::debug!("rolling forward to point {:?}", point);
         self.chain_buffer.roll_forward(point);
@@ -97,8 +94,6 @@ impl Worker {
             }
             chainsync::RollbackEffect::OutOfScope => {
                 log::debug!("rollback out of buffer scope, sending event down the pipeline");
-                self.output
-                    .send(model::RawBlockPayload::roll_back(point.clone()))?;
             }
         }
 
@@ -117,6 +112,7 @@ impl Worker {
 
         match next {
             chainsync::NextResponse::RollForward(h, t) => {
+                self.blocks.insert_block(&t.0, &h.0);
                 self.on_roll_forward(h)?;
                 self.chain_tip.set(t.1 as i64);
                 Ok(())
@@ -145,6 +141,7 @@ impl Worker {
 
         match next {
             chainsync::NextResponse::RollForward(h, t) => {
+                self.blocks.insert_block(&t.0, &h.0);
                 self.on_roll_forward(h)?;
                 self.chain_tip.set(t.1 as i64);
                 Ok(())
@@ -181,7 +178,6 @@ impl gasket::runtime::Worker for Worker {
         log::info!("chain-sync intersection is {:?}", start);
 
         self.chainsync = Some(chainsync);
-
         Ok(())
     }
 
@@ -197,15 +193,14 @@ impl gasket::runtime::Worker for Worker {
 
         // find confirmed block in memory and send down the pipeline
         for point in ready {
-            let block = self
-                .blocks
-                .remove(&point)
-                .expect("required block not found in memory");
+            let block = self.blocks.get_block_at_point(&point);
 
-            self.output
-                .send(model::RawBlockPayload::roll_forward(block.into()))?;
-
-            self.block_count.inc(1);
+            if let Some(block) = block {
+                self.output.send(model::RawBlockPayload::roll_forward(block))?;
+                self.block_count.inc(1);
+            } else {
+                log::warn!("couldn't find block in buffer: {}", &point.slot_or_default())
+            }
 
             // evaluate if we should finalize the thread according to config
             if crosscut::should_finalize(&self.finalize, &point) {

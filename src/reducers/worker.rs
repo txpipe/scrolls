@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+use log::{debug, error, info};
+use pallas::codec::minicbor::bytes::nil;
 use pallas::ledger::traverse::MultiEraBlock;
 
 use crate::{crosscut, model, prelude::*};
+use crate::model::BlockContext;
 
 use super::Reducer;
 
@@ -35,8 +39,10 @@ impl Worker {
 
     fn reduce_block<'b>(
         &mut self,
-        block: &'b [u8],
+        block: &'b Vec<u8>,
+        rollback: bool,
         ctx: &model::BlockContext,
+
     ) -> Result<(), gasket::error::Error> {
         let block = MultiEraBlock::decode(block)
             .map_err(crate::Error::cbor)
@@ -55,7 +61,7 @@ impl Worker {
         ))?;
 
         for reducer in self.reducers.iter_mut() {
-            reducer.reduce_block(&block, ctx, &mut self.output)?;
+            reducer.reduce_block(&block, ctx, rollback, &mut self.output)?;
             self.ops_count.inc(1);
         }
 
@@ -65,7 +71,9 @@ impl Worker {
 
         Ok(())
     }
+
 }
+
 
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
@@ -80,10 +88,11 @@ impl gasket::runtime::Worker for Worker {
 
         match msg.payload {
             model::EnrichedBlockPayload::RollForward(block, ctx) => {
-                self.reduce_block(&block, &ctx)?
+                self.reduce_block(&block, false, &ctx)?
             }
-            model::EnrichedBlockPayload::RollBack(point) => {
-                log::warn!("rollback requested for {:?}", point);
+            model::EnrichedBlockPayload::RollBack(block, ctx) => {
+                error!("running rollback reducers {}", block.len());
+                self.reduce_block(&block, true, &ctx)?
             }
         }
 

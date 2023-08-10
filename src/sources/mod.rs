@@ -22,13 +22,14 @@ impl Config {
     pub fn bootstrapper(
         self,
         chain: &crosscut::ChainWellKnownInfo,
+        blocks: &crosscut::blocks::RollbackData,
         intersect: &crosscut::IntersectConfig,
         finalize: &Option<crosscut::FinalizeConfig>,
         policy: &crosscut::policies::RuntimePolicy,
     ) -> Bootstrapper {
         match self {
-            Config::N2N(c) => Bootstrapper::N2N(c.bootstrapper(chain, intersect, finalize, policy)),
-            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, intersect, finalize, policy)),
+            Config::N2N(c) => Bootstrapper::N2N(c.bootstrapper(chain, blocks, intersect, finalize, policy)),
+            Config::N2C(c) => Bootstrapper::N2C(c.bootstrapper(chain, blocks, intersect, finalize, policy)),
         }
     }
 }

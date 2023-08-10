@@ -66,8 +66,13 @@ impl Reducer {
         &mut self,
         block: &'b MultiEraBlock<'b>,
         ctx: &model::BlockContext,
+        rollback: bool,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
+        if rollback {
+            return Ok(());
+        }
+
         for tx in block.txs().into_iter() {
             if filter_matches!(self, block, &tx, ctx) {
                 for consumed in tx.consumes().iter().map(|i| i.output_ref()) {

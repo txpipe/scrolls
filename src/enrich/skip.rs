@@ -1,6 +1,8 @@
 use std::time::Duration;
+use futures::future::err;
 
 use gasket::runtime::{spawn_stage, WorkOutcome};
+use log::{error, warn};
 
 use crate::{
     bootstrap,
@@ -70,9 +72,9 @@ impl gasket::runtime::Worker for Worker {
                     BlockContext::default(),
                 ))?;
             }
-            model::RawBlockPayload::RollBack(x) => {
+            model::RawBlockPayload::RollBack(cbor) => {
                 self.output
-                    .send(model::EnrichedBlockPayload::roll_back(x))?;
+                    .send(model::EnrichedBlockPayload::roll_back(cbor, BlockContext::default()))?;
             }
         };
 
