@@ -201,6 +201,8 @@ impl gasket::runtime::Worker for Worker {
 
         // See if we need to roll back
         if let Ok(Some(block)) = self.blocks.rollback_pop() {
+            log::warn!("rolling back block");
+
             let after_pop_len = self.blocks.len();
             self.output
                 .send(model::RawBlockPayload::roll_back(block.to_vec()))?;
