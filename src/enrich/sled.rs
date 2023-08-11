@@ -1,13 +1,9 @@
-use std::fmt::format;
-use std::result;
 use std::time::Duration;
 
 use gasket::{
     error::AsWorkError,
     runtime::{spawn_stage, WorkOutcome},
 };
-use gasket::error::Error;
-use log::{error, warn};
 
 use pallas::{
     codec::minicbor,
@@ -15,7 +11,7 @@ use pallas::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
-use sled::{Batch, Db, IVec, Tree};
+use sled::{IVec};
 
 use crate::{
     bootstrap, crosscut,
@@ -146,7 +142,7 @@ fn fetch_referenced_utxo<'a>(
 }
 
 #[inline]
-fn prune_tree(db: &Db) {
+fn prune_tree(db: &sled::Db) {
     if let Ok(size) = db.size_on_disk() {
         if size > 3000000 {
             if let Ok(Some((first_key, _))) = db.first() {

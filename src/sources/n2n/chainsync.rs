@@ -200,10 +200,10 @@ impl gasket::runtime::Worker for Worker {
         let starting_len = self.blocks.len();
 
         // See if we need to roll back
-        if let Some(block) = self.blocks.rollback_pop() {
+        if let Ok(Some(block)) = self.blocks.rollback_pop() {
             let after_pop_len = self.blocks.len();
             self.output
-                .send(model::RawBlockPayload::roll_back(block))?;
+                .send(model::RawBlockPayload::roll_back(block.to_vec()))?;
 
             // Finalize if rollbacks are exhausted
             if after_pop_len == 0 {
