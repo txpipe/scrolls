@@ -5,7 +5,7 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 
-use redis::{Commands, ToRedisArgs};
+use redis::{Commands, ConnectionLike, ToRedisArgs};
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};
@@ -233,13 +233,16 @@ impl gasket::runtime::Worker for Worker {
                     .set(key, value)
                     .or_restart()?;
             }
-            model::CRDTCommand::PNCounter(key, value) => {
-                log::debug!("increasing counter [{}], by [{}]", key, value);
+            model::CRDTCommand::PNCounter(key, delta) => {
+                log::debug!("increasing counter [{}], by [{}]", key, delta);
 
                 self.connection
                     .as_mut()
                     .unwrap()
-                    .incr(key, value)
+                    .req_command(&redis::Cmd::new()
+                        .arg("INCRBYFLOAT")
+                        .arg(key)
+                        .arg(delta.to_string()))
                     .or_restart()?;
             }
             model::CRDTCommand::HashSetValue(key, member, value) => {
@@ -252,12 +255,17 @@ impl gasket::runtime::Worker for Worker {
                     .or_restart()?;
             }
             model::CRDTCommand::HashCounter(key, member, delta) => {
-                log::debug!("increasing hash key {} member {} by {}", key, member, delta);
+                log::debug!("increasing hash key {} member {} by {}", key.clone(), member.clone(), delta);
 
                 self.connection
                     .as_mut()
                     .unwrap()
-                    .hincr(key, member, delta)
+                    .req_command(&redis::Cmd::new()
+                        .arg("HINCRBYFLOAT")
+                        .arg(key.clone())
+                        .arg(member.clone())
+                        .arg(delta.to_string())
+                    )
                     .or_restart()?;
             }
             model::CRDTCommand::HashUnsetKey(key, member) => {
