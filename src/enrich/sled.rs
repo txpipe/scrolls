@@ -11,7 +11,7 @@ use pallas::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
-use sled::{IVec};
+use sled::IVec;
 
 use crate::{
     bootstrap, crosscut,

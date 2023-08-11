@@ -1,8 +1,6 @@
 use std::time::Duration;
-use futures::future::err;
 
 use gasket::runtime::{spawn_stage, WorkOutcome};
-use log::{error, warn};
 
 use crate::{
     bootstrap,
