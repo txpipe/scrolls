@@ -43,7 +43,7 @@ struct ConfigRoot {
     finalize: Option<crosscut::FinalizeConfig>,
     chain: Option<ChainConfig>,
     policy: Option<crosscut::policies::RuntimePolicy>,
-    blocks: Option<crosscut::blocks::Config>,
+    blocks: Option<crosscut::historic::BlockConfig>,
 }
 
 impl ConfigRoot {
@@ -128,11 +128,11 @@ pub fn run(args: &Args) -> Result<(), scrolls::Error> {
         std::thread::sleep(Duration::from_millis(1500));
     }
 
-    blocks.close();
-
-    log::info!("Scrolls is stopping...");
+    log::error!("Scrolls is stopping...");
 
     shutdown(pipeline);
+    blocks.close();
+    // todo make sure sled databases get flushed in their cleanup
 
     Ok(())
 }

@@ -14,8 +14,8 @@ type InputPort = gasket::messaging::TwoPhaseInputPort<model::CRDTCommand>;
 
 impl ToRedisArgs for model::Value {
     fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite,
+        where
+            W: ?Sized + redis::RedisWrite,
     {
         match self {
             model::Value::String(x) => x.write_redis_args(out),

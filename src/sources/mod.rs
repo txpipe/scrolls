@@ -22,7 +22,7 @@ impl Config {
     pub fn bootstrapper(
         self,
         chain: &crosscut::ChainWellKnownInfo,
-        blocks: &crosscut::blocks::RollbackData,
+        blocks: &crosscut::historic::BufferBlocks,
         intersect: &crosscut::IntersectConfig,
         finalize: &Option<crosscut::FinalizeConfig>,
         policy: &crosscut::policies::RuntimePolicy,

@@ -147,8 +147,8 @@ impl Reducer {
 
 impl Config {
     pub fn plugin(self,
-         chain: &crosscut::ChainWellKnownInfo
-         ) -> super::Reducer {
+                  chain: &crosscut::ChainWellKnownInfo
+    ) -> super::Reducer {
         let reducer = Reducer {
             config: self,
             chain: chain.clone(),

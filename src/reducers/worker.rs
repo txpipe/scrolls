@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use pallas::codec::minicbor::bytes::nil;
 use pallas::ledger::traverse::MultiEraBlock;
 
@@ -42,7 +42,6 @@ impl Worker {
         block: &'b Vec<u8>,
         rollback: bool,
         ctx: &model::BlockContext,
-
     ) -> Result<(), gasket::error::Error> {
         let block = MultiEraBlock::decode(block)
             .map_err(crate::Error::cbor)
@@ -74,7 +73,6 @@ impl Worker {
 
 }
 
-
 impl gasket::runtime::Worker for Worker {
     fn metrics(&self) -> gasket::metrics::Registry {
         gasket::metrics::Builder::new()
@@ -91,7 +89,6 @@ impl gasket::runtime::Worker for Worker {
                 self.reduce_block(&block, false, &ctx)?
             }
             model::EnrichedBlockPayload::RollBack(block, ctx) => {
-                error!("running rollback reducers {}", block.len());
                 self.reduce_block(&block, true, &ctx)?
             }
         }

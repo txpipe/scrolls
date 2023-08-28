@@ -20,7 +20,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn bootstrapper(self, policy: &crosscut::policies::RuntimePolicy, blocks: &crosscut::blocks::Config) -> Bootstrapper {
+    pub fn bootstrapper(self, policy: &crosscut::policies::RuntimePolicy, blocks: &crosscut::historic::BlockConfig) -> Bootstrapper {
         match self {
             Config::Skip => Bootstrapper::Skip(skip::Bootstrapper::default()),
             Config::Sled(c) => Bootstrapper::Sled(c.boostrapper(policy, blocks)),
