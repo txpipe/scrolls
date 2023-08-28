@@ -7,14 +7,14 @@ use crate::Error;
 #[serde(tag = "type")]
 pub struct BlockConfig {
     pub db_path: String,
-    pub consumed_ring_path: String
+    pub rollback_db_path: String
 }
 
 impl Default for BlockConfig {
     fn default() -> Self {
         BlockConfig {
             db_path: "/opt/scrolls/block_buffer".to_string(),
-            consumed_ring_path: "/opt/scrolls/consumed_buffer".to_string()
+            rollback_db_path: "/opt/scrolls/rollback_buffer".to_string()
         }
     }
 }

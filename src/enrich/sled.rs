@@ -32,7 +32,7 @@ pub struct Config {
 
 impl Config {
     pub fn boostrapper(mut self, policy: &crosscut::policies::RuntimePolicy, blocks: &crosscut::historic::BlockConfig) -> Bootstrapper {
-        self.rollback_db_path = Some(blocks.consumed_ring_path.clone());
+        self.rollback_db_path = Some(blocks.rollback_db_path.clone());
 
         Bootstrapper {
             config: self,
