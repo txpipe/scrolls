@@ -1,9 +1,12 @@
+use std::io::Read;
 use pallas::ledger::traverse::{MultiEraBlock, MultiEraHeader};
 use pallas::network::miniprotocols::chainsync::{HeaderContent, Tip};
 use pallas::network::miniprotocols::{blockfetch, chainsync, Point};
 
 use gasket::error::AsWorkError;
+use log::log;
 use pallas::network::multiplexer::StdChannel;
+use sled::IVec;
 
 use crate::sources::n2n::transport::Transport;
 use crate::{crosscut, model, sources::utils, storage, Error};
@@ -16,7 +19,7 @@ fn to_traverse<'b>(header: &'b HeaderContent) -> Result<MultiEraHeader<'b>, Erro
         header.byron_prefix.map(|x| x.0),
         &header.cbor,
     )
-    .map_err(Error::cbor)
+        .map_err(Error::cbor)
 }
 
 pub type OutputPort = gasket::messaging::OutputPort<model::RawBlockPayload>;
@@ -92,7 +95,7 @@ impl Worker {
         Ok(())
     }
 
-    fn on_rollback(&mut self, point: &Point) -> Result<(), gasket::error::Error> {
+    fn on_rollback(&mut self, point: &Point, tip: &Tip) -> Result<(), gasket::error::Error> {
         match self.chain_buffer.roll_back(point) {
             chainsync::RollbackEffect::Handled => {
                 log::warn!("handled rollback within buffer {:?}", point);
@@ -151,7 +154,7 @@ impl Worker {
                 Ok(())
             }
             chainsync::NextResponse::RollBackward(p, t) => {
-                self.on_rollback(&p)?;
+                self.on_rollback(&p, &t)?;
                 self.chain_tip.set(t.1 as i64);
                 Ok(())
             }
@@ -194,28 +197,29 @@ impl gasket::runtime::Worker for Worker {
         let mut rolled_back = false;
 
         loop {
-            match self.blocks.rollback_pop() {
-                None => break,
-                Some(cbor) => {
-                    let block = MultiEraBlock::decode(&cbor)
-                        .map_err(crate::Error::cbor)
-                        .apply_policy(&self.policy);
+            let pop_rollback_block = self.blocks.rollback_pop();
 
-                    if let Ok(block) = block {
-                        rolled_back = true;
-                        self.output.send(model::RawBlockPayload::roll_back(cbor.clone()))?;
-                        self.block_count.inc(1);
+            if let Some(cbor) = pop_rollback_block {
+                let block = MultiEraBlock::decode(&cbor)
+                    .map_err(crate::Error::cbor)
+                    .apply_policy(&self.policy);
 
-                        if let Some(block) = block {
-                            let last_point = Point::Specific(block.slot(), block.hash().to_vec());
+                if let Ok(block) = block {
+                    rolled_back = true;
+                    self.output.send(model::RawBlockPayload::roll_back(cbor.clone()))?;
+                    self.block_count.inc(1);
 
-                            if crosscut::should_finalize(&self.finalize, &last_point) {
-                                return Ok(gasket::runtime::WorkOutcome::Done);
-                            }
+                    if let Some(block) = block {
+                        let last_point = Point::Specific(block.slot(), block.hash().to_vec());
+
+                        if crosscut::should_finalize(&self.finalize, &last_point) {
+                            return Ok(gasket::runtime::WorkOutcome::Done);
                         }
                     }
                 }
-            };
+            } else {
+                break;
+            }
         }
 
         if rolled_back {

@@ -14,7 +14,7 @@ impl Default for BlockConfig {
     fn default() -> Self {
         BlockConfig {
             db_path: "/opt/scrolls/block_buffer".to_string(),
-            rollback_db_path: "/opt/scrolls/rollback_buffer".to_string()
+            rollback_db_path: "/opt/scrolls/consumed_buffer".to_string()
         }
     }
 }
@@ -77,7 +77,7 @@ impl BufferBlocks {
         match self.queue.pop() {
             None => None,
             Some(popped) => {
-                self.get_db_ref().remove(popped.clone()).map_err(Error::storage).expect("db error");
+                self.get_db_ref().remove(popped.clone()).map_err(Error::storage);
                 Some(popped)
             }
         }
@@ -107,15 +107,13 @@ impl BufferBlocks {
         let mut clear_blocks = sled::Batch::default();
 
         let mut last_seen_slot = slot.clone().to_string();
-        if let Ok(block) = &db.get_gt(last_seen_slot.as_bytes()) {
-            while let Some((next_key, next_block)) = block {
-                last_seen_slot = String::from_utf8(next_key.to_vec()).unwrap();
-                clear_blocks.remove(next_key);
-                blocks_to_roll_back.push(next_block.to_vec())
-            }
-
-            db.apply_batch(clear_blocks).map_err(crate::Error::storage).expect("todo: map storage error");
+        while let Some((next_key, next_block)) = db.get_gt(last_seen_slot.as_bytes()).unwrap() {
+            last_seen_slot = String::from_utf8(next_key.to_vec()).unwrap();
+            clear_blocks.remove(next_key);
+            blocks_to_roll_back.push(next_block.to_vec())
         }
+
+        db.apply_batch(clear_blocks).map_err(crate::Error::storage).expect("todo: map storage error");
 
         if !blocks_to_roll_back.is_empty() {
             self.queue = blocks_to_roll_back;
