@@ -3,10 +3,13 @@ use std::{collections::HashMap, fmt::Debug};
 use pallas::{
     ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, MultiEraTx, OutputRef},
     network::miniprotocols::Point,
-    crypto::hash::Hash,
 };
 
-use crate::prelude::*;
+// use crate::prelude::*;
+
+use crate::crosscut::policies::{RuntimePolicy, AppliesPolicy};
+
+use super::errors::Error;
 
 #[derive(Debug, Clone)]
 pub enum RawBlockPayload {
@@ -44,7 +47,7 @@ impl BlockContext {
             .get(&key.to_string())
             .ok_or_else(|| Error::missing_utxo(key))?;
 
-        MultiEraOutput::decode(*era, cbor).map_err(crate::Error::cbor)
+        MultiEraOutput::decode(*era, cbor).map_err(Error::cbor)
     }
 
     pub fn get_all_keys(&self) -> Vec<String> {
@@ -60,7 +63,7 @@ impl BlockContext {
             .consumes()
             .iter()
             .map(|i| i.output_ref())
-            .map(|r| self.find_utxo(&r).map(|u| (r,u)))
+            .map(|r| self.find_utxo(&r).map(|u| (r, u)))
             .map(|r| r.apply_policy(policy))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
@@ -234,8 +237,8 @@ impl CRDTCommand {
         member: String,
         value: V,
     ) -> CRDTCommand
-        where
-            V: Into<Value>,
+    where
+        V: Into<Value>,
     {
         let key = match prefix {
             Some(prefix) => format!("{}.{}", prefix, key.to_string()),

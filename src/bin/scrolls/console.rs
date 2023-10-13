@@ -3,17 +3,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-use gasket::metrics::Reading;
-use lazy_static::{__Deref, lazy_static};
-use log::Log;
-use scrolls::bootstrap::Pipeline;
+use gasket::{metrics::Reading, runtime::Tether};
+use lazy_static::lazy_static;
+use tracing::{debug, error, warn};
 
 #[derive(clap::ValueEnum, Clone)]
 pub enum Mode {
     /// shows progress as a plain sequence of logs
     Plain,
     /// shows aggregated progress and metrics
-    TUI,
+    Tui,
 }
 
 impl Default for Mode {
@@ -24,7 +23,7 @@ impl Default for Mode {
 
 struct TuiConsole {
     chainsync_progress: indicatif::ProgressBar,
-    received_blocks: indicatif::ProgressBar,
+    fetched_blocks: indicatif::ProgressBar,
     reducer_ops_count: indicatif::ProgressBar,
     storage_ops_count: indicatif::ProgressBar,
     enrich_inserts: indicatif::ProgressBar,
@@ -62,7 +61,7 @@ impl TuiConsole {
                         .unwrap(),
                 ),
             ),
-            received_blocks: Self::build_counter_spinner("received blocks", &container),
+            fetched_blocks: Self::build_counter_spinner("fetched blocks", &container),
             enrich_inserts: Self::build_counter_spinner("enrich inserts", &container),
             enrich_removes: Self::build_counter_spinner("enrich removes", &container),
             enrich_matches: Self::build_counter_spinner("enrich matches", &container),
@@ -73,17 +72,16 @@ impl TuiConsole {
         }
     }
 
-    fn refresh(&self, pipeline: &Pipeline) {
-        for tether in pipeline.tethers.iter() {
+    fn refresh<'a>(&self, tethers: impl Iterator<Item = &'a Tether>) {
+        for tether in tethers {
             let state = match tether.check_state() {
                 gasket::runtime::TetherState::Dropped => "dropped!",
                 gasket::runtime::TetherState::Blocked(_) => "blocked!",
                 gasket::runtime::TetherState::Alive(x) => match x {
-                    gasket::runtime::StageState::Bootstrap => "bootstrapping...",
-                    gasket::runtime::StageState::Working => "working...",
-                    gasket::runtime::StageState::Idle => "idle...",
-                    gasket::runtime::StageState::StandBy => "stand-by...",
-                    gasket::runtime::StageState::Teardown => "tearing down...",
+                    gasket::runtime::StagePhase::Bootstrap => "bootstrapping...",
+                    gasket::runtime::StagePhase::Working => "working...",
+                    gasket::runtime::StagePhase::Teardown => "tearing down...",
+                    gasket::runtime::StagePhase::Ended => "ended",
                 },
             };
 
@@ -97,9 +95,9 @@ impl TuiConsole {
                             (_, "last_block", Reading::Gauge(x)) => {
                                 self.chainsync_progress.set_position(x as u64);
                             }
-                            (_, "received_blocks", Reading::Count(x)) => {
-                                self.received_blocks.set_position(x);
-                                self.received_blocks.set_message(state);
+                            (_, "fetched_blocks", Reading::Count(x)) => {
+                                self.chainsync_progress.set_position(x);
+                                self.chainsync_progress.set_message(state);
                             }
                             ("reducers", "ops_count", Reading::Count(x)) => {
                                 self.reducer_ops_count.set_position(x);
@@ -142,19 +140,6 @@ impl TuiConsole {
     }
 }
 
-impl Log for TuiConsole {
-    fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() >= log::Level::Info
-    }
-
-    fn log(&self, record: &log::Record) {
-        self.chainsync_progress
-            .set_message(format!("{}", record.args()))
-    }
-
-    fn flush(&self) {}
-}
-
 struct PlainConsole {
     last_report: Mutex<Instant>,
 }
@@ -166,31 +151,34 @@ impl PlainConsole {
         }
     }
 
-    fn refresh(&self, pipeline: &Pipeline) {
+    fn refresh<'a>(&self, tethers: impl Iterator<Item = &'a Tether>) {
         let mut last_report = self.last_report.lock().unwrap();
 
         if last_report.elapsed() <= Duration::from_secs(10) {
             return;
         }
 
-        for tether in pipeline.tethers.iter() {
+        for tether in tethers {
             match tether.check_state() {
                 gasket::runtime::TetherState::Dropped => {
-                    log::error!("[{}] stage tether has been dropped", tether.name());
+                    error!("[{}] stage tether has been dropped", tether.name());
                 }
                 gasket::runtime::TetherState::Blocked(_) => {
-                    log::warn!("[{}] stage tehter is blocked or not reporting state", tether.name());
+                    warn!(
+                        "[{}] stage tehter is blocked or not reporting state",
+                        tether.name()
+                    );
                 }
                 gasket::runtime::TetherState::Alive(state) => {
-                    log::debug!("[{}] stage is alive with state: {:?}", tether.name(), state);
+                    debug!("[{}] stage is alive with state: {:?}", tether.name(), state);
                     match tether.read_metrics() {
                         Ok(readings) => {
                             for (key, value) in readings {
-                                log::debug!("[{}] metric `{}` = {:?}", tether.name(), key, value);
+                                debug!("[{}] metric `{}` = {:?}", tether.name(), key, value);
                             }
                         }
                         Err(err) => {
-                            log::error!("[{}] error reading metrics: {}", tether.name(), err)
+                            error!("[{}] error reading metrics: {}", tether.name(), err)
                         }
                     }
                 }
@@ -210,17 +198,19 @@ lazy_static! {
 }
 
 pub fn initialize(mode: &Option<Mode>) {
-    match mode {
-        Some(Mode::TUI) => log::set_logger(TUI_CONSOLE.deref())
-            .map(|_| log::set_max_level(log::LevelFilter::Info))
-            .unwrap(),
-        _ => env_logger::init(),
+    if !matches!(mode, Some(Mode::Tui)) {
+        tracing::subscriber::set_global_default(
+            tracing_subscriber::FmtSubscriber::builder()
+                .with_max_level(tracing::Level::DEBUG)
+                .finish(),
+        )
+        .unwrap();
     }
 }
 
-pub fn refresh(mode: &Option<Mode>, pipeline: &Pipeline) {
+pub fn refresh<'a>(mode: &Option<Mode>, tethers: impl Iterator<Item = &'a Tether>) {
     match mode {
-        Some(Mode::TUI) => TUI_CONSOLE.refresh(pipeline),
-        _ => PLAIN_CONSOLE.refresh(pipeline),
+        Some(Mode::Tui) => TUI_CONSOLE.refresh(tethers),
+        _ => PLAIN_CONSOLE.refresh(tethers),
     }
 }

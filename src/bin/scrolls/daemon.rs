@@ -1,50 +1,33 @@
 use clap;
-use scrolls::{bootstrap, crosscut, enrich, reducers, sources, storage};
+
+use gasket::runtime::Tether;
+use scrolls::{
+    framework::{
+        cursor::Cursor, ChainConfig, Context, FinalizeConfig, IntersectConfig, StageBootstrapper,
+    },
+    sources,
+};
 use serde::Deserialize;
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
+use tracing::{warn, info};
+
+use scrolls::framework::errors::Error;
 
 use crate::console;
 
-#[derive(Deserialize)]
-#[serde(tag = "type")]
-pub enum ChainConfig {
-    Mainnet,
-    Testnet,
-    PreProd,
-    Preview,
-    Custom(crosscut::ChainWellKnownInfo),
-}
-
-impl Default for ChainConfig {
-    fn default() -> Self {
-        Self::Mainnet
-    }
-}
-
-impl From<ChainConfig> for crosscut::ChainWellKnownInfo {
-    fn from(other: ChainConfig) -> Self {
-        match other {
-            ChainConfig::Mainnet => crosscut::ChainWellKnownInfo::mainnet(),
-            ChainConfig::Testnet => crosscut::ChainWellKnownInfo::testnet(),
-            ChainConfig::PreProd => crosscut::ChainWellKnownInfo::preprod(),
-            ChainConfig::Preview => crosscut::ChainWellKnownInfo::preview(),
-            ChainConfig::Custom(x) => x,
-        }
-    }
-}
+// use crate::console;
 
 #[derive(Deserialize)]
 struct ConfigRoot {
     source: sources::Config,
-    enrich: Option<enrich::Config>,
-    reducers: Vec<reducers::Config>,
-    storage: storage::Config,
-    intersect: crosscut::IntersectConfig,
-    finalize: Option<crosscut::FinalizeConfig>,
+    // enrich: Option<enrich::Config>,
+    // reducers: Vec<reducers::Config>,
+    // storage: storage::Config,
+    intersect: IntersectConfig,
+    finalize: Option<FinalizeConfig>,
     chain: Option<ChainConfig>,
-    policy: Option<crosscut::policies::RuntimePolicy>,
+    retries: Option<gasket::retries::Policy>,
 }
-
 impl ConfigRoot {
     pub fn new(explicit_file: &Option<std::path::PathBuf>) -> Result<Self, config::ConfigError> {
         let mut s = config::Config::builder();
@@ -67,67 +50,149 @@ impl ConfigRoot {
     }
 }
 
-fn should_stop(pipeline: &bootstrap::Pipeline) -> bool {
-    pipeline
-        .tethers
-        .iter()
-        .any(|tether| match tether.check_state() {
-            gasket::runtime::TetherState::Alive(x) => match x {
-                gasket::runtime::StageState::StandBy => true,
-                _ => false,
-            },
+struct Runtime {
+    source: Tether,
+    // enrich: Tether,
+    // reducer: Tether,
+    // storage: Tether,
+}
+impl Runtime {
+    fn all_tethers(&self) -> impl Iterator<Item = &Tether> {
+        std::iter::once(&self.source)
+        // .chain(self.filters.iter())
+        // .chain(std::iter::once(&self.sink))
+    }
+
+    fn should_stop(&self) -> bool {
+        self.all_tethers().any(|tether| match tether.check_state() {
+            gasket::runtime::TetherState::Alive(x) => {
+                matches!(x, gasket::runtime::StagePhase::Ended)
+            }
             _ => true,
         })
-}
+    }
 
-fn shutdown(pipeline: bootstrap::Pipeline) {
-    for tether in pipeline.tethers {
-        let state = tether.check_state();
-        log::warn!("dismissing stage: {} with state {:?}", tether.name(), state);
-        tether.dismiss_stage().expect("stage stops");
+    fn shutdown(&self) {
+        for tether in self.all_tethers() {
+            let state = tether.check_state();
+            warn!("dismissing stage: {} with state {:?}", tether.name(), state);
+            tether.dismiss_stage().expect("stage stops");
 
-        // Can't join the stage because there's a risk of deadlock, usually
-        // because a stage gets stuck sending into a port which depends on a
-        // different stage not yet dismissed. The solution is to either create a
-        // DAG of dependencies and dismiss in the correct order, or implement a
-        // 2-phase teardown where ports are disconnected and flushed
-        // before joining the stage.
+            // Can't join the stage because there's a risk of deadlock, usually
+            // because a stage gets stuck sending into a port which depends on a
+            // different stage not yet dismissed. The solution is to either
+            // create a DAG of dependencies and dismiss in the
+            // correct order, or implement a 2-phase teardown where
+            // ports are disconnected and flushed before joining the
+            // stage.
 
-        //tether.join_stage();
+            //tether.join_stage();
+        }
     }
 }
 
-pub fn run(args: &Args) -> Result<(), scrolls::Error> {
+fn define_gasket_policy(config: Option<&gasket::retries::Policy>) -> gasket::runtime::Policy {
+    let default_policy = gasket::retries::Policy {
+        max_retries: 20,
+        backoff_unit: Duration::from_secs(1),
+        backoff_factor: 2,
+        max_backoff: Duration::from_secs(60),
+        dismissible: false,
+    };
+
+    gasket::runtime::Policy {
+        tick_timeout: None,
+        bootstrap_retry: config.cloned().unwrap_or(default_policy.clone()),
+        work_retry: config.cloned().unwrap_or(default_policy.clone()),
+        teardown_retry: config.cloned().unwrap_or(default_policy.clone()),
+    }
+}
+
+fn chain_stages<'a>(source: &'a mut dyn StageBootstrapper) {
+    let mut prev = source;
+
+    // for filter in filters {
+    //     let (to_next, from_prev) = gasket::messaging::tokio::channel(100);
+    //     prev.connect_output(to_next);
+    //     filter.connect_input(from_prev);
+    //     prev = filter;
+    // }
+
+    let (to_next, from_prev) = gasket::messaging::tokio::channel(100);
+    prev.connect_output(to_next);
+    // sink.connect_input(from_prev);
+}
+
+fn bootstrap(
+    mut source: sources::Bootstrapper,
+    // mut filters: Vec<filters::Bootstrapper>,
+    // mut sink: sinks::Bootstrapper,
+    policy: gasket::runtime::Policy,
+) -> Result<Runtime, Error> {
+    chain_stages(
+        &mut source,
+        // filters
+        //     .iter_mut()
+        //     .map(|x| x as &mut dyn StageBootstrapper)
+        //     .collect::<Vec<_>>(),
+        // &mut sink,
+    );
+
+    let runtime = Runtime {
+        source: source.spawn(policy.clone()),
+        // filters: filters
+        //     .into_iter()
+        //     .map(|x| x.spawn(policy.clone()))
+        //     .collect(),
+        // sink: sink.spawn(policy),
+    };
+
+    Ok(runtime)
+}
+
+pub fn run(args: &Args) -> Result<(), Error> {
     console::initialize(&args.console);
 
-    let config = ConfigRoot::new(&args.config)
-        .map_err(|err| scrolls::Error::ConfigError(format!("{:?}", err)))?;
+    let config = ConfigRoot::new(&args.config).map_err(Error::config)?;
 
-    let chain = config.chain.unwrap_or_default().into();
-    let policy = config.policy.unwrap_or_default().into();
+    let chain = config.chain.unwrap_or_default();
+    let intersect = config.intersect;
+    let finalize = config.finalize;
+    // let current_dir = std::env::current_dir().unwrap();
 
-    let source = config
-        .source
-        .bootstrapper(&chain, &config.intersect, &config.finalize, &policy);
+    // TODO: load from persistence mechanism
+    let cursor = Cursor::new(VecDeque::new());
 
-    let enrich = config.enrich.unwrap_or_default().bootstrapper(&policy);
+    let ctx = Context {
+        chain,
+        intersect,
+        finalize,
+        cursor,
+    };
 
-    let reducer = reducers::Bootstrapper::new(config.reducers, &chain, &policy);
+    let source = config.source.bootstrapper(&ctx)?;
 
-    let storage = config.storage.plugin(&chain, &config.intersect, &policy);
+    // let filters = config
+    //     .filters
+    //     .into_iter()
+    //     .flatten()
+    //     .map(|x| x.bootstrapper(&ctx))
+    //     .collect::<Result<_, _>>()?;
 
-    let pipeline = bootstrap::build(source, enrich, reducer, storage)?;
+    // let sink = config.sink.bootstrapper(&ctx)?;
 
-    log::info!("scrolls is running...");
+    let retries = define_gasket_policy(config.retries.as_ref());
+    let runtime = bootstrap(source, retries)?;
 
-    while !should_stop(&pipeline) {
-        console::refresh(&args.console, &pipeline);
+    info!("Scrolls is running...");
+
+    while !runtime.should_stop() {
+        console::refresh(&args.console, runtime.all_tethers());
         std::thread::sleep(Duration::from_millis(1500));
     }
 
-    log::info!("Scrolls is stopping...");
-
-    shutdown(pipeline);
+    info!("Scrolls is stopping...");
+    runtime.shutdown();
 
     Ok(())
 }
