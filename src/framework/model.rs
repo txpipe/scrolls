@@ -7,7 +7,7 @@ use pallas::{
 
 // use crate::prelude::*;
 
-use crate::crosscut::policies::{RuntimePolicy, AppliesPolicy};
+use crate::crosscut::policies::{AppliesPolicy, RuntimePolicy};
 
 use super::errors::Error;
 
@@ -16,7 +16,6 @@ pub enum RawBlockPayload {
     RollForward(Vec<u8>),
     RollBack(Point),
 }
-
 impl RawBlockPayload {
     pub fn roll_forward(block: Vec<u8>) -> gasket::messaging::Message<Self> {
         gasket::messaging::Message {
@@ -35,7 +34,6 @@ impl RawBlockPayload {
 pub struct BlockContext {
     utxos: HashMap<String, (Era, Vec<u8>)>,
 }
-
 impl BlockContext {
     pub fn import_ref_output(&mut self, key: &OutputRef, era: Era, cbor: Vec<u8>) {
         self.utxos.insert(key.to_string(), (era, cbor));

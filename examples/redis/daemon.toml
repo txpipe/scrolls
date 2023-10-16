@@ -8,3 +8,6 @@ type = "mainnet"
 [intersect]
 type = "Tip"
 
+[enrich]
+type = "Sled"
+db_path = "./"

@@ -12,6 +12,7 @@ use pallas::network::miniprotocols::Point;
 
 use crate::framework::cursor::Cursor;
 use crate::framework::errors::Error;
+use crate::framework::model::RawBlockPayload;
 use crate::framework::*;
 
 #[derive(Stage)]
@@ -98,10 +99,7 @@ impl Worker {
 
                 debug!(slot, %hash, "chain sync roll forward");
 
-                let evt = ChainEvent::Apply(
-                    pallas::network::miniprotocols::Point::Specific(slot, hash.to_vec()),
-                    Record(cbor.to_vec()),
-                );
+                let evt = RawBlockPayload::roll_forward(cbor.to_vec());
 
                 stage.output.send(evt.into()).await.or_panic()?;
 
@@ -115,11 +113,9 @@ impl Worker {
                     Point::Specific(slot, _) => debug!(slot, "rollback"),
                 };
 
-                stage
-                    .output
-                    .send(ChainEvent::reset(point.clone()))
-                    .await
-                    .or_panic()?;
+                let evt = RawBlockPayload::roll_back(point.clone());
+
+                stage.output.send(evt).await.or_panic()?;
 
                 stage.chain_tip.set(tip.0.slot_or_default() as i64);
 

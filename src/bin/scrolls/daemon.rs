@@ -1,17 +1,10 @@
 use clap;
 
 use gasket::runtime::Tether;
-use scrolls::{
-    framework::{
-        cursor::Cursor, ChainConfig, Context, FinalizeConfig, IntersectConfig, StageBootstrapper,
-    },
-    sources,
-};
+use scrolls::{enrich, framework::*, sources};
 use serde::Deserialize;
 use std::{collections::VecDeque, time::Duration};
-use tracing::{warn, info};
-
-use scrolls::framework::errors::Error;
+use tracing::{info, warn};
 
 use crate::console;
 
@@ -20,7 +13,7 @@ use crate::console;
 #[derive(Deserialize)]
 struct ConfigRoot {
     source: sources::Config,
-    // enrich: Option<enrich::Config>,
+    enrich: Option<enrich::Config>,
     // reducers: Vec<reducers::Config>,
     // storage: storage::Config,
     intersect: IntersectConfig,
@@ -52,7 +45,7 @@ impl ConfigRoot {
 
 struct Runtime {
     source: Tether,
-    // enrich: Tether,
+    enrich: Tether,
     // reducer: Tether,
     // storage: Tether,
 }
@@ -108,43 +101,22 @@ fn define_gasket_policy(config: Option<&gasket::retries::Policy>) -> gasket::run
     }
 }
 
-fn chain_stages<'a>(source: &'a mut dyn StageBootstrapper) {
-    let mut prev = source;
-
-    // for filter in filters {
-    //     let (to_next, from_prev) = gasket::messaging::tokio::channel(100);
-    //     prev.connect_output(to_next);
-    //     filter.connect_input(from_prev);
-    //     prev = filter;
-    // }
-
-    let (to_next, from_prev) = gasket::messaging::tokio::channel(100);
-    prev.connect_output(to_next);
-    // sink.connect_input(from_prev);
+fn chain_stages<'a>(source: &'a mut dyn StageBootstrapper, enrich: &'a mut dyn StageBootstrapper) {
+    let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
+    source.connect_output(to_next);
+    enrich.connect_input(from_prev);
 }
 
 fn bootstrap(
     mut source: sources::Bootstrapper,
-    // mut filters: Vec<filters::Bootstrapper>,
-    // mut sink: sinks::Bootstrapper,
+    mut enrich: enrich::Bootstrapper,
     policy: gasket::runtime::Policy,
 ) -> Result<Runtime, Error> {
-    chain_stages(
-        &mut source,
-        // filters
-        //     .iter_mut()
-        //     .map(|x| x as &mut dyn StageBootstrapper)
-        //     .collect::<Vec<_>>(),
-        // &mut sink,
-    );
+    chain_stages(&mut source, &mut enrich);
 
     let runtime = Runtime {
         source: source.spawn(policy.clone()),
-        // filters: filters
-        //     .into_iter()
-        //     .map(|x| x.spawn(policy.clone()))
-        //     .collect(),
-        // sink: sink.spawn(policy),
+        enrich: enrich.spawn(policy.clone()),
     };
 
     Ok(runtime)
@@ -171,18 +143,13 @@ pub fn run(args: &Args) -> Result<(), Error> {
     };
 
     let source = config.source.bootstrapper(&ctx)?;
-
-    // let filters = config
-    //     .filters
-    //     .into_iter()
-    //     .flatten()
-    //     .map(|x| x.bootstrapper(&ctx))
-    //     .collect::<Result<_, _>>()?;
-
-    // let sink = config.sink.bootstrapper(&ctx)?;
+    let enrich = config
+        .enrich
+        .unwrap_or(enrich::Config::default())
+        .bootstrapper(&ctx)?;
 
     let retries = define_gasket_policy(config.retries.as_ref());
-    let runtime = bootstrap(source, retries)?;
+    let runtime = bootstrap(source, enrich, retries)?;
 
     info!("Scrolls is running...");
 
