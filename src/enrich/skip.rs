@@ -1,13 +1,10 @@
 use gasket::framework::*;
 use serde::Deserialize;
 
-use crate::framework::{
-    model::{BlockContext, EnrichedBlockPayload, RawBlockPayload},
-    *,
-};
+use crate::framework::{model::BlockContext, *};
 
 #[derive(Default, Stage)]
-#[stage(name = "enrich-skip", unit = "RawBlockPayload", worker = "Worker")]
+#[stage(name = "enrich-skip", unit = "ChainEvent", worker = "Worker")]
 pub struct Stage {
     pub input: EnrichInputPort,
     pub output: EnrichOutputPort,
@@ -25,11 +22,16 @@ impl From<&Stage> for Worker {
     }
 }
 
-gasket::impl_mapper!(|_worker: Worker, stage: Stage, unit: RawBlockPayload| => {
+gasket::impl_mapper!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
     let evt = match unit {
-        RawBlockPayload::RollForward(cbor) => EnrichedBlockPayload::roll_forward(cbor.clone(), BlockContext::default()),
-        RawBlockPayload::RollBack(point) => EnrichedBlockPayload::roll_back(point.clone())
-    };
+        ChainEvent::Apply(point, record) => {
+            match record {
+                Record::RawBlockPayload(cbor) => Ok(ChainEvent::apply(point.clone(), Record::EnrichedBlockPayload(cbor.clone(), BlockContext::default()))),
+                _ => Err(WorkerError::Panic)
+            }
+        },
+        ChainEvent::Reset(point) => Ok(ChainEvent::reset(point.clone())),
+    }?;
 
     stage.ops_count.inc(1);
 

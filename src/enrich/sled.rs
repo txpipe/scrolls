@@ -9,8 +9,7 @@ use sled::{Db, IVec};
 use gasket::framework::*;
 
 use crate::framework::{
-    model::{BlockContext, EnrichedBlockPayload, RawBlockPayload},
-    Context, EnrichInputPort, EnrichOutputPort, Error,
+    model::BlockContext, ChainEvent, Context, EnrichInputPort, EnrichOutputPort, Error, Record,
 };
 
 pub struct Worker {
@@ -101,18 +100,22 @@ impl gasket::framework::Worker<Stage> for Worker {
     async fn schedule(
         &mut self,
         stage: &mut Stage,
-    ) -> Result<WorkSchedule<RawBlockPayload>, WorkerError> {
+    ) -> Result<WorkSchedule<ChainEvent>, WorkerError> {
         let msg = stage.input.recv().await.or_panic()?;
         Ok(WorkSchedule::Unit(msg.payload))
     }
 
-    async fn execute(
-        &mut self,
-        unit: &RawBlockPayload,
-        stage: &mut Stage,
-    ) -> Result<(), WorkerError> {
-        match unit {
-            RawBlockPayload::RollForward(cbor) => {
+    async fn execute(&mut self, unit: &ChainEvent, stage: &mut Stage) -> Result<(), WorkerError> {
+        let record = unit.record();
+        let point = unit.point();
+
+        if record.is_none() {
+            return Ok(());
+        }
+
+        let record = record.unwrap();
+        match record {
+            Record::RawBlockPayload(cbor) => {
                 let block = MultiEraBlock::decode(&cbor)
                     .map_err(Error::cbor)
                     // .apply_policy(&self.policy)
@@ -131,15 +134,14 @@ impl gasket::framework::Worker<Stage> for Worker {
                 // and finally we remove utxos consumed by the block
                 self.remove_consumed_utxos(&self.db, &txs).or_restart()?;
 
-                let evt = EnrichedBlockPayload::roll_forward(cbor.clone(), ctx);
+                let evt = ChainEvent::apply(
+                    point.clone(),
+                    Record::EnrichedBlockPayload(cbor.clone(), ctx),
+                );
 
                 stage.output.send(evt).await.or_retry()?;
             }
-            RawBlockPayload::RollBack(point) => stage
-                .output
-                .send(EnrichedBlockPayload::roll_back(point.clone()))
-                .await
-                .or_retry()?,
+            _ => todo!(),
         }
 
         stage.ops_count.inc(1);
@@ -149,7 +151,7 @@ impl gasket::framework::Worker<Stage> for Worker {
 }
 
 #[derive(Stage)]
-#[stage(name = "enrich-sled", unit = "RawBlockPayload", worker = "Worker")]
+#[stage(name = "enrich-sled", unit = "ChainEvent", worker = "Worker")]
 pub struct Stage {
     config: Config,
     pub input: EnrichInputPort,

@@ -5,30 +5,9 @@ use pallas::{
     network::miniprotocols::Point,
 };
 
-// use crate::prelude::*;
-
 use crate::crosscut::policies::{AppliesPolicy, RuntimePolicy};
 
 use super::errors::Error;
-
-#[derive(Debug, Clone)]
-pub enum RawBlockPayload {
-    RollForward(Vec<u8>),
-    RollBack(Point),
-}
-impl RawBlockPayload {
-    pub fn roll_forward(block: Vec<u8>) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollForward(block),
-        }
-    }
-
-    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollBack(point),
-        }
-    }
-}
 
 #[derive(Default, Debug, Clone)]
 pub struct BlockContext {
@@ -69,26 +48,6 @@ impl BlockContext {
             .collect::<Vec<_>>();
 
         Ok(items)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum EnrichedBlockPayload {
-    RollForward(Vec<u8>, BlockContext),
-    RollBack(Point),
-}
-
-impl EnrichedBlockPayload {
-    pub fn roll_forward(block: Vec<u8>, ctx: BlockContext) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollForward(block, ctx),
-        }
-    }
-
-    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollBack(point),
-        }
     }
 }
 

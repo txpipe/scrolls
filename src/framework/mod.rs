@@ -8,22 +8,59 @@ pub mod model;
 pub use cursor::*;
 pub use errors::*;
 
-use self::model::{RawBlockPayload, EnrichedBlockPayload};
+use self::model::{BlockContext, CRDTCommand};
 
 #[derive(Debug, Clone)]
-pub struct Record(pub Vec<u8>);
+pub enum Record {
+    RawBlockPayload(Vec<u8>),
+    EnrichedBlockPayload(Vec<u8>, BlockContext),
+    CRDTCommand(Vec<CRDTCommand>),
+}
 
-pub type SourceOutputPort = gasket::messaging::tokio::OutputPort<RawBlockPayload>;
-pub type EnrichInputPort = gasket::messaging::tokio::InputPort<RawBlockPayload>;
-pub type EnrichOutputPort = gasket::messaging::tokio::OutputPort<EnrichedBlockPayload>;
-// pub type ReducerInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
-// pub type ReducerOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
+#[derive(Debug, Clone)]
+pub enum ChainEvent {
+    Apply(Point, Record),
+    Reset(Point),
+}
+impl ChainEvent {
+    pub fn apply(point: Point, record: impl Into<Record>) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::Apply(point, record.into()),
+        }
+    }
+
+    pub fn reset(point: Point) -> gasket::messaging::Message<Self> {
+        gasket::messaging::Message {
+            payload: Self::Reset(point),
+        }
+    }
+
+    pub fn point(&self) -> &Point {
+        match self {
+            Self::Apply(x, _) => x,
+            Self::Reset(x) => x,
+        }
+    }
+
+    pub fn record(&self) -> Option<&Record> {
+        match self {
+            Self::Apply(_, x) => Some(x),
+            _ => None,
+        }
+    }
+}
+
+pub type SourceOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
+pub type EnrichInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
+pub type EnrichOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
+pub type ReducerInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
+pub type ReducerOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
 // pub type StorageInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
 // pub type StorageOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
 
 // TODO validate next implementation trait
-pub type OutputAdapter = gasket::messaging::tokio::ChannelSendAdapter<RawBlockPayload>;
-pub type InputAdapter = gasket::messaging::tokio::ChannelRecvAdapter<RawBlockPayload>;
+pub type OutputAdapter = gasket::messaging::tokio::ChannelSendAdapter<ChainEvent>;
+pub type InputAdapter = gasket::messaging::tokio::ChannelRecvAdapter<ChainEvent>;
 
 pub trait StageBootstrapper {
     fn connect_output(&mut self, adapter: OutputAdapter);

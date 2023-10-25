@@ -1,244 +1,122 @@
-use std::time::Duration;
-
-use gasket::runtime::spawn_stage;
+use gasket::framework::*;
+use gasket::{
+    messaging::{RecvPort, SendPort},
+    runtime::Tether,
+};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model};
+use crate::framework::model::CRDTCommand;
+use crate::framework::*;
 
-type InputPort = gasket::messaging::TwoPhaseInputPort<model::EnrichedBlockPayload>;
-type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
-
-pub mod full_utxos_by_address;
-pub mod macros;
-pub mod point_by_tx;
-pub mod pool_by_stake;
-pub mod utxo_by_address;
-mod worker;
-
-#[cfg(feature = "unstable")]
-pub mod address_by_asset;
-#[cfg(feature = "unstable")]
-pub mod address_by_txo;
-#[cfg(feature = "unstable")]
-pub mod addresses_by_stake;
-#[cfg(feature = "unstable")]
-pub mod asset_holders_by_asset_id;
-#[cfg(feature = "unstable")]
-pub mod balance_by_address;
-#[cfg(feature = "unstable")]
-pub mod block_header_by_hash;
-#[cfg(feature = "unstable")]
-pub mod last_block_parameters;
-#[cfg(feature = "unstable")]
-pub mod supply_by_asset;
-#[cfg(feature = "unstable")]
-pub mod tx_by_hash;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_address;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_native_token_policy_id;
-#[cfg(feature = "unstable")]
-pub mod utxo_by_stake;
-#[cfg(feature = "unstable")]
-pub mod utxos_by_asset;
+mod full_utxos_by_address;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum Config {
     FullUtxosByAddress(full_utxos_by_address::Config),
-    UtxoByAddress(utxo_by_address::Config),
-    PointByTx(point_by_tx::Config),
-    PoolByStake(pool_by_stake::Config),
-
-    #[cfg(feature = "unstable")]
-    AddressByTxo(address_by_txo::Config),
-    #[cfg(feature = "unstable")]
-    BalanceByAddress(balance_by_address::Config),
-    #[cfg(feature = "unstable")]
-    TxByHash(tx_by_hash::Config),
-    #[cfg(feature = "unstable")]
-    TxCountByAddress(tx_count_by_address::Config),
-    #[cfg(feature = "unstable")]
-    BlockHeaderByHash(block_header_by_hash::Config),
-    #[cfg(feature = "unstable")]
-    AddressByAsset(address_by_asset::Config),
-    #[cfg(feature = "unstable")]
-    LastBlockParameters(last_block_parameters::Config),
-    #[cfg(feature = "unstable")]
-    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Config),
-    #[cfg(feature = "unstable")]
-    AssetHoldersByAsset(asset_holders_by_asset_id::Config),
-    #[cfg(feature = "unstable")]
-    UtxosByAsset(utxos_by_asset::Config),
-    #[cfg(feature = "unstable")]
-    UtxoByStake(utxo_by_stake::Config),
-    #[cfg(feature = "unstable")]
-    SupplyByAsset(supply_by_asset::Config),
-    #[cfg(feature = "unstable")]
-    AddressesByStake(addresses_by_stake::Config),
 }
-
 impl Config {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> Reducer {
+    pub fn plugin(self) -> Box<dyn ReducerTrait> {
         match self {
-            Config::FullUtxosByAddress(c) => c.plugin(policy),
-            Config::UtxoByAddress(c) => c.plugin(policy),
-            Config::PointByTx(c) => c.plugin(),
-            Config::PoolByStake(c) => c.plugin(),
-
-            #[cfg(feature = "unstable")]
-            Config::AddressByTxo(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::BalanceByAddress(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::TxByHash(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::TxCountByAddress(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::BlockHeaderByHash(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::AddressByAsset(c) => c.plugin(),
-            #[cfg(feature = "unstable")]
-            Config::LastBlockParameters(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            Config::TxCountByNativeTokenPolicyId(c) => c.plugin(chain),
-            #[cfg(feature = "unstable")]
-            Config::AssetHoldersByAsset(c) => c.plugin(chain, policy),
-            #[cfg(feature = "unstable")]
-            Config::UtxosByAsset(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::UtxoByStake(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::SupplyByAsset(c) => c.plugin(policy),
-            #[cfg(feature = "unstable")]
-            Config::AddressesByStake(c) => c.plugin(policy),
+            Config::FullUtxosByAddress(c) => c.plugin(),
         }
     }
 }
 
-pub struct Bootstrapper {
-    input: InputPort,
-    output: OutputPort,
-    reducers: Vec<Reducer>,
-    policy: crosscut::policies::RuntimePolicy,
+pub trait ConfigTrait {
+    fn bootstrapper(self, ctx: &Context) -> Result<Stage, Error>;
 }
+impl ConfigTrait for Vec<Config> {
+    fn bootstrapper(self, _ctx: &Context) -> Result<Stage, Error> {
+        let reducers: Vec<Box<dyn ReducerTrait>> =
+            self.into_iter().map(|c: Config| c.plugin()).collect();
 
-impl Bootstrapper {
-    pub fn new(
-        configs: Vec<Config>,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> Self {
-        Self {
-            reducers: configs
-                .into_iter()
-                .map(|x| x.plugin(chain, policy))
-                .collect(),
-            input: Default::default(),
-            output: Default::default(),
-            policy: policy.clone(),
-        }
-    }
+        let stage = Stage {
+            reducers,
+            ..Default::default()
+        };
 
-    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort {
-        &mut self.input
-    }
-
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort {
-        &mut self.output
-    }
-
-    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
-        let worker = worker::Worker::new(self.reducers, self.input, self.output, self.policy);
-        pipeline.register_stage(spawn_stage(
-            worker,
-            gasket::runtime::Policy {
-                tick_timeout: Some(Duration::from_secs(600)),
-                ..Default::default()
-            },
-            Some("reducers"),
-        ));
+        Ok(stage)
     }
 }
 
-pub enum Reducer {
-    FullUtxosByAddress(full_utxos_by_address::Reducer),
-    UtxoByAddress(utxo_by_address::Reducer),
-    PointByTx(point_by_tx::Reducer),
-    PoolByStake(pool_by_stake::Reducer),
+#[derive(Default, Stage)]
+#[stage(name = "reducer", unit = "ChainEvent", worker = "Worker")]
+pub struct Stage {
+    reducers: Vec<Box<dyn ReducerTrait>>,
 
-    #[cfg(feature = "unstable")]
-    AddressByTxo(address_by_txo::Reducer),
-    #[cfg(feature = "unstable")]
-    BalanceByAddress(balance_by_address::Reducer),
-    #[cfg(feature = "unstable")]
-    TxByHash(tx_by_hash::Reducer),
-    #[cfg(feature = "unstable")]
-    TxCountByAddress(tx_count_by_address::Reducer),
-    #[cfg(feature = "unstable")]
-    BlockHeaderByHash(block_header_by_hash::Reducer),
-    #[cfg(feature = "unstable")]
-    AddressByAsset(address_by_asset::Reducer),
-    #[cfg(feature = "unstable")]
-    LastBlockParameters(last_block_parameters::Reducer),
-    #[cfg(feature = "unstable")]
-    TxCountByNativeTokenPolicyId(tx_count_by_native_token_policy_id::Reducer),
-    #[cfg(feature = "unstable")]
-    AssetHoldersByAssetId(asset_holders_by_asset_id::Reducer),
-    #[cfg(feature = "unstable")]
-    UtxosByAsset(utxos_by_asset::Reducer),
-    #[cfg(feature = "unstable")]
-    UtxoByStake(utxo_by_stake::Reducer),
-    #[cfg(feature = "unstable")]
-    SupplyByAsset(supply_by_asset::Reducer),
-    #[cfg(feature = "unstable")]
-    AddressesByStake(addresses_by_stake::Reducer),
+    pub input: ReducerInputPort,
+    pub output: ReducerOutputPort,
+
+    #[metric]
+    ops_count: gasket::metrics::Counter,
+}
+impl StageBootstrapper for Stage {
+    fn connect_input(&mut self, adapter: InputAdapter) {
+        self.input.connect(adapter)
+    }
+
+    fn connect_output(&mut self, adapter: OutputAdapter) {
+        self.output.connect(adapter)
+    }
+
+    fn spawn(self, policy: gasket::runtime::Policy) -> Tether {
+        gasket::runtime::spawn_stage(self, policy)
+    }
 }
 
-impl Reducer {
-    pub fn reduce_block<'b>(
+#[derive(Default)]
+pub struct Worker;
+impl From<&Stage> for Worker {
+    fn from(_: &Stage) -> Self {
+        Self
+    }
+}
+gasket::impl_splitter!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
+    let record = unit.record();
+    if record.is_none() {
+        return Ok(());
+    }
+
+    let record = record.unwrap();
+
+    match record {
+        Record::EnrichedBlockPayload(block, ctx) => {
+            let block = MultiEraBlock::decode(block)
+            .map_err(Error::cbor)
+            // .apply_policy(&self.policy)
+            .or_panic()?;
+
+            let mut commands: Vec<CRDTCommand> = Vec::new();
+
+            for x in stage.reducers.iter_mut() {
+                commands.append(&mut x.reduce_block(&block, ctx).await.or_retry()?)
+            }
+
+            //  let commands = stage.reducers.iter_mut().map(|reducer| async { reducer.reduce_block(&block, ctx).await}).collect::<Result<Vec<CRDTCommand>, _>>>();
+            println!(" ----> {:?}", commands)
+
+        },
+        _ => todo!(),
+    }
+
+
+    let crdt =  CRDTCommand::SetAdd("".into(),"".into());
+    let x = ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(vec![crdt]));
+
+    Some(x)
+});
+
+#[async_trait::async_trait]
+pub trait ReducerTrait: Send + Sync {
+    async fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
         ctx: &model::BlockContext,
-        output: &mut OutputPort,
-    ) -> Result<(), gasket::error::Error> {
-        match self {
-            Reducer::FullUtxosByAddress(x) => x.reduce_block(block, ctx, output),
-            Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
-            Reducer::PointByTx(x) => x.reduce_block(block, output),
-            Reducer::PoolByStake(x) => x.reduce_block(block, output),
+    ) -> Result<Vec<CRDTCommand>, Error>;
+}
 
-            #[cfg(feature = "unstable")]
-            Reducer::AddressByTxo(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::BalanceByAddress(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TxByHash(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TxCountByAddress(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::BlockHeaderByHash(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::AddressByAsset(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::LastBlockParameters(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
-            Reducer::TxCountByNativeTokenPolicyId(x) => x.reduce_block(block, output),
-            #[cfg(feature = "unstable")]
-            Reducer::AssetHoldersByAssetId(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::UtxosByAsset(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::UtxoByStake(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::SupplyByAsset(x) => x.reduce_block(block, ctx, output),
-            #[cfg(feature = "unstable")]
-            Reducer::AddressesByStake(x) => x.reduce_block(block, ctx, output),
-        }
-    }
+trait ReducerConfigTrait {
+    fn plugin(self) -> Box<dyn ReducerTrait>;
 }

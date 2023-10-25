@@ -1,4 +1,7 @@
-use gasket::{messaging::RecvPort, runtime::Tether};
+use gasket::{
+    messaging::{RecvPort, SendPort},
+    runtime::Tether,
+};
 use serde::Deserialize;
 
 use crate::framework::*;
@@ -11,8 +14,11 @@ pub enum Bootstrapper {
     Sled(sled::Stage),
 }
 impl StageBootstrapper for Bootstrapper {
-    fn connect_output(&mut self, _: OutputAdapter) {
-        panic!("attempted to use enrich stage as sender");
+    fn connect_output(&mut self, adapter: OutputAdapter) {
+        match self {
+            Bootstrapper::Skip(p) => p.output.connect(adapter),
+            Bootstrapper::Sled(p) => p.output.connect(adapter),
+        }
     }
 
     fn connect_input(&mut self, adapter: InputAdapter) {
@@ -24,8 +30,8 @@ impl StageBootstrapper for Bootstrapper {
 
     fn spawn(self, policy: gasket::runtime::Policy) -> Tether {
         match self {
-            Bootstrapper::Skip(x) => gasket::runtime::spawn_stage(x, policy),
-            Bootstrapper::Sled(x) => gasket::runtime::spawn_stage(x, policy),
+            Bootstrapper::Skip(s) => gasket::runtime::spawn_stage(s, policy),
+            Bootstrapper::Sled(s) => gasket::runtime::spawn_stage(s, policy),
         }
     }
 }

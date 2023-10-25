@@ -1,13 +1,17 @@
 use pallas::codec::utils::CborWrap;
 use pallas::crypto::hash::Hash;
-use pallas::ledger::primitives::babbage::{DatumOption, PlutusData};
+use pallas::ledger::primitives::babbage::{PlutusData, PseudoDatumOption};
 use pallas::ledger::primitives::Fragment;
-use pallas::ledger::traverse::{Asset, MultiEraBlock, MultiEraTx};
-use pallas::ledger::traverse::{MultiEraOutput, OriginalHash};
+use pallas::ledger::traverse::{
+    MultiEraBlock, MultiEraOutput, MultiEraPolicyAssets, MultiEraTx, OriginalHash,
+};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{crosscut, model, prelude::*};
+use crate::framework::model::CRDTCommand;
+use crate::framework::{model, Error};
+
+use super::{ReducerConfigTrait, ReducerTrait};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -15,26 +19,35 @@ pub struct Config {
     pub prefix: Option<String>,
     pub address_as_key: Option<bool>,
 }
+impl ReducerConfigTrait for Config {
+    fn plugin(self) -> Box<dyn ReducerTrait> {
+        let reducer = Reducer { config: self };
+        Box::new(reducer)
+    }
+}
 
 pub struct Reducer {
     config: Config,
-    policy: crosscut::policies::RuntimePolicy,
+    // policy: crosscut::policies::RuntimePolicy,
 }
 
-pub fn resolve_datum(utxo: &MultiEraOutput, tx: &MultiEraTx) -> Result<PlutusData, ()> {
-    match utxo.datum() {
-        Some(DatumOption::Data(CborWrap(pd))) => Ok(pd),
-        Some(DatumOption::Hash(datum_hash)) => {
-            for raw_datum in tx.clone().plutus_data() {
-                if raw_datum.original_hash().eq(&datum_hash) {
-                    return Ok(raw_datum.clone().unwrap());
+pub fn resolve_datum(utxo: &MultiEraOutput, tx: &MultiEraTx) -> Option<PlutusData> {
+    if let Some(datum) = utxo.datum() {
+        return match datum {
+            PseudoDatumOption::Data(CborWrap(pd)) => Some(pd.unwrap()),
+            PseudoDatumOption::Hash(datum_hash) => {
+                for raw_datum in tx.clone().plutus_data() {
+                    if raw_datum.original_hash().eq(&datum_hash) {
+                        return Some(raw_datum.clone().unwrap());
+                    }
                 }
-            }
 
-            return Err(());
-        }
-        _ => Err(()),
+                return None;
+            }
+        };
     }
+
+    None
 }
 
 impl Reducer {
@@ -60,30 +73,33 @@ impl Reducer {
                     data["address"] = serde_json::Value::String(address);
                 }
 
-                if let Some(datum) = resolve_datum(utxo, tx).ok() {
+                if let Some(datum) = resolve_datum(utxo, tx) {
                     data["datum"] = serde_json::Value::String(hex::encode(
                         datum.encode_fragment().ok().unwrap(),
                     ));
-                } else if let Some(DatumOption::Hash(h)) = utxo.datum() {
+                } else if let Some(PseudoDatumOption::Hash(h)) = utxo.datum() {
                     data["datum_hash"] = serde_json::Value::String(hex::encode(h.to_vec()));
                 }
 
-                let mut assets: Vec<serde_json::Value> = Vec::new();
+                let mut assets: Vec<serde_json::Value> = vec![json!({
+                    "unit": "lovelace",
+                    "quantity": format!("{}", utxo.lovelace_amount())
+                })];
+
                 for asset in utxo.non_ada_assets() {
                     match asset {
-                        Asset::Ada(lovelace_amt) => {
-                            assets.push(json!({
-                                "unit": "lovelace",
-                                "quantity": format!("{}", lovelace_amt)
-                            }));
-                        }
-                        Asset::NativeAsset(cs, tkn, amt) => {
-                            let unit = format!("{}{}", hex::encode(cs.to_vec()), hex::encode(tkn));
-                            assets.push(json!({
-                                "unit": unit,
-                                "quantity": format!("{}", amt)
-                            }));
-                        }
+                        MultiEraPolicyAssets::AlonzoCompatibleOutput(_, pairs) => assets.append(
+                            &mut pairs
+                                .iter()
+                                .map(|(name, amount)| {
+                                    json!({
+                                        "unit": name,
+                                        "quantity": format!("{}", amount)
+                                    })
+                                })
+                                .collect::<Vec<serde_json::Value>>(),
+                        ),
+                        _ => todo!(),
                     }
                 }
 
@@ -94,23 +110,25 @@ impl Reducer {
 
         None
     }
+}
 
-    pub fn reduce_block<'b>(
+#[async_trait::async_trait]
+impl ReducerTrait for Reducer {
+    async fn reduce_block<'b>(
         &mut self,
         block: &'b MultiEraBlock<'b>,
         ctx: &model::BlockContext,
-        output: &mut super::OutputPort,
-    ) -> Result<(), gasket::error::Error> {
+    ) -> Result<Vec<CRDTCommand>, Error> {
         let prefix = self.config.prefix.as_deref();
+        let mut commands: Vec<CRDTCommand> = Vec::new();
+
         for tx in block.txs().into_iter() {
             for consumed in tx.consumes().iter().map(|i| i.output_ref()) {
-                if let Some(Some(utxo)) = ctx.find_utxo(&consumed).apply_policy(&self.policy).ok() {
+                if let Some(utxo) = ctx.find_utxo(&consumed).ok() {
                     if let Some((key, value)) =
                         self.get_key_value(&utxo, &tx, &(consumed.hash().clone(), consumed.index()))
                     {
-                        output.send(
-                            model::CRDTCommand::set_remove(prefix, &key.as_str(), value).into(),
-                        )?;
+                        commands.push(CRDTCommand::set_remove(prefix, &key.as_str(), value));
                     }
                 }
             }
@@ -118,22 +136,11 @@ impl Reducer {
             for (index, produced) in tx.produces() {
                 let output_ref = (tx.hash().clone(), index as u64);
                 if let Some((key, value)) = self.get_key_value(&produced, &tx, &output_ref) {
-                    output.send(model::CRDTCommand::set_add(None, &key, value).into())?;
+                    commands.push(CRDTCommand::set_add(None, &key, value));
                 }
             }
         }
 
-        Ok(())
-    }
-}
-
-impl Config {
-    pub fn plugin(self, policy: &crosscut::policies::RuntimePolicy) -> super::Reducer {
-        let reducer = Reducer {
-            config: self,
-            policy: policy.clone(),
-        };
-
-        super::Reducer::FullUtxosByAddress(reducer)
+        Ok(commands)
     }
 }

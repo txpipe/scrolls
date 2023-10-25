@@ -1,7 +1,7 @@
 use gasket::{messaging::SendPort, runtime::Tether};
 use serde::Deserialize;
 
-use crate::framework::{*, errors::Error};
+use crate::framework::{errors::Error, *};
 
 pub mod n2c;
 pub mod n2n;
@@ -25,8 +25,8 @@ impl StageBootstrapper for Bootstrapper {
 
     fn spawn(self, policy: gasket::runtime::Policy) -> Tether {
         match self {
-            Bootstrapper::N2N(x) => gasket::runtime::spawn_stage(x, policy),
-            Bootstrapper::N2C(x) => gasket::runtime::spawn_stage(x, policy),
+            Bootstrapper::N2N(s) => gasket::runtime::spawn_stage(s, policy),
+            Bootstrapper::N2C(s) => gasket::runtime::spawn_stage(s, policy),
         }
     }
 }
