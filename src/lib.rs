@@ -5,6 +5,6 @@ pub mod enrich;
 // pub mod prelude;
 pub mod reducers;
 pub mod sources;
-// pub mod storage;
+pub mod storage;
 
 pub mod framework;

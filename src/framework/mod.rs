@@ -55,10 +55,9 @@ pub type EnrichInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
 pub type EnrichOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
 pub type ReducerInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
 pub type ReducerOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
-// pub type StorageInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
-// pub type StorageOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
+pub type StorageInputPort = gasket::messaging::tokio::InputPort<ChainEvent>;
+pub type StorageOutputPort = gasket::messaging::tokio::OutputPort<ChainEvent>;
 
-// TODO validate next implementation trait
 pub type OutputAdapter = gasket::messaging::tokio::ChannelSendAdapter<ChainEvent>;
 pub type InputAdapter = gasket::messaging::tokio::ChannelRecvAdapter<ChainEvent>;
 

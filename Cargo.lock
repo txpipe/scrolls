@@ -1141,9 +1141,9 @@ dependencies = [
 
 [[package]]
 name = "net2"
-version = "0.2.37"
+version = "0.2.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391630d12b68002ae1e25e8f974306474966550ad82dac6886fb8910c19568ae"
+checksum = "b13b648036a2339d06de780866fbdfda0dde886de7b3af2ddeba8b14f4ee34ac"
 dependencies = [
  "cfg-if 0.1.10",
  "libc",
@@ -1399,7 +1399,17 @@ checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
 dependencies = [
  "instant",
  "lock_api",
- "parking_lot_core",
+ "parking_lot_core 0.8.5",
+]
+
+[[package]]
+name = "parking_lot"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
+dependencies = [
+ "lock_api",
+ "parking_lot_core 0.9.9",
 ]
 
 [[package]]
@@ -1411,9 +1421,22 @@ dependencies = [
  "cfg-if 1.0.0",
  "instant",
  "libc",
- "redox_syscall",
+ "redox_syscall 0.2.13",
  "smallvec",
  "winapi",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.9.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c42a9226546d68acdd9c0a280d17ce19bfe27a46bf68784e4066115788d008e"
+dependencies = [
+ "cfg-if 1.0.0",
+ "libc",
+ "redox_syscall 0.4.1",
+ "smallvec",
+ "windows-targets",
 ]
 
 [[package]]
@@ -1572,7 +1595,7 @@ dependencies = [
  "fnv",
  "lazy_static",
  "memchr",
- "parking_lot",
+ "parking_lot 0.11.2",
  "thiserror",
 ]
 
@@ -1652,6 +1675,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "r2d2"
+version = "0.8.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51de85fb3fb6524929c8a2eb85e6b6d363de4e8c48f9e2c2eac4944abc181c93"
+dependencies = [
+ "log",
+ "parking_lot 0.12.1",
+ "scheduled-thread-pool",
+]
+
+[[package]]
+name = "r2d2_redis"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "182473b876b0b93e353682ec58e207dd1cb4a62278bbe0045fe52b86b74363bb"
+dependencies = [
+ "r2d2",
+ "redis",
+]
+
+[[package]]
 name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1707,9 +1751,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.21.5"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a80b5f38d7f5a020856a0e16e40a9cfabf88ae8f0e4c2dcd8a3114c1e470852"
+checksum = "d4f0ceb2ec0dd769483ecd283f6615aa83dcd0be556d5294c6e659caefe7cc54"
 dependencies = [
  "async-trait",
  "combine",
@@ -1725,6 +1769,15 @@ name = "redox_syscall"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f25bc4c7e55e0b0b7a1d43fb893f4fa1361d0abe38b9ce4f323c2adfe6ef42"
+dependencies = [
+ "bitflags 1.3.2",
+]
+
+[[package]]
+name = "redox_syscall"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
 dependencies = [
  "bitflags 1.3.2",
 ]
@@ -1839,6 +1892,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "scheduled-thread-pool"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cbc66816425a074528352f5789333ecff06ca41b36b0b0efdfbb29edc391a19"
+dependencies = [
+ "parking_lot 0.12.1",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1865,8 +1927,8 @@ dependencies = [
  "openssl",
  "pallas",
  "prometheus_exporter",
+ "r2d2_redis",
  "rayon",
- "redis",
  "serde",
  "serde_json",
  "sled",
@@ -2025,7 +2087,7 @@ dependencies = [
  "fxhash",
  "libc",
  "log",
- "parking_lot",
+ "parking_lot 0.11.2",
 ]
 
 [[package]]
@@ -2087,7 +2149,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "fastrand",
  "libc",
- "redox_syscall",
+ "redox_syscall 0.2.13",
  "remove_dir_all",
  "winapi",
 ]

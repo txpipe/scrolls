@@ -1,9 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use pallas::{
-    ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, MultiEraTx, OutputRef},
-    network::miniprotocols::Point,
-};
+use pallas::ledger::traverse::{Era, MultiEraOutput, MultiEraTx, OutputRef};
 
 use crate::crosscut::policies::{AppliesPolicy, RuntimePolicy};
 
@@ -86,7 +83,6 @@ impl From<serde_json::Value> for Value {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum CRDTCommand {
-    BlockStarting(Point),
     SetAdd(Set, Member),
     SetRemove(Set, Member),
     SortedSetAdd(Set, Member, Delta),
@@ -101,17 +97,9 @@ pub enum CRDTCommand {
     HashCounter(Key, Member, Delta),
     HashSetValue(Key, Member, Value),
     HashUnsetKey(Key, Member),
-    BlockFinished(Point),
 }
 
 impl CRDTCommand {
-    pub fn block_starting(block: &MultiEraBlock) -> CRDTCommand {
-        let hash = block.hash();
-        let slot = block.slot();
-        let point = Point::Specific(slot, hash.to_vec());
-        CRDTCommand::BlockStarting(point)
-    }
-
     pub fn set_add(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
         let key = match prefix {
             Some(prefix) => format!("{}.{}", prefix, key),
@@ -226,12 +214,5 @@ impl CRDTCommand {
         };
 
         CRDTCommand::HashCounter(key, member, delta)
-    }
-
-    pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {
-        let hash = block.hash();
-        let slot = block.slot();
-        let point = Point::Specific(slot, hash.to_vec());
-        CRDTCommand::BlockFinished(point)
     }
 }

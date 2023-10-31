@@ -81,7 +81,7 @@ gasket::impl_splitter!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
 
     let record = record.unwrap();
 
-    match record {
+    let commands = match record {
         Record::EnrichedBlockPayload(block, ctx) => {
             let block = MultiEraBlock::decode(block)
             .map_err(Error::cbor)
@@ -94,18 +94,12 @@ gasket::impl_splitter!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
                 commands.append(&mut x.reduce_block(&block, ctx).await.or_retry()?)
             }
 
-            //  let commands = stage.reducers.iter_mut().map(|reducer| async { reducer.reduce_block(&block, ctx).await}).collect::<Result<Vec<CRDTCommand>, _>>>();
-            println!(" ----> {:?}", commands)
-
+            Ok(commands)
         },
         _ => todo!(),
-    }
+    }?;
 
-
-    let crdt =  CRDTCommand::SetAdd("".into(),"".into());
-    let x = ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(vec![crdt]));
-
-    Some(x)
+    Some(ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(commands)))
 });
 
 #[async_trait::async_trait]

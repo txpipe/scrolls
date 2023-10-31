@@ -5,7 +5,7 @@ use scrolls::{
     enrich,
     framework::*,
     reducers::{self, ConfigTrait},
-    sources,
+    sources, storage,
 };
 use serde::Deserialize;
 use std::{collections::VecDeque, time::Duration};
@@ -20,7 +20,7 @@ struct ConfigRoot {
     source: sources::Config,
     enrich: Option<enrich::Config>,
     reducers: Vec<reducers::Config>,
-    // storage: storage::Config,
+    storage: storage::Config,
     intersect: IntersectConfig,
     finalize: Option<FinalizeConfig>,
     chain: Option<ChainConfig>,
@@ -52,13 +52,11 @@ struct Runtime {
     source: Tether,
     enrich: Tether,
     reducer: Tether,
-    // storage: Tether,
+    storage: Tether,
 }
 impl Runtime {
     fn all_tethers(&self) -> impl Iterator<Item = &Tether> {
-        std::iter::once(&self.source)
-            .chain(std::iter::once(&self.enrich))
-            .chain(std::iter::once(&self.reducer))
+        vec![&self.source, &self.enrich, &self.reducer, &self.storage].into_iter()
     }
 
     fn should_stop(&self) -> bool {
@@ -110,6 +108,7 @@ fn chain_stages<'a>(
     source: &'a mut dyn StageBootstrapper,
     enrich: &'a mut dyn StageBootstrapper,
     reducer: &'a mut dyn StageBootstrapper,
+    storage: &'a mut dyn StageBootstrapper,
 ) {
     let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
     source.connect_output(to_next);
@@ -118,20 +117,26 @@ fn chain_stages<'a>(
     let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
     enrich.connect_output(to_next);
     reducer.connect_input(from_prev);
+
+    let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
+    reducer.connect_output(to_next);
+    storage.connect_input(from_prev);
 }
 
 fn bootstrap(
     mut source: sources::Bootstrapper,
     mut enrich: enrich::Bootstrapper,
     mut reducer: reducers::Stage,
+    mut storage: storage::Bootstrapper,
     policy: gasket::runtime::Policy,
 ) -> Result<Runtime, Error> {
-    chain_stages(&mut source, &mut enrich, &mut reducer);
+    chain_stages(&mut source, &mut enrich, &mut reducer, &mut storage);
 
     let runtime = Runtime {
         source: source.spawn(policy.clone()),
         enrich: enrich.spawn(policy.clone()),
         reducer: reducer.spawn(policy.clone()),
+        storage: storage.spawn(policy.clone()),
     };
 
     Ok(runtime)
@@ -164,9 +169,10 @@ pub fn run(args: &Args) -> Result<(), Error> {
         .bootstrapper(&ctx)?;
 
     let reducer = config.reducers.bootstrapper(&ctx)?;
+    let storage = config.storage.bootstrapper(&ctx)?;
 
     let retries = define_gasket_policy(config.retries.as_ref());
-    let runtime = bootstrap(source, enrich, reducer, retries)?;
+    let runtime = bootstrap(source, enrich, reducer, storage, retries)?;
 
     info!("Scrolls is running...");
 
