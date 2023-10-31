@@ -110,15 +110,15 @@ fn chain_stages<'a>(
     reducer: &'a mut dyn StageBootstrapper,
     storage: &'a mut dyn StageBootstrapper,
 ) {
-    let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
+    let (to_next, from_prev) = gasket::messaging::tokio::mpsc_channel(100);
     source.connect_output(to_next);
     enrich.connect_input(from_prev);
 
-    let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
+    let (to_next, from_prev) = gasket::messaging::tokio::mpsc_channel(100);
     enrich.connect_output(to_next);
     reducer.connect_input(from_prev);
 
-    let (to_next, from_prev) = gasket::messaging::tokio::broadcast_channel(100);
+    let (to_next, from_prev) = gasket::messaging::tokio::mpsc_channel(100);
     reducer.connect_output(to_next);
     storage.connect_input(from_prev);
 }
