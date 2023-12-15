@@ -38,7 +38,7 @@ rayon = "1.5.3"
 
 # async feature
 futures = { version = "0.3.24", optional = true }
-tokio = { version = "1.21.1", features = ["rt-multi-thread"], optional = true }
+tokio = { version = "1", features = ["rt-multi-thread"] }
 
 # elastic feature
 elasticsearch = { version = "8.5.0-alpha.1", optional = true }
@@ -52,10 +52,14 @@ tracing = "0.1.37"
 tracing-subscriber = "0.3.17"
 async-trait = "0.1.73"
 r2d2_redis = "0.14.0"
+deno_runtime = { version = "0.136.0", optional = true }
+chrono = { version = "0.4.31", optional = true }
+utxorpc = { version = "1.0.0-alpha.1", optional = true }
 
 [features]
-async = ["futures", "tokio"]
+async = ["futures"]
 elastic = ["elasticsearch", "async", "openssl"]
 unstable = ["elastic"]
 tui = ["indicatif"]
 default = ["tui"]
+deno = ["deno_runtime", "chrono", "utxorpc"]
