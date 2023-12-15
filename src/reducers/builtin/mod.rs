@@ -1,8 +1,4 @@
 use gasket::framework::*;
-use gasket::{
-    messaging::{RecvPort, SendPort},
-    runtime::Tether,
-};
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
 
@@ -46,7 +42,7 @@ impl Config {
 }
 
 #[derive(Default, Stage)]
-#[stage(name = "reducer", unit = "ChainEvent", worker = "Worker")]
+#[stage(name = "reducer-builtin", unit = "ChainEvent", worker = "Worker")]
 pub struct Stage {
     reducers: Vec<Box<dyn ReducerTrait>>,
 
@@ -55,20 +51,6 @@ pub struct Stage {
 
     #[metric]
     ops_count: gasket::metrics::Counter,
-}
-
-impl StageBootstrapper for Stage {
-    fn connect_input(&mut self, adapter: InputAdapter) {
-        self.input.connect(adapter)
-    }
-
-    fn connect_output(&mut self, adapter: OutputAdapter) {
-        self.output.connect(adapter)
-    }
-
-    fn spawn(self, policy: gasket::runtime::Policy) -> Tether {
-        gasket::runtime::spawn_stage(self, policy)
-    }
 }
 
 #[derive(Default)]
@@ -92,7 +74,6 @@ gasket::impl_splitter!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
         Record::EnrichedBlockPayload(block, ctx) => {
             let block = MultiEraBlock::decode(block)
             .map_err(Error::cbor)
-            // .apply_policy(&self.policy)
             .or_panic()?;
 
             let mut commands: Vec<CRDTCommand> = Vec::new();

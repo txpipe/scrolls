@@ -1,23 +1,60 @@
+use std::path::PathBuf;
+
+use deno_runtime::deno_core::{self, op2, ModuleSpecifier, OpState};
+use deno_runtime::permissions::PermissionsContainer;
+use deno_runtime::worker::{MainWorker as DenoWorker, WorkerOptions};
 use gasket::framework::*;
-use gasket::{
-    messaging::{RecvPort, SendPort},
-    runtime::Tether,
-};
+use pallas::interop::utxorpc::map_block;
 use pallas::ledger::traverse::MultiEraBlock;
 use serde::Deserialize;
+use serde_json::json;
+use tracing::trace;
+use utxorpc::proto::cardano::v1 as u5c;
 
 use crate::framework::model::CRDTCommand;
 use crate::framework::*;
 
-#[derive(Deserialize)]
+const SYNC_CALL_SNIPPET: &str = r#"Deno[Deno.internal].core.ops.op_put_record(reduce(Deno[Deno.internal].core.ops.op_pop_record()));"#;
 
+const ASYNC_CALL_SNIPPET: &str = r#"reduce(Deno[Deno.internal].core.ops.op_pop_record()).then(x => Deno[Deno.internal].core.ops.op_put_record(x));"#;
+
+deno_core::extension!(deno_reducer, ops = [op_pop_record, op_put_record]);
+
+#[op2]
+#[serde]
+pub fn op_pop_record(state: &mut OpState) -> Result<serde_json::Value, deno_core::error::AnyError> {
+    let block: u5c::Block = state.take();
+    Ok(json!(block))
+}
+
+#[op2]
+pub fn op_put_record(
+    state: &mut OpState,
+    #[serde] value: serde_json::Value,
+) -> Result<(), deno_core::error::AnyError> {
+    match value {
+        serde_json::Value::Null => (),
+        _ => state.put(value),
+    };
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
 pub struct Config {
-    // TODO: specify javascript file
+    main_module: String,
+    use_async: bool,
 }
 
 impl Config {
     pub fn bootstrapper(self, _ctx: &Context) -> Result<Stage, Error> {
         let stage = Stage {
+            main_module: PathBuf::from(self.main_module),
+            call_snippet: if self.use_async {
+                ASYNC_CALL_SNIPPET
+            } else {
+                SYNC_CALL_SNIPPET
+            },
             ..Default::default()
         };
 
@@ -25,62 +62,107 @@ impl Config {
     }
 }
 
+async fn setup_deno(main_module: &PathBuf) -> Result<DenoWorker, WorkerError> {
+    let empty_module = deno_core::ModuleSpecifier::parse("data:text/javascript;base64,").unwrap();
+
+    let mut deno = DenoWorker::bootstrap_from_options(
+        empty_module,
+        PermissionsContainer::allow_all(),
+        WorkerOptions {
+            extensions: vec![deno_reducer::init_ops()],
+            ..Default::default()
+        },
+    );
+
+    let code = deno_core::FastString::from(std::fs::read_to_string(main_module).unwrap());
+
+    deno.js_runtime
+        .load_side_module(
+            &ModuleSpecifier::parse("scrolls:reducer").unwrap(),
+            Some(code),
+        )
+        .await
+        .unwrap();
+
+    let runtime_code = deno_core::FastString::from_static(include_str!("./runtime.js"));
+
+    deno.execute_script("[scrolls:runtime.js]", runtime_code)
+        .or_panic()?;
+    deno.run_event_loop(false).await.unwrap();
+
+    Ok(deno)
+}
+
 #[derive(Default, Stage)]
-#[stage(name = "reducer", unit = "ChainEvent", worker = "Worker")]
+#[stage(name = "reducer-deno", unit = "ChainEvent", worker = "Worker")]
 pub struct Stage {
+    main_module: PathBuf,
+    call_snippet: &'static str,
+
     pub input: ReducerInputPort,
     pub output: ReducerOutputPort,
-
     #[metric]
     ops_count: gasket::metrics::Counter,
 }
 
-impl StageBootstrapper for Stage {
-    fn connect_input(&mut self, adapter: InputAdapter) {
-        self.input.connect(adapter)
-    }
-
-    fn connect_output(&mut self, adapter: OutputAdapter) {
-        self.output.connect(adapter)
-    }
-
-    fn spawn(self, policy: gasket::runtime::Policy) -> Tether {
-        gasket::runtime::spawn_stage(self, policy)
-    }
+pub struct Worker {
+    runtime: DenoWorker,
 }
 
-#[derive(Default)]
-pub struct Worker;
+#[async_trait::async_trait(?Send)]
+impl gasket::framework::Worker<Stage> for Worker {
+    async fn bootstrap(stage: &Stage) -> Result<Self, WorkerError> {
+        let runtime = setup_deno(&stage.main_module).await?;
+        Ok(Self { runtime })
+    }
 
-impl From<&Stage> for Worker {
-    fn from(_: &Stage) -> Self {
-        Self
+    async fn schedule(
+        &mut self,
+        stage: &mut Stage,
+    ) -> Result<WorkSchedule<ChainEvent>, WorkerError> {
+        let msg = stage.input.recv().await.or_panic()?;
+        Ok(WorkSchedule::Unit(msg.payload))
+    }
+
+    async fn execute(&mut self, unit: &ChainEvent, stage: &mut Stage) -> Result<(), WorkerError> {
+        let record = unit.record();
+        if record.is_none() {
+            return Ok(());
+        }
+
+        let record = record.unwrap();
+
+        match record {
+            Record::EnrichedBlockPayload(block, _) => {
+                let block = MultiEraBlock::decode(block)
+                    .map_err(Error::cbor)
+                    .or_panic()?;
+                let block = map_block(&block);
+
+                let deno = &mut self.runtime;
+
+                trace!(?record, "sending record to js runtime");
+                deno.js_runtime.op_state().borrow_mut().put(block);
+
+                let script = deno_core::FastString::from_static(stage.call_snippet);
+                deno.execute_script("<anon>", script).or_panic()?;
+                deno.run_event_loop(false).await.unwrap();
+
+                let out: Option<serde_json::Value> =
+                    deno.js_runtime.op_state().borrow_mut().try_take();
+
+                trace!(?out, "received record from js runtime");
+                if let Some(crdt_json) = out {
+                    let commands: Vec<CRDTCommand> =
+                        serde_json::from_value(crdt_json).or_panic()?;
+                    let evt =
+                        ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(commands));
+                    stage.output.send(evt).await.or_retry()?;
+                }
+            }
+            _ => todo!(),
+        };
+
+        Ok(())
     }
 }
-
-gasket::impl_splitter!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
-    let record = unit.record();
-    if record.is_none() {
-        return Ok(());
-    }
-
-    let record = record.unwrap();
-
-    let commands = match record {
-        Record::EnrichedBlockPayload(block, ctx) => {
-            let block = MultiEraBlock::decode(block)
-            .map_err(Error::cbor)
-            // .apply_policy(&self.policy)
-            .or_panic()?;
-
-            let commands  = vec![];
-
-            // TODO: call deno runtime
-
-            Ok(commands)
-        },
-        _ => todo!(),
-    }?;
-
-    Some(ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(commands)))
-});

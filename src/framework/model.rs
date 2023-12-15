@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use pallas::ledger::traverse::{Era, MultiEraOutput, MultiEraTx, OutputRef};
+use serde::Deserialize;
 
 use crate::crosscut::policies::{AppliesPolicy, RuntimePolicy};
 
@@ -54,7 +55,7 @@ pub type Key = String;
 pub type Delta = i64;
 pub type Timestamp = u64;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum Value {
     String(String),
     BigInt(i128),
@@ -80,7 +81,7 @@ impl From<serde_json::Value> for Value {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 #[non_exhaustive]
 pub enum CRDTCommand {
     SetAdd(Set, Member),
