@@ -7,7 +7,7 @@ use pallas::network::miniprotocols::{
 use serde::{Deserialize, Serialize};
 use std::{ops::Deref, str::FromStr};
 
-use crate::Error;
+use crate::framework::errors::Error;
 
 // TODO: use from pallas once available
 pub const PRE_PRODUCTION_MAGIC: u64 = 1;
@@ -21,7 +21,7 @@ pub enum PointArg {
 }
 
 impl TryInto<Point> for PointArg {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_into(self) -> Result<Point, Self::Error> {
         match self {
@@ -46,7 +46,7 @@ impl From<Point> for PointArg {
 }
 
 impl FromStr for PointArg {
-    type Err = crate::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -151,7 +151,7 @@ impl IntersectConfig {
 /// Optional configuration to stop processing new blocks after processing:
 ///   1. a block with the given hash
 ///   2. the first block on or after a given absolute slot
-///   3. TODO: a total of X blocks 
+///   3. TODO: a total of X blocks
 #[derive(Deserialize, Debug, Clone)]
 pub struct FinalizeConfig {
     until_hash: Option<String>,
@@ -174,13 +174,13 @@ pub fn should_finalize(
             return expected == &hex::encode(current);
         }
     }
-    
+
     if let Some(max) = config.max_block_slot {
         if last_point.slot_or_default() >= max {
             return true;
         }
     }
-    
+
     // if let Some(max) = config.max_block_quantity {
     //     if block_count >= max {
     //         return true;

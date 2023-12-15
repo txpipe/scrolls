@@ -1,0 +1,26 @@
+[source]
+type = "N2N"
+peers = ["relays-new.cardano-mainnet.iohk.io:3001"]
+
+[chain]
+type = "mainnet"
+
+[intersect]
+type = "Point"
+value = [
+    104699772,
+    "19525913a14c4540a782d188c333f2c54d1845620aef56e3166a2c1fffb800fc"
+]
+
+[enrich]
+type = "Sled"
+db_path = "./"
+
+[[reducers]]
+type = "FullUtxosByAddress"
+filter = ["addr1z8snz7c4974vzdpxu65ruphl3zjdvtxw8strf2c2tmqnxz2j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq0xmsha"]
+
+[storage]
+type = "Redis"
+url = "redis://127.0.0.1/1"
+

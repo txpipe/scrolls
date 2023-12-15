@@ -1,38 +1,15 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use pallas::{
-    ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, MultiEraTx, OutputRef},
-    network::miniprotocols::Point,
-    crypto::hash::Hash,
-};
+use pallas::ledger::traverse::{Era, MultiEraOutput, MultiEraTx, OutputRef};
 
-use crate::prelude::*;
+use crate::crosscut::policies::{AppliesPolicy, RuntimePolicy};
 
-#[derive(Debug, Clone)]
-pub enum RawBlockPayload {
-    RollForward(Vec<u8>),
-    RollBack(Point),
-}
-
-impl RawBlockPayload {
-    pub fn roll_forward(block: Vec<u8>) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollForward(block),
-        }
-    }
-
-    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollBack(point),
-        }
-    }
-}
+use super::errors::Error;
 
 #[derive(Default, Debug, Clone)]
 pub struct BlockContext {
     utxos: HashMap<String, (Era, Vec<u8>)>,
 }
-
 impl BlockContext {
     pub fn import_ref_output(&mut self, key: &OutputRef, era: Era, cbor: Vec<u8>) {
         self.utxos.insert(key.to_string(), (era, cbor));
@@ -44,7 +21,7 @@ impl BlockContext {
             .get(&key.to_string())
             .ok_or_else(|| Error::missing_utxo(key))?;
 
-        MultiEraOutput::decode(*era, cbor).map_err(crate::Error::cbor)
+        MultiEraOutput::decode(*era, cbor).map_err(Error::cbor)
     }
 
     pub fn get_all_keys(&self) -> Vec<String> {
@@ -60,7 +37,7 @@ impl BlockContext {
             .consumes()
             .iter()
             .map(|i| i.output_ref())
-            .map(|r| self.find_utxo(&r).map(|u| (r,u)))
+            .map(|r| self.find_utxo(&r).map(|u| (r, u)))
             .map(|r| r.apply_policy(policy))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
@@ -68,26 +45,6 @@ impl BlockContext {
             .collect::<Vec<_>>();
 
         Ok(items)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum EnrichedBlockPayload {
-    RollForward(Vec<u8>, BlockContext),
-    RollBack(Point),
-}
-
-impl EnrichedBlockPayload {
-    pub fn roll_forward(block: Vec<u8>, ctx: BlockContext) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollForward(block, ctx),
-        }
-    }
-
-    pub fn roll_back(point: Point) -> gasket::messaging::Message<Self> {
-        gasket::messaging::Message {
-            payload: Self::RollBack(point),
-        }
     }
 }
 
@@ -126,7 +83,6 @@ impl From<serde_json::Value> for Value {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum CRDTCommand {
-    BlockStarting(Point),
     SetAdd(Set, Member),
     SetRemove(Set, Member),
     SortedSetAdd(Set, Member, Delta),
@@ -141,17 +97,9 @@ pub enum CRDTCommand {
     HashCounter(Key, Member, Delta),
     HashSetValue(Key, Member, Value),
     HashUnsetKey(Key, Member),
-    BlockFinished(Point),
 }
 
 impl CRDTCommand {
-    pub fn block_starting(block: &MultiEraBlock) -> CRDTCommand {
-        let hash = block.hash();
-        let slot = block.slot();
-        let point = Point::Specific(slot, hash.to_vec());
-        CRDTCommand::BlockStarting(point)
-    }
-
     pub fn set_add(prefix: Option<&str>, key: &str, member: String) -> CRDTCommand {
         let key = match prefix {
             Some(prefix) => format!("{}.{}", prefix, key),
@@ -234,8 +182,8 @@ impl CRDTCommand {
         member: String,
         value: V,
     ) -> CRDTCommand
-        where
-            V: Into<Value>,
+    where
+        V: Into<Value>,
     {
         let key = match prefix {
             Some(prefix) => format!("{}.{}", prefix, key.to_string()),
@@ -266,12 +214,5 @@ impl CRDTCommand {
         };
 
         CRDTCommand::HashCounter(key, member, delta)
-    }
-
-    pub fn block_finished(block: &MultiEraBlock) -> CRDTCommand {
-        let hash = block.hash();
-        let slot = block.slot();
-        let point = Point::Specific(slot, hash.to_vec());
-        CRDTCommand::BlockFinished(point)
     }
 }
