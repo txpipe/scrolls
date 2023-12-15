@@ -1,12 +1,7 @@
 use clap;
 
 use gasket::runtime::Tether;
-use scrolls::{
-    enrich,
-    framework::*,
-    reducers::{self, ConfigTrait},
-    sources, storage,
-};
+use scrolls::{enrich, framework::*, reducers, sources, storage};
 use serde::Deserialize;
 use std::{collections::VecDeque, time::Duration};
 use tracing::{info, warn};
@@ -19,7 +14,7 @@ use crate::console;
 struct ConfigRoot {
     source: sources::Config,
     enrich: Option<enrich::Config>,
-    reducers: Vec<reducers::Config>,
+    reducer: reducers::Config,
     storage: storage::Config,
     intersect: IntersectConfig,
     finalize: Option<FinalizeConfig>,
@@ -126,7 +121,7 @@ fn chain_stages<'a>(
 fn bootstrap(
     mut source: sources::Bootstrapper,
     mut enrich: enrich::Bootstrapper,
-    mut reducer: reducers::Stage,
+    mut reducer: reducers::Bootstrapper,
     mut storage: storage::Bootstrapper,
     policy: gasket::runtime::Policy,
 ) -> Result<Runtime, Error> {
@@ -168,7 +163,7 @@ pub fn run(args: &Args) -> Result<(), Error> {
         .unwrap_or(enrich::Config::default())
         .bootstrapper(&ctx)?;
 
-    let reducer = config.reducers.bootstrapper(&ctx)?;
+    let reducer = config.reducer.bootstrapper(&ctx)?;
     let storage = config.storage.bootstrapper(&ctx)?;
 
     let retries = define_gasket_policy(config.retries.as_ref());
