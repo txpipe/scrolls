@@ -18,6 +18,7 @@ type = "Skip"
 [reducer]
 type = "Deno"
 main_module = "./examples/deno/enrich.js"
+storage_command_type = "crdt"
 use_async = true
 
 [storage]

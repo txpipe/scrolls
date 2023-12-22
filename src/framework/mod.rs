@@ -15,6 +15,7 @@ pub enum Record {
     RawBlockPayload(Vec<u8>),
     EnrichedBlockPayload(Vec<u8>, BlockContext),
     CRDTCommand(Vec<CRDTCommand>),
+    SQLCommand(Vec<String>),
 }
 
 #[derive(Debug, Clone)]
@@ -22,6 +23,7 @@ pub enum ChainEvent {
     Apply(Point, Record),
     Reset(Point),
 }
+
 impl ChainEvent {
     pub fn apply(point: Point, record: impl Into<Record>) -> gasket::messaging::Message<Self> {
         gasket::messaging::Message {
