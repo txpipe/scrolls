@@ -17,11 +17,10 @@ type = "Skip"
 
 [reducer]
 type = "Deno"
-main_module = "./examples/deno/enrich.js"
-storage_command_type = "crdt"
+main_module = "./examples/deno-postgres/reduce.js"
+storage_command_type = "sql"
 use_async = true
 
 [storage]
-type = "Redis"
-url = "redis://127.0.0.1/1"
-
+type = "Postgres"
+url = "postgresql://postgres:password@localhost:5432/scrolls"

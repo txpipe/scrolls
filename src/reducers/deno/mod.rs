@@ -43,6 +43,7 @@ pub fn op_put_record(
 #[derive(Deserialize)]
 pub struct Config {
     main_module: String,
+    storage_command_type: String,
     use_async: bool,
 }
 
@@ -50,6 +51,7 @@ impl Config {
     pub fn bootstrapper(self, _ctx: &Context) -> Result<Stage, Error> {
         let stage = Stage {
             main_module: PathBuf::from(self.main_module),
+            storage_command_type: self.storage_command_type,
             call_snippet: if self.use_async {
                 ASYNC_CALL_SNIPPET
             } else {
@@ -97,6 +99,7 @@ async fn setup_deno(main_module: &PathBuf) -> Result<DenoWorker, WorkerError> {
 #[stage(name = "reducer-deno", unit = "ChainEvent", worker = "Worker")]
 pub struct Stage {
     main_module: PathBuf,
+    storage_command_type: String,
     call_snippet: &'static str,
 
     pub input: ReducerInputPort,
@@ -152,12 +155,20 @@ impl gasket::framework::Worker<Stage> for Worker {
                     deno.js_runtime.op_state().borrow_mut().try_take();
 
                 trace!(?out, "received record from js runtime");
-                if let Some(crdt_json) = out {
-                    let commands: Vec<CRDTCommand> =
-                        serde_json::from_value(crdt_json).or_panic()?;
-                    let evt =
-                        ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(commands));
-                    stage.output.send(evt).await.or_retry()?;
+                if let Some(json) = out {
+                    let event = match stage.storage_command_type.as_str() {
+                        "crdt" => {
+                            let commands: Vec<CRDTCommand> =
+                                serde_json::from_value(json).or_panic()?;
+                            ChainEvent::apply(unit.point().clone(), Record::CRDTCommand(commands))
+                        }
+                        "sql" => {
+                            let commands: Vec<String> = serde_json::from_value(json).or_panic()?;
+                            ChainEvent::apply(unit.point().clone(), Record::SQLCommand(commands))
+                        }
+                        _ => return Err(WorkerError::Panic),
+                    };
+                    stage.output.send(event).await.or_retry()?;
                 }
             }
             _ => todo!(),
