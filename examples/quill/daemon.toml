@@ -18,7 +18,7 @@ db_path = "./sled"
 
 [reducer]
 type = "Deno"
-main_module = "./examples/deno/reduce.js"
+main_module = "./examples/quill/reduce.js"
 use_async = true
 
 [storage]
