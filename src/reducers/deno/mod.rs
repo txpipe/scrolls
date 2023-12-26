@@ -148,13 +148,9 @@ impl gasket::framework::Worker<Stage> for Worker {
                             let tx_hash = pallas::crypto::hash::Hash::from(hash_bytes);
                             let output_index = input.output_index as u64;
                             let output_ref = OutputRef::new(tx_hash, output_index);
-
-                            match ctx.find_utxo(&output_ref) {
-                                Ok(output) => input.as_output = Some(map_tx_output(&output)),
-                                Err(_) => panic!(
-                                    "Output reference not found in context: {:?}",
-                                    output_ref
-                                ),
+                            
+                            if let Ok(output) = ctx.find_utxo(&output_ref) {
+                                input.as_output = Some(map_tx_output(&output));
                             }
                         }
                     }
