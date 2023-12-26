@@ -137,7 +137,7 @@ impl gasket::framework::Worker<Stage> for Worker {
                 let block = MultiEraBlock::decode(block)
                     .map_err(Error::cbor)
                     .or_panic()?;
-                let block = map_block(&block);
+                let mut block = map_block(&block);
                 
                 for tx in block.body.as_mut().unwrap().tx.iter_mut() {
                     for input in tx.inputs.iter_mut() {
