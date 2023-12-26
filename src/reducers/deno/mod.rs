@@ -138,19 +138,23 @@ impl gasket::framework::Worker<Stage> for Worker {
                     .map_err(Error::cbor)
                     .or_panic()?;
                 let mut block = map_block(&block);
-                
+
                 for tx in block.body.as_mut().unwrap().tx.iter_mut() {
                     for input in tx.inputs.iter_mut() {
                         if input.tx_hash.len() == 32 {
                             let mut hash_bytes = [0u8; 32];
                             hash_bytes.copy_from_slice(&input.tx_hash);
-        
+
                             let tx_hash = pallas::crypto::hash::Hash::from(hash_bytes);
                             let output_index = input.output_index as u64;
-        
                             let output_ref = OutputRef::new(tx_hash, output_index);
-                            if let Ok(output) = ctx.find_utxo(&output_ref) {
-                                input.as_output = Some(map_tx_output(&output));
+
+                            match ctx.find_utxo(&output_ref) {
+                                Ok(output) => input.as_output = Some(map_tx_output(&output)),
+                                Err(_) => panic!(
+                                    "Output reference not found in context: {:?}",
+                                    output_ref
+                                ),
                             }
                         }
                     }

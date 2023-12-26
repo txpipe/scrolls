@@ -289,7 +289,10 @@ pub fn eval_predicate(
 mod tests {
     use pallas::ledger::traverse::MultiEraBlock;
 
-    use crate::{crosscut::policies::{ErrorAction, RuntimePolicy}, framework::model::BlockContext};
+    use crate::{
+        crosscut::policies::{ErrorAction, RuntimePolicy},
+        framework::model::BlockContext,
+    };
 
     use super::{eval_predicate, AddressPattern, Predicate};
 
