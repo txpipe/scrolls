@@ -178,28 +178,13 @@
 <h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
 <p>Since blockchain is a sequence of transactions it is far from trivial to get a fast read only access to data. Scrolls is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, Scrolls watches the tip of the chain to keep the collections up-to-date. </p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="reducers"><a class="header" href="#reducers">Reducers</a></h1>
+<p>Scroll Reducers are Map/Reduce algorithms that turn block data into a relevant information to be queried by end-users.</p>
+<p>There are several ways to implement reducers in Scrolls:</p>
 <ul>
-<li><a href="reducers/deno.html">Deno</a>: custom reducers in js</li>
+<li><a href="reducers/typescript.html">Typescript</a>: using custom Typescript code to implement the map/reduce logic</li>
+<li><a href="reducers/rust.html">Rust</a>: using custom Rust code to implement the map/reduce logic</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="deno"><a class="header" href="#deno">Deno</a></h1>
-<p>With the deno reducer is possible to create a custom reducer for logics that the builtin reducers don't have support. This reducer is only enable with the deno feature on build.</p>
-<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
-<p>Example of a configuration</p>
-<pre><code class="language-toml">[reducer]
-type = &quot;Deno&quot;
-main_module = &quot;./examples/deno/enrich.js&quot;
-use_async = true
-</code></pre>
-<h3 id="section-reducer"><a class="header" href="#section-reducer">Section: <code>reducer</code></a></h3>
-<ul>
-<li><code>type</code>: the literal value <code>Deno</code>.</li>
-<li><code>main_module</code>: the js file with the reducer logic</li>
-<li><code>use_async</code>: run the js in async mode</li>
-</ul>
-<h2 id="run-code"><a class="header" href="#run-code">Run code</a></h2>
-<p>To run the code with the deno will be necessary to use deno feature</p>
-<pre><code class="language-sh">cargo run --features=deno -- daemon --config ./examples/deno/enrich.js
-</code></pre>
 
                     </main>
 
