@@ -2,4 +2,5 @@
 
 - [Introduction](./introduction.md)
 - [Reducers](./reducers/README.md)
-    - [Deno](./reducers/deno.md)
+    - [Typescript](./reducers/typescript.md)
+    - [Rust](./reducers/rust.md)
