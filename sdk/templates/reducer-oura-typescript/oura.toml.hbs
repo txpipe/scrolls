@@ -1,0 +1,15 @@
+[source]
+type = "UtxoRpc"
+endpoint = "{{u5c_endpoint}}"
+
+[[filters]]
+type = "Deno"
+main_module = "reducer.js"
+use_async = true
+
+[sink]
+type = "SqlDb"
+connection = "{{db_connection}}"
+apply_template = "INSERT INTO {{reducer}} (slot, [enter your custom fields here]) VALUES ('\{{point.slot}}', [enter your custom values here]);"
+undo_template = "DELETE FROM {{reducer}} WHERE slot = \{{point.slot}}"
+reset_template = "DELETE FROM {{reducer}} WHERE slot > \{{point.slot}}"

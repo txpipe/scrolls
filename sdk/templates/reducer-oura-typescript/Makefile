@@ -1,7 +1,7 @@
 build:
-  deno bundle reducer.js
+	deno bundle reducer.ts reducer.js
 
 run: build
-  oura daemon --config ./oura.toml
+	oura daemon --config ./oura.toml
 
 .PHONY: build run
