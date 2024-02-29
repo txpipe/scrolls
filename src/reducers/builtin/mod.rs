@@ -6,17 +6,20 @@ use crate::framework::model::CRDTCommand;
 use crate::framework::*;
 
 mod full_utxos_by_address;
+mod block_cbor_by_hash;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum ReducerConfig {
     FullUtxosByAddress(full_utxos_by_address::Config),
+    BlockCborByHash(block_cbor_by_hash::Config),
 }
 
 impl ReducerConfig {
     pub fn into_reducer(self) -> Box<dyn ReducerTrait> {
         match self {
             ReducerConfig::FullUtxosByAddress(x) => x.plugin(),
+            ReducerConfig::BlockCborByHash(x) => x.plugin(),
         }
     }
 }
