@@ -16,7 +16,7 @@ To build our custom reducer we'll leverage an [Oura](https://github.com/txpipe/o
 
 ## Procedure
 
-1. Create the project scaffold
+### 1. Create the project scaffold
 
 There's some boilerplate code required to setup our reducer. The _Scrolls SDK_ cli provides a command to automatically generate the basic file structure that can be later customized to specific needs.
 
@@ -29,7 +29,7 @@ scrolls-sdk scrolls-sdk scaffold --template reducer-oura-python {NAME}
 where:
 - `{NAME}` is the name of your reducer
 
-2. Customize your DB schema
+### 2. Customize your DB schema
 
 Your custom reducer will require a custom DB schema that reflects your particular requirements. In this scenario we're using Sqlite as our relational data persistence mechanism.
 
@@ -47,7 +47,7 @@ CREATE INDEX idx_my_reducer_slot ON my_reducer(slot);
 where:
 - `{{custom fields}}` is the definition of the custom fields required by your reducer
 
-3. Edit your Python reducer logic
+### 3. Edit your Python reducer logic
 
 The core of your reducer is the business logic you use to map blocks & transactions from the chain into relevant data for your use case. In this scenario we're using Python code that will be interpreted using _RustPython_.
 
@@ -72,7 +72,7 @@ def map_u5c_tx(tx):
 }
 ```
 
-4. Edit the _Oura_ config file
+### 4. Edit the _Oura_ config file
 
 The Cardano node, the WASM plugin and the Sqlite DB is connected together via an _Oura_ pipeline. This pipeline will ensure that data goes through each the required steps (stages) in performant and resilient way.
 
@@ -106,7 +106,7 @@ where:
 - `{{custom values}}` is the expressions to access the custom values in the object returned by your custom logic
 
 
-5. Run your pipeline
+### 5. Run your pipeline
 
 Now that everything has been configured, you can start your indexing pipeline. This requires that that the sqlite db is created with the corresponding schema. With all requirements in place, the Oura process can be started.
 
