@@ -176,13 +176,15 @@
                     <main>
                         <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
-<p>Since blockchain is a sequence of transactions it is far from trivial to get a fast read only access to data. Scrolls is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, Scrolls watches the tip of the chain to keep the collections up-to-date. </p>
+<p>Since blockchain is a sequence of transactions it is far from trivial to get a fast read only access to data. Scrolls is a tool for building and maintaining read-optimized collections of Cardano's on-chain entities. It crawls the history of the chain and aggregates all data to reflect the current state of affairs. Once the whole history has been processed, Scrolls watches the tip of the chain to keep the collections up-to-date.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="reducers"><a class="header" href="#reducers">Reducers</a></h1>
 <p>Scroll Reducers are Map/Reduce algorithms that turn block data into a relevant information to be queried by end-users.</p>
 <p>There are several ways to implement reducers in Scrolls:</p>
 <ul>
 <li><a href="reducers/./typescript.html">Typescript</a>: using custom Typescript code to implement the map/reduce logic</li>
 <li><a href="reducers/./rust.html">Rust</a>: using custom Rust code to implement the map/reduce logic</li>
+<li><a href="reducers/./golang.html">Golang</a>: using custom Golang code to implement the map/reduce logic</li>
+<li><a href="reducers/./python.html">Python</a>: using custom Python code to implement the map/reduce logic</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="using-typescript-to-build-custom-reducers"><a class="header" href="#using-typescript-to-build-custom-reducers">Using Typescript to build custom reducers</a></h1>
 <p>With the Typescript reducer is possible to create a custom reducer for logics that the builtin reducers don't have support. This reducer is only enable with the deno feature on build.</p>
@@ -193,8 +195,8 @@
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p>Example of a configuration</p>
 <pre><code class="language-toml">[reducer]
-type = &quot;Deno&quot;
-main_module = &quot;./examples/deno/reducer.js&quot;
+type = "Deno"
+main_module = "./examples/deno/reducer.js"
 use_async = true
 </code></pre>
 <h3 id="section-reducer"><a class="header" href="#section-reducer">Section: <code>reducer</code></a></h3>
@@ -212,8 +214,8 @@ use_async = true
 <h2 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h2>
 <p>Example of a configuration</p>
 <pre><code class="language-toml">[reducer]
-type = &quot;Wasm&quot;
-main_module = &quot;./examples/wasm/enrich.wasm&quot;
+type = "Wasm"
+main_module = "./examples/wasm/enrich.wasm"
 </code></pre>
 <h3 id="section-reducer-1"><a class="header" href="#section-reducer-1">Section: <code>reducer</code></a></h3>
 <ul>
