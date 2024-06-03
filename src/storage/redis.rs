@@ -76,7 +76,7 @@ impl Bootstrapper {
         pipeline.register_stage(spawn_stage(
             worker,
             gasket::runtime::Policy {
-                tick_timeout: Some(Duration::from_secs(600)),
+                tick_timeout: Some(Duration::from_secs(6000)),
                 bootstrap_retry: gasket::retries::Policy {
                     max_retries: 20,
                     backoff_unit: Duration::from_secs(1),

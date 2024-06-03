@@ -49,7 +49,7 @@ impl Bootstrapper {
         pipeline.register_stage(spawn_stage(
             worker,
             gasket::runtime::Policy {
-                tick_timeout: Some(Duration::from_secs(600)),
+                tick_timeout: Some(Duration::from_secs(6000)),
                 ..Default::default()
             },
             Some("skip"),

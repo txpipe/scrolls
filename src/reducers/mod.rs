@@ -20,6 +20,8 @@ pub mod address_by_asset;
 #[cfg(feature = "unstable")]
 pub mod address_by_txo;
 #[cfg(feature = "unstable")]
+pub mod addresses_by_stake;
+#[cfg(feature = "unstable")]
 pub mod asset_holders_by_asset_id;
 #[cfg(feature = "unstable")]
 pub mod balance_by_address;
@@ -39,8 +41,6 @@ pub mod tx_count_by_native_token_policy_id;
 pub mod utxo_by_stake;
 #[cfg(feature = "unstable")]
 pub mod utxos_by_asset;
-#[cfg(feature = "unstable")]
-pub mod addresses_by_stake;
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
@@ -155,7 +155,7 @@ impl Bootstrapper {
         pipeline.register_stage(spawn_stage(
             worker,
             gasket::runtime::Policy {
-                tick_timeout: Some(Duration::from_secs(600)),
+                tick_timeout: Some(Duration::from_secs(6000)),
                 ..Default::default()
             },
             Some("reducers"),
