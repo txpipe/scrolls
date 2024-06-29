@@ -4,8 +4,12 @@ use pallas::ledger::{
 };
 use serde::Deserialize;
 
-use crate::prelude::*;
-use crate::{crosscut, model};
+use crate::{
+    crosscut,
+    framework::{errors::Error, model},
+};
+
+use super::policies::AppliesPolicy;
 
 #[derive(Deserialize, Clone, Default)]
 pub struct AddressPattern {
@@ -93,7 +97,6 @@ pub struct TransactionPattern {
     pub is_valid: Option<bool>,
 }
 
-
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum Predicate {
@@ -118,7 +121,7 @@ impl Predicate {
 }
 
 #[inline]
-fn eval_output_address(tx: &MultiEraTx, pattern: &AddressPattern) -> Result<bool, crate::Error> {
+fn eval_output_address(tx: &MultiEraTx, pattern: &AddressPattern) -> Result<bool, Error> {
     let x = tx
         .outputs()
         .iter()
@@ -134,7 +137,7 @@ fn eval_input_address(
     ctx: &model::BlockContext,
     pattern: &AddressPattern,
     policy: &crosscut::policies::RuntimePolicy,
-) -> Result<bool, crate::Error> {
+) -> Result<bool, Error> {
     for input in tx.inputs() {
         let utxo = ctx.find_utxo(&input.output_ref()).apply_policy(policy)?;
         if let Some(utxo) = utxo {
@@ -155,7 +158,7 @@ fn eval_collateral_address(
     ctx: &model::BlockContext,
     pattern: &AddressPattern,
     policy: &crosscut::policies::RuntimePolicy,
-) -> Result<bool, crate::Error> {
+) -> Result<bool, Error> {
     for input in tx.collateral() {
         let utxo = ctx.find_utxo(&input.output_ref()).apply_policy(policy)?;
         if let Some(utxo) = utxo {
@@ -171,10 +174,7 @@ fn eval_collateral_address(
 }
 
 #[inline]
-fn eval_withdrawal_address(
-    tx: &MultiEraTx,
-    pattern: &AddressPattern,
-) -> Result<bool, crate::Error> {
+fn eval_withdrawal_address(tx: &MultiEraTx, pattern: &AddressPattern) -> Result<bool, Error> {
     let x = tx
         .withdrawals()
         .collect::<Vec<_>>()
@@ -190,7 +190,7 @@ fn eval_address(
     ctx: &model::BlockContext,
     pattern: &AddressPattern,
     policy: &crosscut::policies::RuntimePolicy,
-) -> Result<bool, crate::Error> {
+) -> Result<bool, Error> {
     if eval_output_address(tx, pattern)? {
         return Ok(true);
     }
@@ -210,7 +210,7 @@ fn eval_address(
     Ok(false)
 }
 
-fn eval_block(block: &MultiEraBlock, pattern: &BlockPattern) -> Result<bool, crate::Error> {
+fn eval_block(block: &MultiEraBlock, pattern: &BlockPattern) -> Result<bool, Error> {
     if let Some(x) = pattern.slot_after {
         return Ok(block.slot() > x);
     }
@@ -222,9 +222,9 @@ fn eval_block(block: &MultiEraBlock, pattern: &BlockPattern) -> Result<bool, cra
     Ok(false)
 }
 
-fn eval_transaction(tx: &MultiEraTx, pattern: &TransactionPattern) -> Result<bool, crate::Error> {
+fn eval_transaction(tx: &MultiEraTx, pattern: &TransactionPattern) -> Result<bool, Error> {
     if let Some(b) = pattern.is_valid {
-        return Ok(tx.is_valid() == b)
+        return Ok(tx.is_valid() == b);
     }
 
     Ok(false)
@@ -237,7 +237,7 @@ fn eval_any_of(
     tx: &MultiEraTx,
     ctx: &model::BlockContext,
     policy: &crosscut::policies::RuntimePolicy,
-) -> Result<bool, crate::Error> {
+) -> Result<bool, Error> {
     for p in predicates.iter() {
         if eval_predicate(p, block, tx, ctx, policy)? {
             return Ok(true);
@@ -254,7 +254,7 @@ fn eval_all_of(
     tx: &MultiEraTx,
     ctx: &model::BlockContext,
     policy: &crosscut::policies::RuntimePolicy,
-) -> Result<bool, crate::Error> {
+) -> Result<bool, Error> {
     for p in predicates.iter() {
         if !eval_predicate(p, block, tx, ctx, policy)? {
             return Ok(false);
@@ -270,7 +270,7 @@ pub fn eval_predicate(
     tx: &MultiEraTx,
     ctx: &model::BlockContext,
     policy: &crosscut::policies::RuntimePolicy,
-) -> Result<bool, crate::Error> {
+) -> Result<bool, Error> {
     match predicate {
         Predicate::Not(x) => eval_predicate(x, block, tx, ctx, policy).map(|x| !x),
         Predicate::AnyOf(x) => eval_any_of(x, block, tx, ctx, policy),
@@ -289,10 +289,7 @@ pub fn eval_predicate(
 mod tests {
     use pallas::ledger::traverse::MultiEraBlock;
 
-    use crate::{
-        crosscut::policies::{ErrorAction, RuntimePolicy},
-        model::BlockContext,
-    };
+    use crate::{crosscut::policies::{ErrorAction, RuntimePolicy}, framework::model::BlockContext};
 
     use super::{eval_predicate, AddressPattern, Predicate};
 

@@ -1,82 +1,48 @@
-use std::time::Duration;
+use gasket::framework::*;
+use serde::Deserialize;
 
-use gasket::runtime::{spawn_stage, WorkOutcome};
+use crate::framework::{model::BlockContext, *};
 
-use crate::{
-    bootstrap,
-    model::{self, BlockContext},
-};
+#[derive(Default, Stage)]
+#[stage(name = "enrich-skip", unit = "ChainEvent", worker = "Worker")]
+pub struct Stage {
+    pub input: EnrichInputPort,
+    pub output: EnrichOutputPort,
 
-type InputPort = gasket::messaging::TwoPhaseInputPort<model::RawBlockPayload>;
-type OutputPort = gasket::messaging::OutputPort<model::EnrichedBlockPayload>;
-
-pub struct Bootstrapper {
-    input: InputPort,
-    output: OutputPort,
+    #[metric]
+    ops_count: gasket::metrics::Counter,
 }
 
-impl Default for Bootstrapper {
-    fn default() -> Self {
-        Self {
-            input: Default::default(),
-            output: Default::default(),
-        }
-    }
-}
+#[derive(Default)]
+pub struct Worker;
 
-impl Bootstrapper {
-    pub fn borrow_input_port(&mut self) -> &'_ mut InputPort {
-        &mut self.input
-    }
-
-    pub fn borrow_output_port(&mut self) -> &'_ mut OutputPort {
-        &mut self.output
-    }
-
-    pub fn spawn_stages(self, pipeline: &mut bootstrap::Pipeline) {
-        let worker = Worker {
-            input: self.input,
-            output: self.output,
-        };
-
-        pipeline.register_stage(spawn_stage(
-            worker,
-            gasket::runtime::Policy {
-                tick_timeout: Some(Duration::from_secs(600)),
-                ..Default::default()
-            },
-            Some("enrich-skip"),
-        ));
+impl From<&Stage> for Worker {
+    fn from(_: &Stage) -> Self {
+        Self
     }
 }
 
-pub struct Worker {
-    input: InputPort,
-    output: OutputPort,
-}
-
-impl gasket::runtime::Worker for Worker {
-    fn metrics(&self) -> gasket::metrics::Registry {
-        gasket::metrics::Builder::new().build()
-    }
-
-    fn work(&mut self) -> gasket::runtime::WorkResult {
-        let msg = self.input.recv_or_idle()?;
-
-        match msg.payload {
-            model::RawBlockPayload::RollForward(cbor) => {
-                self.output.send(model::EnrichedBlockPayload::roll_forward(
-                    cbor,
-                    BlockContext::default(),
-                ))?;
+gasket::impl_mapper!(|_worker: Worker, stage: Stage, unit: ChainEvent| => {
+    let evt = match unit {
+        ChainEvent::Apply(point, record) => {
+            match record {
+                Record::RawBlockPayload(cbor) => Ok(ChainEvent::apply(point.clone(), Record::EnrichedBlockPayload(cbor.clone(), BlockContext::default()))),
+                _ => Err(WorkerError::Panic)
             }
-            model::RawBlockPayload::RollBack(x) => {
-                self.output
-                    .send(model::EnrichedBlockPayload::roll_back(x))?;
-            }
-        };
+        },
+        ChainEvent::Reset(point) => Ok(ChainEvent::reset(point.clone())),
+    }?;
 
-        self.input.commit();
-        Ok(WorkOutcome::Partial)
+    stage.ops_count.inc(1);
+
+    evt
+});
+
+#[derive(Default, Deserialize)]
+pub struct Config {}
+
+impl Config {
+    pub fn bootstrapper(self, _ctx: &Context) -> Result<Stage, Error> {
+        Ok(Stage::default())
     }
 }

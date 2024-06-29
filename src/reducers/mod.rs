@@ -1,46 +1,51 @@
-use std::time::Duration;
-
-use gasket::runtime::spawn_stage;
-use pallas::ledger::traverse::MultiEraBlock;
+use gasket::{
+    messaging::{RecvPort, SendPort},
+    runtime::Tether,
+};
 use serde::Deserialize;
 
-use crate::{bootstrap, crosscut, model};
+use crate::framework::{errors::Error, *};
 
-type InputPort = gasket::messaging::TwoPhaseInputPort<model::EnrichedBlockPayload>;
-type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
+pub mod builtin;
 
-pub mod macros;
-pub mod point_by_tx;
-pub mod pool_by_stake;
-pub mod utxo_by_address;
-mod worker;
+#[cfg(feature = "deno")]
+pub mod deno;
 
-#[cfg(feature = "unstable")]
-pub mod address_by_asset;
-#[cfg(feature = "unstable")]
-pub mod address_by_txo;
-#[cfg(feature = "unstable")]
-pub mod asset_holders_by_asset_id;
-#[cfg(feature = "unstable")]
-pub mod balance_by_address;
-#[cfg(feature = "unstable")]
-pub mod block_header_by_hash;
-#[cfg(feature = "unstable")]
-pub mod last_block_parameters;
-#[cfg(feature = "unstable")]
-pub mod supply_by_asset;
-#[cfg(feature = "unstable")]
-pub mod tx_by_hash;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_address;
-#[cfg(feature = "unstable")]
-pub mod tx_count_by_native_token_policy_id;
-#[cfg(feature = "unstable")]
-pub mod utxo_by_stake;
-#[cfg(feature = "unstable")]
-pub mod utxos_by_asset;
-#[cfg(feature = "unstable")]
-pub mod addresses_by_stake;
+pub enum Bootstrapper {
+    BuiltIn(builtin::Stage),
+
+    #[cfg(feature = "deno")]
+    Deno(deno::Stage),
+}
+
+impl StageBootstrapper for Bootstrapper {
+    fn connect_output(&mut self, adapter: OutputAdapter) {
+        match self {
+            Bootstrapper::BuiltIn(p) => p.output.connect(adapter),
+
+            #[cfg(feature = "deno")]
+            Bootstrapper::Deno(p) => p.output.connect(adapter),
+        }
+    }
+
+    fn connect_input(&mut self, adapter: InputAdapter) {
+        match self {
+            Bootstrapper::BuiltIn(p) => p.input.connect(adapter),
+
+            #[cfg(feature = "deno")]
+            Bootstrapper::Deno(p) => p.input.connect(adapter),
+        }
+    }
+
+    fn spawn(self, policy: gasket::runtime::Policy) -> Tether {
+        match self {
+            Bootstrapper::BuiltIn(s) => gasket::runtime::spawn_stage(s, policy),
+
+            #[cfg(feature = "deno")]
+            Bootstrapper::Deno(s) => gasket::runtime::spawn_stage(s, policy),
+        }
+    }
+}
 
 // CRFA
 #[cfg(feature = "unstable")]
@@ -63,9 +68,7 @@ pub mod transaction_size_by_script;
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum Config {
-    UtxoByAddress(utxo_by_address::Config),
-    PointByTx(point_by_tx::Config),
-    PoolByStake(pool_by_stake::Config),
+    BuiltIn(builtin::Config),
 
     #[cfg(feature = "unstable")]
     AddressByTxo(address_by_txo::Config),
@@ -114,15 +117,9 @@ pub enum Config {
 }
 
 impl Config {
-    fn plugin(
-        self,
-        chain: &crosscut::ChainWellKnownInfo,
-        policy: &crosscut::policies::RuntimePolicy,
-    ) -> Reducer {
+    pub fn bootstrapper(self, ctx: &Context) -> Result<Bootstrapper, Error> {
         match self {
-            Config::UtxoByAddress(c) => c.plugin(policy),
-            Config::PointByTx(c) => c.plugin(),
-            Config::PoolByStake(c) => c.plugin(),
+            Config::BuiltIn(c) => Ok(Bootstrapper::BuiltIn(c.bootstrapper(ctx)?)),
 
             #[cfg(feature = "unstable")]
             Config::AddressByTxo(c) => c.plugin(policy),

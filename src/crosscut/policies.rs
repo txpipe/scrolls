@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Error;
+use crate::framework::errors::Error;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub enum ErrorAction {
@@ -24,7 +24,7 @@ pub struct RuntimePolicy {
 }
 
 #[inline]
-fn handle_error<T>(err: Error, action: &Option<ErrorAction>) -> Result<Option<T>, crate::Error> {
+fn handle_error<T>(err: Error, action: &Option<ErrorAction>) -> Result<Option<T>, Error> {
     match action {
         Some(ErrorAction::Skip) => Ok(None),
         Some(ErrorAction::Warn) => {
@@ -38,13 +38,13 @@ fn handle_error<T>(err: Error, action: &Option<ErrorAction>) -> Result<Option<T>
 pub trait AppliesPolicy {
     type Value;
 
-    fn apply_policy(self, policy: &RuntimePolicy) -> Result<Option<Self::Value>, crate::Error>;
+    fn apply_policy(self, policy: &RuntimePolicy) -> Result<Option<Self::Value>, Error>;
 }
 
-impl<T> AppliesPolicy for Result<T, crate::Error> {
+impl<T> AppliesPolicy for Result<T, Error> {
     type Value = T;
 
-    fn apply_policy(self, policy: &RuntimePolicy) -> Result<Option<Self::Value>, crate::Error> {
+    fn apply_policy(self, policy: &RuntimePolicy) -> Result<Option<Self::Value>, Error> {
         match self {
             Ok(t) => Ok(Some(t)),
             Err(err) => {
@@ -55,9 +55,9 @@ impl<T> AppliesPolicy for Result<T, crate::Error> {
 
                 // apply specific actions for each type of error
                 match &err {
-                    crate::Error::MissingUtxo(_) => handle_error(err, &policy.missing_data),
-                    crate::Error::CborError(_) => handle_error(err, &policy.cbor_errors),
-                    crate::Error::LedgerError(_) => handle_error(err, &policy.ledger_errors),
+                    Error::MissingUtxo(_) => handle_error(err, &policy.missing_data),
+                    Error::CborError(_) => handle_error(err, &policy.cbor_errors),
+                    Error::LedgerError(_) => handle_error(err, &policy.ledger_errors),
                     _ => Err(err),
                 }
             }
