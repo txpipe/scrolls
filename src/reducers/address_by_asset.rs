@@ -1,5 +1,7 @@
-use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{Asset, MultiEraBlock};
+use pallas_traverse::MultiEraAsset;
+use pallas_traverse::MultiEraBlock;
+use pallas_traverse::MultiEraOutput;
+use pallas_traverse::MultiEraPolicyAssets;
 use serde::Deserialize;
 
 use crate::{model, prelude::*};
@@ -19,16 +21,20 @@ pub struct Reducer {
 }
 
 impl Reducer {
-    fn to_string_output(&self, asset: Asset) -> Option<String> {
-        match asset.policy_hex() {
-            Some(policy_id) if policy_id.eq(&self.config.policy_id_hex) => match asset {
-                Asset::NativeAsset(_, name, _) => match self.convert_to_ascii {
-                    true => String::from_utf8(name).ok(),
-                    false => Some(hex::encode(name)),
-                },
-                _ => None,
-            },
-            _ => None,
+    fn to_string_output(
+        &self,
+        policy: &MultiEraPolicyAssets,
+        asset: &MultiEraAsset,
+    ) -> Option<String> {
+        let policy_id = policy.policy().to_string();
+
+        if policy_id.eq(&self.config.policy_id_hex) {
+            match self.convert_to_ascii {
+                true => asset.to_ascii_name(),
+                false => Some(hex::encode(asset.name())),
+            }
+        } else {
+            None
         }
     }
 
@@ -40,7 +46,14 @@ impl Reducer {
         let asset_names: Vec<_> = txo
             .non_ada_assets()
             .into_iter()
-            .filter_map(|x| self.to_string_output(x))
+            .flat_map(|policy| {
+                policy
+                    .assets()
+                    .iter()
+                    .map(|asset| self.to_string_output(&policy, asset))
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
             .collect();
 
         if asset_names.is_empty() {

@@ -1,9 +1,9 @@
-use pallas::ledger::traverse::MultiEraHeader;
-use pallas::network::miniprotocols::chainsync::HeaderContent;
-use pallas::network::miniprotocols::{blockfetch, chainsync, Point};
+use pallas_miniprotocols::chainsync::HeaderContent;
+use pallas_miniprotocols::{blockfetch, chainsync, Point};
+use pallas_traverse::MultiEraHeader;
 
 use gasket::error::AsWorkError;
-use pallas::network::multiplexer::StdChannel;
+use pallas_multiplexer::StdChannel;
 
 use crate::sources::n2n::transport::Transport;
 use crate::{crosscut, model, sources::utils, storage, Error};
@@ -173,7 +173,7 @@ impl gasket::runtime::Worker for Worker {
         let mut chainsync = chainsync::N2NClient::new(transport.channel2);
 
         let start =
-            utils::define_chainsync_start(&self.intersect, &mut self.cursor, &mut chainsync)
+            utils::define_chainsync_start_n2n(&self.intersect, &mut self.cursor, &mut chainsync)
                 .or_retry()?;
 
         let start = start.ok_or(Error::IntersectNotFound).or_panic()?;

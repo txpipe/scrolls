@@ -1,4 +1,4 @@
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::prelude::*;
@@ -23,20 +23,17 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         if filter_matches_block!(self, block, ctx) {
-            let value = block
-                .header()
-                .cbor()
-                .to_vec();
-                
+            let value = block.header().cbor().to_vec();
+
             let crdt = model::CRDTCommand::any_write_wins(
                 self.config.key_prefix.as_deref(),
                 block.hash(),
-                value
+                value,
             );
-            
+
             output.send(gasket::messaging::Message::from(crdt))?;
         }
-        
+
         Ok(())
     }
 }

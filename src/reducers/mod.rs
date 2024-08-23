@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use gasket::runtime::spawn_stage;
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model};

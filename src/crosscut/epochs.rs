@@ -1,7 +1,7 @@
 // TODO this is temporary, we should actually use this code from Pallas as this
 // is very generic code
 
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_traverse::MultiEraBlock;
 
 fn post_byron_epoch_for_slot(shelley_known_slot: u64, shelley_epoch_length: u32, slot: u64) -> u64 {
     let last_byron_epoch_no = 208;
@@ -25,7 +25,7 @@ pub fn block_epoch(chain: &super::ChainWellKnownInfo, block: &MultiEraBlock) -> 
     let slot = block.slot();
 
     match block.era() {
-        pallas::ledger::traverse::Era::Byron => {
+        pallas_traverse::Era::Byron => {
             byron_epoch_for_slot(chain.byron_epoch_length, chain.byron_slot_length, slot)
         }
         _ => post_byron_epoch_for_slot(chain.shelley_known_slot, chain.shelley_epoch_length, slot),

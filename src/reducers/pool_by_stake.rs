@@ -1,6 +1,6 @@
-use pallas::ledger::primitives::alonzo;
-use pallas::ledger::primitives::alonzo::{PoolKeyhash, StakeCredential};
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_primitives::alonzo;
+use pallas_primitives::alonzo::{PoolKeyhash, StakeCredential};
+use pallas_traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::model;

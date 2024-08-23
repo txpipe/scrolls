@@ -1,9 +1,8 @@
 use std::str::FromStr;
 
 use gasket::error::AsWorkError;
-use pallas::crypto::hash::Hash;
-use pallas::ledger::traverse::Asset;
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
+use pallas_crypto::hash::Hash;
+use pallas_traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{crosscut, model};
@@ -33,7 +32,7 @@ impl Reducer {
         tx_hash: &Hash<32>,
         txo_idx: u64,
         policy: Hash<28>,
-        asset: Vec<u8>,
+        asset: &[u8],
         delta: i64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -60,14 +59,14 @@ impl Reducer {
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
             for (tx_ref, tx_output) in ctx.find_consumed_txos(&tx, &self.policy).or_panic()? {
-                for asset in tx_output.assets() {
-                    if let Asset::NativeAsset(policy, asset, delta) = asset {
+                for policy in tx_output.non_ada_assets() {
+                    for asset in policy.assets() {
                         self.process_asset(
                             tx_ref.hash(),
                             tx_ref.index(),
-                            policy,
-                            asset,
-                            -1 * delta as i64,
+                            *policy.policy(),
+                            asset.name(),
+                            -1 * asset.output_coin().unwrap_or_default() as i64,
                             output,
                         )?;
                     }
@@ -75,14 +74,14 @@ impl Reducer {
             }
 
             for (idx, txo) in tx.produces() {
-                for asset in txo.assets() {
-                    if let Asset::NativeAsset(policy, asset, delta) = asset {
+                for policy in txo.non_ada_assets() {
+                    for asset in policy.assets() {
                         self.process_asset(
                             &tx.hash(),
                             idx as u64,
-                            policy,
-                            asset,
-                            delta as i64,
+                            *policy.policy(),
+                            asset.name(),
+                            asset.output_coin().unwrap_or_default() as i64,
                             output,
                         )?;
                     }

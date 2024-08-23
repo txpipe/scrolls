@@ -1,6 +1,6 @@
-use pallas::ledger::addresses::{self, Address, StakeAddress};
-use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
+use pallas_addresses::{self, Address, StakeAddress};
+use pallas_traverse::MultiEraOutput;
+use pallas_traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};
@@ -129,7 +129,7 @@ impl Config {
 #[cfg(test)]
 mod test {
     use super::any_address_to_stake_bech32;
-    use pallas::ledger::addresses::Address;
+    use pallas_addresses::Address;
 
     #[test]
     fn stake_bech32() {

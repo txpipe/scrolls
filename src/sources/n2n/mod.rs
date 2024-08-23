@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use gasket::messaging::OutputPort;
 
-use pallas::network::miniprotocols::Point;
+use pallas_miniprotocols::Point;
 use serde::Deserialize;
 
 use crate::{bootstrap, crosscut, model, storage};

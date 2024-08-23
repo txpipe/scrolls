@@ -1,9 +1,9 @@
-use pallas::ledger::traverse::{Asset, MultiEraOutput};
-use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
+use pallas_traverse::MultiEraOutput;
+use pallas_traverse::{MultiEraBlock, OutputRef};
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};
-use pallas::crypto::hash::Hash;
+use pallas_crypto::hash::Hash;
 
 use crate::crosscut::epochs::block_epoch;
 use std::str::FromStr;
@@ -76,22 +76,18 @@ impl Reducer {
 
         let address = utxo.address().map(|addr| addr.to_string()).or_panic()?;
 
-        for asset in utxo.assets() {
-            match asset {
-                Asset::NativeAsset(policy_id, _, quantity) => {
-                    if self.is_policy_id_accepted(&policy_id) {
-                        let subject = asset.subject();
-                        let key = self.config_key(subject, epoch_no);
-                        let delta = quantity as i64 * (-1);
+        for policy in utxo.non_ada_assets() {
+            for asset in policy.assets() {
+                if self.is_policy_id_accepted(policy.policy()) {
+                    let subject = format!("{}.{}", policy.policy(), hex::encode(asset.name()));
+                    let key = self.config_key(subject, epoch_no);
+                    let delta = asset.output_coin().unwrap_or_default() as i64 * (-1);
 
-                        let crdt =
-                            model::CRDTCommand::SortedSetRemove(key, address.to_string(), delta);
+                    let crdt = model::CRDTCommand::SortedSetRemove(key, address.to_string(), delta);
 
-                        output.send(gasket::messaging::Message::from(crdt))?;
-                    }
+                    output.send(gasket::messaging::Message::from(crdt))?;
                 }
-                _ => (),
-            };
+            }
         }
 
         Ok(())
@@ -108,22 +104,18 @@ impl Reducer {
             .map(|addr| addr.to_string())
             .or_panic()?;
 
-        for asset in tx_output.assets() {
-            match asset {
-                Asset::NativeAsset(policy_id, _, quantity) => {
-                    if self.is_policy_id_accepted(&policy_id) {
-                        let subject = asset.subject();
-                        let key = self.config_key(subject, epoch_no);
-                        let delta = quantity as i64;
+        for policy in tx_output.non_ada_assets() {
+            for asset in policy.assets() {
+                if self.is_policy_id_accepted(policy.policy()) {
+                    let subject = format!("{}.{}", policy.policy(), hex::encode(asset.name()));
+                    let key = self.config_key(subject, epoch_no);
+                    let delta = asset.output_coin().unwrap_or_default() as i64;
 
-                        let crdt =
-                            model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
+                    let crdt = model::CRDTCommand::SortedSetAdd(key, address.to_string(), delta);
 
-                        output.send(gasket::messaging::Message::from(crdt))?;
-                    }
+                    output.send(gasket::messaging::Message::from(crdt))?;
                 }
-                _ => {}
-            };
+            }
         }
 
         Ok(())

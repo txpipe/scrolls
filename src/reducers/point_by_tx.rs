@@ -1,5 +1,5 @@
-use pallas::crypto::hash::Hash;
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_crypto::hash::Hash;
+use pallas_traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::model;

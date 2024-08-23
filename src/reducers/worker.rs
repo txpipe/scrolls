@@ -1,4 +1,4 @@
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_traverse::MultiEraBlock;
 
 use crate::{crosscut, model, prelude::*};
 

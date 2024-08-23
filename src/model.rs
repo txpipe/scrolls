@@ -1,10 +1,8 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use pallas::{
-    ledger::traverse::{Era, MultiEraBlock, MultiEraOutput, MultiEraTx, OutputRef},
-    network::miniprotocols::Point,
-    crypto::hash::Hash,
-};
+use pallas_crypto::hash::Hash;
+use pallas_miniprotocols::Point;
+use pallas_traverse::{Era, MultiEraBlock, MultiEraOutput, MultiEraTx, OutputRef};
 
 use crate::prelude::*;
 
@@ -60,7 +58,7 @@ impl BlockContext {
             .consumes()
             .iter()
             .map(|i| i.output_ref())
-            .map(|r| self.find_utxo(&r).map(|u| (r,u)))
+            .map(|r| self.find_utxo(&r).map(|u| (r, u)))
             .map(|r| r.apply_policy(policy))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()

@@ -5,10 +5,9 @@ use gasket::{
     runtime::{spawn_stage, WorkOutcome},
 };
 
-use pallas::{
-    codec::minicbor,
-    ledger::traverse::{Era, MultiEraBlock, MultiEraTx, OutputRef},
-};
+use pallas_codec::minicbor;
+use pallas_traverse::{Era, MultiEraBlock, MultiEraTx, OutputRef};
+
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 use sled::IVec;

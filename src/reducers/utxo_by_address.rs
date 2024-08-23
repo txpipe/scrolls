@@ -1,5 +1,5 @@
-use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx, OutputRef};
+use pallas_traverse::MultiEraOutput;
+use pallas_traverse::{MultiEraBlock, MultiEraTx, OutputRef};
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};
@@ -26,7 +26,7 @@ impl Reducer {
 
         let utxo = match utxo {
             Some(x) => x,
-            None => return Ok(())
+            None => return Ok(()),
         };
 
         let address = utxo.address().map(|x| x.to_string()).or_panic()?;
@@ -54,7 +54,10 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         let tx_hash = tx.hash();
-        let address = tx_output.address().map(|addr| addr.to_string()).or_panic()?;
+        let address = tx_output
+            .address()
+            .map(|addr| addr.to_string())
+            .or_panic()?;
 
         if let Some(addresses) = &self.config.filter {
             if let Err(_) = addresses.binary_search(&address) {

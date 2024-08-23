@@ -1,4 +1,5 @@
-use pallas::network::{miniprotocols::handshake, multiplexer};
+use pallas_miniprotocols::handshake;
+use pallas_multiplexer as multiplexer;
 
 pub struct Transport {
     pub channel2: multiplexer::StdChannel,

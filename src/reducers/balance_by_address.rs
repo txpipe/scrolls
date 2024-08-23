@@ -1,5 +1,5 @@
-use pallas::ledger::traverse::MultiEraOutput;
-use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
+use pallas_traverse::MultiEraOutput;
+use pallas_traverse::{MultiEraBlock, OutputRef};
 use serde::Deserialize;
 
 use crate::{crosscut, model, prelude::*};

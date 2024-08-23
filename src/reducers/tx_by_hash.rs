@@ -1,4 +1,4 @@
-use pallas::ledger::traverse::{MultiEraBlock, MultiEraTx};
+use pallas_traverse::{MultiEraBlock, MultiEraTx};
 use serde::Deserialize;
 use serde_json::json;
 

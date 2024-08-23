@@ -1,9 +1,7 @@
 use std::str::FromStr;
 
-use gasket::error::AsWorkError;
-use pallas::crypto::hash::Hash;
-use pallas::ledger::traverse::Asset;
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas_crypto::hash::Hash;
+use pallas_traverse::MultiEraBlock;
 use serde::Deserialize;
 
 use crate::{crosscut, model};
@@ -31,7 +29,7 @@ impl Reducer {
     fn process_asset(
         &mut self,
         policy: &Hash<28>,
-        asset: &Vec<u8>,
+        asset: &[u8],
         qty: i64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
@@ -58,11 +56,14 @@ impl Reducer {
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
         for tx in block.txs().into_iter() {
-            if let Some(mints) = tx.mint().as_alonzo() {
-                for (policy, assets) in mints.iter() {
-                    for (name, amount) in assets.iter() {
-                        self.process_asset(policy, name, *amount, output)?;
-                    }
+            for mint in tx.mints() {
+                for asset in mint.assets() {
+                    self.process_asset(
+                        mint.policy(),
+                        asset.name(),
+                        asset.mint_coin().unwrap_or_default(),
+                        output,
+                    )?;
                 }
             }
         }
