@@ -180,8 +180,6 @@ impl gasket::framework::Worker<Stage> for Worker {
     }
 
     async fn teardown(&mut self) -> Result<(), WorkerError> {
-        self.peer_session.abort();
-
         Ok(())
     }
 }

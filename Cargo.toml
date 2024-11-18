@@ -12,9 +12,14 @@ authors = ["Santiago Carmuega <santiago@carmuega.me>"]
 
 
 [dependencies]
-pallas = "0.19.1"
+pallas = "0.30.1"
 # pallas = { path = "../pallas/pallas" }
 # pallas = { git = "https://github.com/txpipe/pallas.git" }
+
+pallas-primitives = "0.30.1"
+pallas-crypto = "0.30.1"
+pallas-codec = "0.30.1"
+pallas-traverse = "0.30.1"
 
 gasket = { version = "0.5.0", features = ["derive"] }
 # gasket = { path = "../../construkts/gasket-rs", features = ["derive"] }
@@ -37,7 +42,7 @@ lazy_static = "1.4.0"
 rayon = "1.5.3"
 
 # async feature
-futures = { version = "0.3.24", optional = true }
+futures = { version = "0.3.24" }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
 # elastic feature
@@ -56,10 +61,13 @@ deno_runtime = { version = "0.136.0", optional = true }
 chrono = { version = "0.4.31", optional = true }
 utxorpc = { version = "1.0.0-alpha.1", optional = true }
 
+tungstenite = "0.24.0"
+tokio-tungstenite = "*"
+anyhow = "1.0.88"
+num-bigint = { version = "0.4", features = ["serde"] }
+minicbor = { version = "0.20.0", features = [] }
+
 [features]
-async = ["futures"]
-elastic = ["elasticsearch", "async", "openssl"]
-unstable = ["elastic"]
 tui = ["indicatif"]
 default = ["tui"]
 deno = ["deno_runtime", "chrono", "utxorpc"]

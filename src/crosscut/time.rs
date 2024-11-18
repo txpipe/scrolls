@@ -41,7 +41,7 @@ impl NaiveProvider {
             "shelley epoch length needs to be greater than zero"
         );
 
-        let (shelley_start_epoch, _) = compute_era_epoch(
+        let (_shelley_start_epoch, _) = compute_era_epoch(
             config.shelley_known_slot,
             config.byron_slot_length as u64,
             config.byron_epoch_length as u64,
