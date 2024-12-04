@@ -9,20 +9,17 @@ use pallas_crypto::hash::Hash;
 
 // src/Hydra/Events.hs 'StateEvent'
 // This is the type sent to EventSinks.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Event {
     pub event_id: u64,
     pub state_changed: StateChanged,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct TransactionReceived {
     pub tx: TransactionReceivedTx,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct TransactionReceivedTx {
     pub cbor_hex: String,
@@ -31,7 +28,6 @@ pub struct TransactionReceivedTx {
     pub r#type: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum StateChanged {
     TransactionReceived(TransactionReceived),
@@ -99,7 +95,6 @@ impl TryFrom<Value> for StateChanged {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct SnapshotConfirmed {
     pub confirmed_transactions: Vec<String>,
@@ -128,7 +123,6 @@ impl TryFrom<Value> for SnapshotConfirmed {
 
 pub enum HydraWsMessage {
     TxValid((String, String)),
-    TxInvalid((String, String)),
     SnapshotConfirmed(SnapshotConfirmed),
     TransactionReceived(TransactionReceived),
     Unimplemented(()),
@@ -144,12 +138,6 @@ impl TryFrom<Value> for HydraWsMessage {
             let tx_id = transaction["txId"].as_str().context("Invalid txId")?;
             let tx_cbor = transaction["cborHex"].as_str().context("Invalid cborHex")?;
             return Ok(HydraWsMessage::TxValid((tx_id.to_string(), tx_cbor.to_string())));
-        } else if tag == "TxInvalid" {
-            let transaction = value["transaction"].as_object().context("Invalid transaction")?;
-            let tx_id = transaction["txId"].as_str().context("Invalid txId")?;
-            let validation_error = value["validationError"].as_object().context("Invalid validationError")?;
-            let reason = validation_error["reason"].as_str().context("Invalid reason")?;
-            return Ok(HydraWsMessage::TxInvalid((tx_id.to_string(), reason.to_string())));
         } else if tag == "SnapshotConfirmed" {
             return SnapshotConfirmed::try_from(value).map(HydraWsMessage::SnapshotConfirmed)
         } else if tag == "TransactionReceived" {

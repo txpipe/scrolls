@@ -85,9 +85,6 @@ impl Worker {
                 self.mempool.insert(txid.clone(), txbody.clone());
                 Ok(())
             }
-            HydraWsMessage::TxInvalid(_) => {
-                Ok(())
-            }
             HydraWsMessage::Unimplemented(_) => {
                 // Do nothing
                 Ok(())
