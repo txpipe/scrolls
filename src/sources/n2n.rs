@@ -112,6 +112,7 @@ impl Worker {
                     .await
                     .or_retry()?;
 
+                debug!("{} {}", hex::encode(&block), "chain sync roll forward block cbor");
                 let evt = ChainEvent::apply(
                     Point::Specific(slot, hash.to_vec()),
                     Record::RawBlockPayload(block),
@@ -202,8 +203,6 @@ impl gasket::framework::Worker<Stage> for Worker {
     }
 
     async fn teardown(&mut self) -> Result<(), WorkerError> {
-        self.peer_session.abort();
-
         Ok(())
     }
 }
