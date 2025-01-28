@@ -17,8 +17,7 @@ pub struct Worker {
 #[async_trait::async_trait(?Send)]
 impl gasket::framework::Worker<Stage> for Worker {
     async fn bootstrap(stage: &Stage) -> Result<Self, WorkerError> {
-        let manager =
-            RedisConnectionManager::new(stage.config.url.clone()).or_panic()?;
+        let manager = RedisConnectionManager::new(stage.config.url.clone()).or_panic()?;
         let pool = r2d2::Pool::builder().build(manager).or_panic()?;
 
         Ok(Self { pool })

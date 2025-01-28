@@ -4,8 +4,8 @@ use deno_runtime::deno_core::{self, op2, ModuleSpecifier, OpState};
 use deno_runtime::permissions::PermissionsContainer;
 use deno_runtime::worker::{MainWorker as DenoWorker, WorkerOptions};
 use gasket::framework::*;
-use pallas::interop::utxorpc::map_block;
-use pallas::ledger::traverse::MultiEraBlock;
+use pallas::interop::utxorpc::{map_block, map_tx_output};
+use pallas::ledger::traverse::{MultiEraBlock, OutputRef};
 use serde::Deserialize;
 use serde_json::json;
 use tracing::trace;
@@ -133,11 +133,28 @@ impl gasket::framework::Worker<Stage> for Worker {
         let record = record.unwrap();
 
         match record {
-            Record::EnrichedBlockPayload(block, _) => {
+            Record::EnrichedBlockPayload(block, ctx) => {
                 let block = MultiEraBlock::decode(block)
                     .map_err(Error::cbor)
                     .or_panic()?;
-                let block = map_block(&block);
+                let mut block = map_block(&block);
+
+                for tx in block.body.as_mut().unwrap().tx.iter_mut() {
+                    for input in tx.inputs.iter_mut() {
+                        if input.tx_hash.len() == 32 {
+                            let mut hash_bytes = [0u8; 32];
+                            hash_bytes.copy_from_slice(&input.tx_hash);
+
+                            let tx_hash = pallas::crypto::hash::Hash::from(hash_bytes);
+                            let output_index = input.output_index as u64;
+                            let output_ref = OutputRef::new(tx_hash, output_index);
+                            
+                            if let Ok(output) = ctx.find_utxo(&output_ref) {
+                                input.as_output = Some(map_tx_output(&output));
+                            }
+                        }
+                    }
+                }
 
                 let deno = &mut self.runtime;
 
