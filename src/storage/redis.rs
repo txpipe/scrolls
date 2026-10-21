@@ -17,8 +17,7 @@ pub struct Worker {
 #[async_trait::async_trait(?Send)]
 impl gasket::framework::Worker<Stage> for Worker {
     async fn bootstrap(stage: &Stage) -> Result<Self, WorkerError> {
-        let manager =
-            RedisConnectionManager::new(stage.config.url.clone()).or_panic()?;
+        let manager = RedisConnectionManager::new(stage.config.url.clone()).or_panic()?;
         let pool = r2d2::Pool::builder().build(manager).or_panic()?;
 
         Ok(Self { pool })
@@ -46,84 +45,102 @@ impl gasket::framework::Worker<Stage> for Worker {
             Record::CRDTCommand(commands) => {
                 let mut conn = self.pool.get().or_restart()?;
 
-                redis::cmd("MULTI").query(conn.deref_mut()).or_retry()?;
+                redis::cmd("MULTI")
+                    .query::<()>(conn.deref_mut())
+                    .or_retry()?;
 
                 // TODO: add to parallel persist
                 for command in commands {
                     match command {
                         model::CRDTCommand::GrowOnlySetAdd(key, value) => {
-                            conn.deref_mut().sadd(key, value).or_restart()?;
+                            conn.deref_mut().sadd::<_, _, ()>(key, value).or_restart()?;
                         }
                         model::CRDTCommand::TwoPhaseSetAdd(key, value) => {
                             debug!(key, value, "adding to 2-phase");
 
-                            conn.deref_mut().sadd(key, value).or_restart()?;
+                            conn.deref_mut().sadd::<_, _, ()>(key, value).or_restart()?;
                         }
                         model::CRDTCommand::TwoPhaseSetRemove(key, value) => {
                             debug!(key, value, "removing from 2-phase");
 
                             conn.deref_mut()
-                                .sadd(format!("{}.ts", key), value)
+                                .sadd::<_, _, ()>(format!("{}.ts", key), value)
                                 .or_restart()?;
                         }
                         model::CRDTCommand::SetAdd(key, value) => {
                             debug!(key, value, "adding");
 
-                            conn.deref_mut().sadd(key, value).or_restart()?;
+                            conn.deref_mut().sadd::<_, _, ()>(key, value).or_restart()?;
                         }
                         model::CRDTCommand::SetRemove(key, value) => {
                             debug!(key, value, "removing");
 
-                            conn.deref_mut().srem(key, value).or_restart()?;
+                            conn.deref_mut().srem::<_, _, ()>(key, value).or_restart()?;
                         }
                         model::CRDTCommand::LastWriteWins(key, value, slot) => {
                             debug!(key, slot, "last write");
 
-                            conn.deref_mut().zadd(key, value, slot).or_restart()?;
+                            conn.deref_mut()
+                                .zadd::<_, _, _, ()>(key, value, slot)
+                                .or_restart()?;
                         }
                         model::CRDTCommand::SortedSetAdd(key, value, delta) => {
                             debug!(key, value, delta, "sorted set add");
 
-                            conn.deref_mut().zincr(key, value, delta).or_restart()?;
+                            conn.deref_mut()
+                                .zincr::<_, _, _, ()>(key, value, delta)
+                                .or_restart()?;
                         }
                         model::CRDTCommand::SortedSetRemove(key, value, delta) => {
                             debug!(key, value, delta, "sorted set remove");
 
-                            conn.deref_mut().zincr(&key, value, delta).or_restart()?;
+                            conn.deref_mut()
+                                .zincr::<_, _, _, ()>(&key, value, delta)
+                                .or_restart()?;
 
                             // removal of dangling scores  (aka garage collection)
-                            conn.deref_mut().zrembyscore(&key, 0, 0).or_restart()?;
+                            conn.deref_mut()
+                                .zrembyscore::<_, _, _, ()>(&key, 0, 0)
+                                .or_restart()?;
                         }
                         model::CRDTCommand::AnyWriteWins(key, value) => {
                             debug!(key, "overwrite");
 
-                            conn.deref_mut().set(key, value).or_restart()?;
+                            conn.deref_mut().set::<_, _, ()>(key, value).or_restart()?;
                         }
                         model::CRDTCommand::PNCounter(key, value) => {
                             debug!(key, value, "increasing counter");
 
-                            conn.deref_mut().incr(key, value).or_restart()?;
+                            conn.deref_mut().incr::<_, _, ()>(key, value).or_restart()?;
                         }
                         model::CRDTCommand::HashSetValue(key, member, value) => {
                             debug!(key, member, "setting hash");
 
-                            conn.deref_mut().hset(key, member, value).or_restart()?;
+                            conn.deref_mut()
+                                .hset::<_, _, _, ()>(key, member, value)
+                                .or_restart()?;
                         }
                         model::CRDTCommand::HashCounter(key, member, delta) => {
                             debug!(key, member, delta, "increasing hash");
 
-                            conn.deref_mut().hincr(key, member, delta).or_restart()?;
+                            conn.deref_mut()
+                                .hincr::<_, _, _, ()>(key, member, delta)
+                                .or_restart()?;
                         }
                         model::CRDTCommand::HashUnsetKey(key, member) => {
                             debug!(key, member, "deleting hash");
 
-                            conn.deref_mut().hdel(member, key).or_restart()?;
+                            conn.deref_mut()
+                                .hdel::<_, _, ()>(member, key)
+                                .or_restart()?;
                         }
                     }
                 }
 
                 // TODO: check if its necessary to set cursor
-                redis::cmd("EXEC").query(conn.deref_mut()).or_retry()?;
+                redis::cmd("EXEC")
+                    .query::<()>(conn.deref_mut())
+                    .or_retry()?;
             }
             _ => todo!(),
         }
