@@ -1,3 +1,3 @@
 # Reducers
 
-- [Deno](deno.md): custom reducers in js
+- [Deno](deno.md): removed pending a runtime upgrade

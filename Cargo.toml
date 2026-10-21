@@ -46,7 +46,7 @@ futures = { version = "0.3.24" }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
 # elastic feature
-elasticsearch = { version = "8.5.0-alpha.1", optional = true }
+elasticsearch = { version = "8.19.0-alpha.1", optional = true }
 
 # tui feature
 indicatif = { version = "0.17.0-rc.11", optional = true }
@@ -57,9 +57,6 @@ tracing = "0.1.37"
 tracing-subscriber = "0.3.17"
 async-trait = "0.1.73"
 r2d2_redis = "0.14.0"
-deno_runtime = { version = "0.136.0", optional = true }
-chrono = { version = "0.4.31", optional = true }
-utxorpc = { version = "1.0.0-alpha.1", optional = true }
 
 tungstenite = "0.24.0"
 tokio-tungstenite = "*"
@@ -70,4 +67,3 @@ minicbor = { version = "0.20.0", features = [] }
 [features]
 tui = ["indicatif"]
 default = ["tui"]
-deno = ["deno_runtime", "chrono", "utxorpc"]
