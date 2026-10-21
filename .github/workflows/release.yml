@@ -44,11 +44,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: install deps [MacOS]
-        if: matrix.os == 'macOS-latest'
-        run: |
-          brew install openssl@1.1
-
       - name: checkout repository
         uses: actions/checkout@v3
 
@@ -67,9 +62,9 @@ jobs:
           mv target/${{ matrix.target }}/release/${{ matrix.bin }} ${{ matrix.release_for }}-${{ matrix.bin }}
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binaries-${{ matrix.release_for }}
           path: ${{ matrix.release_for }}-${{ matrix.bin }}
 
   docker:
@@ -106,7 +101,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          merge-multiple: true
+          path: binaries
 
       - name: Build and push
         uses: docker/build-push-action@v4
@@ -136,7 +135,11 @@ jobs:
 
       - name: download artifacts
         id: "download"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          merge-multiple: true
+          path: binaries
 
       - name: set release notes
         run: |
